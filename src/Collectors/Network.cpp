@@ -48,7 +48,7 @@ class NetInterface {
       return 0;
   }
 
-  unsigned long GetRxBytes() {
+  unsigned long GetTotRxBytes() {
     char ch;
     unsigned long bytes = 0;
     while (rx.get(ch)) {
@@ -62,7 +62,7 @@ class NetInterface {
     rx.seekg(0);
     return bytes;
   }
-  unsigned long GetTxBytes() {
+  unsigned long GetTotTxBytes() {
       char ch;
       unsigned long bytes = 0;
       while (tx.get(ch)) {
@@ -90,24 +90,23 @@ private:
   NetInterface* activeIfaces;
   int ifaceSize = 0;
 public:
-  double long GetRx(std::string unit){
-    double long bytes = 0;
+  double GetTotRx(){
+    double bytes = 0;
 
     for(int idx =0; idx < ifaceSize; idx++){
       if(activeIfaces[idx].up && activeIfaces[idx].err.length() == 0)
-        bytes += activeIfaces[idx].GetRxBytes();
+        bytes += activeIfaces[idx].GetTotRxBytes();
     }
-
 
     return bytes;
   }
 
-  double long GetTx(std::string unit){
-    double long bytes = 0;
+  double GetTotTx(){
+    double bytes = 0;
 
     for(int idx =0; idx < ifaceSize; idx++){
       if(activeIfaces[idx].up && activeIfaces[idx].err.length() == 0)
-        bytes += activeIfaces[idx].GetTxBytes();
+        bytes += activeIfaces[idx].GetTotTxBytes();
     }
 
     return bytes;
