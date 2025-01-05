@@ -10,7 +10,8 @@ include_directories(${WAYLAND_INCLUDE_DIRS})
 
 add_executable(hyprsic
         src/Collectors/Network.cpp
+        src/Hyprland/Workspaces.cpp
         src/main.cpp
         src/Collectors/Temperature.cpp
-        src/Display.hpp)
+)
 target_link_libraries(hyprsic ${WAYLAND_LIBRARIES})
