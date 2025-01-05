@@ -20,7 +20,7 @@ class NetInterface {
       err = "Not Initialized";
     }
     int Init(std::string ifaceName) {
-      std::cout<<"Initiating Interface "<< ifaceName<<" Object."<<std::endl;
+      std::cout<<"[Init Info] Initiating Interface "<< ifaceName<<" Object."<<std::endl;
 
 
       this->interface = ifaceName;
@@ -115,7 +115,7 @@ public:
     DIR *dir;
     dir = opendir("/sys/class/net/");
     if (dir == nullptr) {
-      std::cout<<"Error while Open /sys/class/net/ Directory"<<std::endl;
+      std::cerr<<"[Init Error] Failed to Open /sys/class/net/ Directory"<<std::endl;
       return 1;
     }
 

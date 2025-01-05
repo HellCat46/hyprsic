@@ -4,6 +4,7 @@
 #include "format"
 #include "Collectors/Network.cpp"
 #include "Collectors/SysLoad.cpp"
+#include "Collectors/Memory.cpp"
 
 struct Stats {
   double rx, tx;
@@ -14,6 +15,7 @@ class Display {
   Stats stat;
   Network net;
   SysLoad load;
+  Memory mem;
   public:
    Display() {
      // Initiating The Network and It's Stats
@@ -23,6 +25,7 @@ class Display {
      stat.time = std::chrono::steady_clock::now();
 
      load.Init();
+     mem.Init();
    }
   std::string DisplayBar(){
     std::string str;
@@ -33,7 +36,8 @@ class Display {
 
     double trx = net.GetTotRx(), ttx = net.GetTotTx();
     str += DisplayBytes(trx) + " (" + DisplayBytes((trx-stat.rx)/sec) + ")\t"+ DisplayBytes(ttx) + " ("+DisplayBytes((ttx-stat.tx)/sec)+ ")\t";
-    str += std::to_string(load.GetLoad(1)) +" "+std::to_string(load.GetLoad(5)) +" "+std::to_string(load.GetLoad(15)) +" "+"\n";
+    str += std::to_string(load.GetLoad(1)) +" "+std::to_string(load.GetLoad(5)) +" "+std::to_string(load.GetLoad(15)) +"\t";
+    str += DisplayBytes(mem.GetUsedRAM()*1024) + "/" + DisplayBytes(mem.GetTotRAM()*1024) + " " + DisplayBytes(mem.GetUsedSwap()*1024) + "/" + DisplayBytes(mem.GetTotSwap()*1024) + "\n";
 
     stat.rx = trx;
     stat.tx = ttx;

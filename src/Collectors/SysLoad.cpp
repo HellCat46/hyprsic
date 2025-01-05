@@ -12,8 +12,8 @@ class SysLoad {
     int Init() {
       loadAvg.open("/proc/loadavg", std::ios::in);
       if(!loadAvg.is_open()){
-        std::cerr<<"Failed to Open Load Avg File";
-        return 0;
+        std::cerr<<"[Init Error] Failed to Open Load Avg File";
+        return 1;
       }
       return 0;
     }
@@ -43,7 +43,7 @@ class SysLoad {
           if(ch>=48 && ch<=57){
             if(!point) load = (load*10) + (ch-48);
             else load += (ch-48)/ std::pow(10, multi++);
-          }else if(ch == '.') point = ch == '.';
+          }else if(ch == '.') point = (ch == '.');
         }
       }
       loadAvg.clear();

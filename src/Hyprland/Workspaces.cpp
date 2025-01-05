@@ -29,7 +29,7 @@ class HyprWorkspaces {
       strcpy(addr.sun_path, sockPath.c_str());
       sockPath = sockPath.substr(0, sockPath.rfind('/')+1);
       if(connect(workSockfd, (sockaddr*) &addr, sizeof(addr)) == -1){
-              std::cerr<<"Unable to Establish Connection with hyprctl UNIX Socket"<<std::endl;
+              std::cerr<<"[Init Error] Unable to Establish Connection with hyprctl UNIX Socket"<<std::endl;
               return 1;
       }
 
@@ -38,7 +38,7 @@ class HyprWorkspaces {
       strcpy(addr.sun_path, sockPath.c_str());
       sockPath = sockPath.substr(0, sockPath.rfind('/')+1);
       if(connect(evtSockfd, (sockaddr*) &addr, sizeof(addr)) == -1){
-        std::cerr<<"Unable to Establish Connection with Hyprland Socket UNIX Socket"<<std::endl;
+        std::cerr<<"[Init Error] Unable to Establish Connection with Hyprland Socket UNIX Socket"<<std::endl;
         return 1;
       }
 
