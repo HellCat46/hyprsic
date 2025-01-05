@@ -16,6 +16,7 @@ pkgs.stdenv.mkDerivation {
   buildInputs = with pkgs; [
     wayland
     wayland-protocols
+    jsoncpp
     libxkbcommon
     cairo
     pango

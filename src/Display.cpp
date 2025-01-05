@@ -3,6 +3,7 @@
 #include "chrono"
 #include "format"
 #include "Collectors/Network.cpp"
+#include "Collectors/SysLoad.cpp"
 
 struct Stats {
   double rx, tx;
@@ -10,8 +11,9 @@ struct Stats {
 };
 
 class Display {
-  Network net;
   Stats stat;
+  Network net;
+  SysLoad load;
   public:
    Display() {
      // Initiating The Network and It's Stats
@@ -20,7 +22,7 @@ class Display {
      stat.tx = net.GetTotTx();
      stat.time = std::chrono::steady_clock::now();
 
-
+     load.Init();
    }
   std::string DisplayBar(){
     std::string str;
@@ -30,7 +32,8 @@ class Display {
 
 
     double trx = net.GetTotRx(), ttx = net.GetTotTx();
-    str += DisplayBytes(trx) + " (" + DisplayBytes((trx-stat.rx)/sec) + ")\t"+ DisplayBytes(ttx) + " ("+DisplayBytes((ttx-stat.tx)/sec)+ ")\n";
+    str += DisplayBytes(trx) + " (" + DisplayBytes((trx-stat.rx)/sec) + ")\t"+ DisplayBytes(ttx) + " ("+DisplayBytes((ttx-stat.tx)/sec)+ ")\t";
+    str += std::to_string(load.GetLoad(1)) +" "+std::to_string(load.GetLoad(5)) +" "+std::to_string(load.GetLoad(15)) +" "+"\n";
 
     stat.rx = trx;
     stat.tx = ttx;

@@ -25,8 +25,8 @@ int main(int argc, const char * argv[])
 
 
 
-  HyprWorkspaces hyprWS;
-  hyprWS.Init();
+  //HyprWorkspaces hyprWS;
+  //hyprWS.Init();
 
     Display dp;
     while(true){

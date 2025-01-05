@@ -2,12 +2,14 @@
 #include "sys/socket.h"
 #include "sys/un.h"
 #include "unistd.h"
-#include "jsoncpp/json/json.h"
 #include "cstdlib"
 class HyprWorkspaces {
+  private:
   std::string sockPath;
   int evtSockfd;
   int workSockfd;
+
+
   public:
     int Init(){
       if(getPath()){
