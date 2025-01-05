@@ -1,9 +1,9 @@
-#include<iostream>
-#include<cstdlib>
-#include<wayland-client.h>
-#include "Collectors/Network.cpp"
+#include "iostream"
+#include "cstdlib"
+#include "Hyprland/Workspaces.cpp"
+#include "wayland-client.h"
 #include "chrono"
-#include "Display.hpp"
+#include "Display.cpp"
 #include "thread"
 
 int main(int argc, const char * argv[])
@@ -24,17 +24,14 @@ int main(int argc, const char * argv[])
 
 
 
-    Network net;
-    net.Init();
 
-    std::cout<<"Rx\t\t\t\tTx"<<std::endl;
-    double rx = net.GetTotRx(), tx = net.GetTotTx();
+  HyprWorkspaces hyprWS;
+  hyprWS.Init();
+
+    Display dp;
     while(true){
-        double trx = net.GetTotRx(), ttx = net.GetTotTx();
-        std::cout<<trx<<"("<<DisplayBytes((trx-rx)/5)<<")"<<"\t"<<ttx<<"("<<DisplayBytes((ttx-tx)/5)<<")"<<std::endl;
+        std::cout<<dp.DisplayBar();
         std::this_thread::sleep_for (std::chrono::seconds(5));
-        rx = trx;
-        tx = ttx;
     }
 
     return 0;
