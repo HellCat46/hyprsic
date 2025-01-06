@@ -54,7 +54,7 @@ class Memory {
       memInfo.clear();
       memInfo.seekg(0);
 
-      std::cout<<"\n"<<type<<" "<<amt<<std::endl;
+      //std::cout<<"\n"<<type<<" "<<amt<<std::endl;
       return amt;
     }
 };

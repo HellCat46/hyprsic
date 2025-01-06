@@ -5,10 +5,20 @@ set(CMAKE_CXX_STANDARD 11)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(WAYLAND REQUIRED wayland-client)
+pkg_check_modules(JSONCPP REQUIRED jsoncpp)
+pkg_check_modules(DBUS_CPP REQUIRED dbus-cpp)
+
+
+
 
 include_directories(${WAYLAND_INCLUDE_DIRS})
+include_directories(${JSONCPP_INCLUDE_DIRS})
+include_directories(${DBUS_INCLUDE_DIRS})
+
 
 add_executable(hyprsic
         src/main.cpp
 )
 target_link_libraries(hyprsic ${WAYLAND_LIBRARIES})
+target_link_libraries(hyprsic ${JSONCPP_LIBRARIES})
+target_link_libraries(hyprsic ${DBUS_LIBRARIES})

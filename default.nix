@@ -17,6 +17,8 @@ pkgs.stdenv.mkDerivation {
     wayland
     wayland-protocols
     jsoncpp
+    dbus-cpp
+    dbus.dev
     libxkbcommon
     cairo
     pango
