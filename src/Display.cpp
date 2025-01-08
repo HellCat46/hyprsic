@@ -5,9 +5,11 @@
 #include "Collectors/Network.cpp"
 #include "Collectors/SysLoad.cpp"
 #include "Collectors/Memory.cpp"
+#include "Collectors/Disk.cpp"
 
 struct Stats {
   double rx, tx;
+  unsigned long diskAvail, diskTotal;
   std::chrono::time_point<std::chrono::steady_clock> time;
 };
 
@@ -16,6 +18,7 @@ class Display {
   Network net;
   SysLoad load;
   Memory mem;
+  Disk disk;
   public:
    Display() {
      // Initiating The Network and It's Stats
@@ -26,6 +29,8 @@ class Display {
 
      load.Init();
      mem.Init();
+
+     disk.Init("/home/hellcat");
    }
   std::string DisplayBar(){
     std::string str;
@@ -37,8 +42,14 @@ class Display {
     double trx = net.GetTotRx(), ttx = net.GetTotTx();
     str += DisplayBytes(trx,2) + " (" + DisplayBytes((trx-stat.rx)/sec,1) + ")\t"+ DisplayBytes(ttx,2) + " ("+DisplayBytes((ttx-stat.tx)/sec,1)+ ")\t";
     str += std::to_string(load.GetLoad(1)) +" "+std::to_string(load.GetLoad(5)) +" "+std::to_string(load.GetLoad(15)) +"\t";
-    str += DisplayBytes(mem.GetUsedRAM()*1024,2) + "/" + DisplayBytes(mem.GetTotRAM()*1024,2) + " " + DisplayBytes(mem.GetUsedSwap()*1024,2) + "/" + DisplayBytes(mem.GetTotSwap()*1024,2) + "\n";
+    str += DisplayBytes(mem.GetUsedRAM()*1024,2) + "/" + DisplayBytes(mem.GetTotRAM()*1024,2) + " " + DisplayBytes(mem.GetUsedSwap()*1024,2) + "/" + DisplayBytes(mem.GetTotSwap()*1024,2) + "\t";
 
+    if(disk.GetDiskInfo(&stat.diskAvail, &stat.diskTotal) == 0){
+      //std::cout<<stat.diskAvail<<std::endl;
+      str += DisplayBytes(stat.diskTotal-stat.diskAvail, 2) + "/" + DisplayBytes(stat.diskTotal, 2);
+    }
+
+    str += "\n";
     stat.rx = trx;
     stat.tx = ttx;
     stat.time = curTime;
@@ -48,6 +59,7 @@ class Display {
     std::string str;
     precision++;
 
+    //std::cout<<std::fixed<<bytes<<"\t"<<pow(1024,3)<<std::endl;
     if(bytes>pow(1024,3)){ // GigaBytes
       str = std::to_string(bytes/pow(1024,3));
       str = str.substr(0, str.find('.')+precision);
