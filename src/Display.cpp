@@ -6,6 +6,7 @@
 #include "Collectors/SysLoad.cpp"
 #include "Collectors/Memory.cpp"
 #include "Collectors/Disk.cpp"
+#include "Collectors/Battery.cpp"
 
 struct Stats {
   double rx, tx;
@@ -19,6 +20,7 @@ class Display {
   SysLoad load;
   Memory mem;
   Disk disk;
+  Battery battery;
   public:
    Display() {
      // Initiating The Network and It's Stats
@@ -31,6 +33,8 @@ class Display {
      mem.Init();
 
      disk.Init("/home/hellcat");
+
+     battery.Init();
    }
   std::string DisplayBar(){
     std::string str;
@@ -46,8 +50,10 @@ class Display {
 
     if(disk.GetDiskInfo(&stat.diskAvail, &stat.diskTotal) == 0){
       //std::cout<<stat.diskAvail<<std::endl;
-      str += DisplayBytes(stat.diskTotal-stat.diskAvail, 2) + "/" + DisplayBytes(stat.diskTotal, 2);
+      str += DisplayBytes(stat.diskTotal-stat.diskAvail, 2) + "/" + DisplayBytes(stat.diskTotal, 2) + "\t";
     }
+
+    str += std::to_string(battery.getBatteryPercent()) + "% (" + battery.getStatus() + ")\t";
 
     str += "\n";
     stat.rx = trx;
