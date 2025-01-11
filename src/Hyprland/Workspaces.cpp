@@ -1,12 +1,15 @@
 #include "iostream"
 #include "sys/socket.h"
 #include "sys/un.h"
+#include "json/json.h"
+#include "vector"
 #include "unistd.h"
 #include "cstdlib"
-#include "json/value.h"
+#include "sstream"
+
 
 struct Workspace {
-  int id, monitorId;
+  unsigned int id, monitorId;
   std::string name, monitor;
   bool fullScreen;
 };
@@ -17,13 +20,15 @@ class HyprWorkspaces {
   int evtSockfd;
   int workSockfd;
   Workspace* activeWorkspace;
-  Workspace allWorkspace;
+  std::vector<Workspace> workspaces;
+  Json::CharReaderBuilder jsonReader;
 
   int getPath();
+  Json::Value executeQuery(const std::string&, std::string&);
 
   public:
 
-  int GetWorkspaces();
+    int GetWorkspaces();
     int Init(){
       if(getPath()){
         return 1;
@@ -81,12 +86,62 @@ int HyprWorkspaces::getPath(){
   return 0;
 }
 
-int HyprWorkspaces::GetWorkspaces(){
-  char msg[] = "j/workspaces";
+Json::Value HyprWorkspaces::executeQuery(const std::string& msg, std::string& err){
   char buffer[8192];
-  std::cout<<write(workSockfd, msg, sizeof(msg))<<std::endl;
-  read(workSockfd, buffer, sizeof(buffer));
-  std::cout<<buffer<<std::endl;
+  if(write(workSockfd, msg.c_str(), msg.size()) == -1){
+    err = "Error While Sending Query";
+    return -1;
+  }
+
+
+  if(read(workSockfd, buffer, sizeof(buffer)) <= 0){
+    err = "Error While Reading Response";
+    return -1;
+  }
+
+  Json::Value root;
+
+
+  std::istringstream jsonStream(buffer);
+
+
+  if(!Json::parseFromStream(jsonReader, jsonStream, &root, &err)){
+    return -1;
+  }
+
+  return root;
+}
+
+
+
+int HyprWorkspaces::GetWorkspaces(){
+  std::string err;
+  Json::Value workspacesJson = executeQuery("j/workspaces", err);
+
+  if(workspacesJson == -1){
+    std::cerr<<"[Error] Failed to parse Workspaces Query Response ("<<err<<")"<<std::endl;
+    return 1;
+  }
+
+  for(Json::Value workspace : workspacesJson){
+    Workspace wSpace = {
+        workspace["id"].asUInt(),
+        workspace["monitorID"].asUInt(),
+        workspace["name"].asString(),
+        workspace["monitor"].asString(),
+      workspace["hasfullscreen"].asBool(),
+    };
+    workspaces.push_back(wSpace);
+  }
+
+  for(auto workspace : workspaces){
+    std::cout<<workspace.id<<std::endl;
+    std::cout<<workspace.monitorId<<std::endl;
+    std::cout<<workspace.name<<std::endl;
+    std::cout<<workspace.monitor<<std::endl;
+    std::cout<<workspace.fullScreen<<std::endl;
+    std::cout<<std::endl;
+  }
 
   return 0;
 }
