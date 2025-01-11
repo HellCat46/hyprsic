@@ -6,7 +6,7 @@
 #include "unistd.h"
 #include "cstdlib"
 #include "sstream"
-
+#include "unordered_map"
 
 struct Workspace {
   unsigned int id, monitorId;
@@ -17,17 +17,18 @@ struct Workspace {
 class HyprWorkspaces {
   private:
   std::string sockPath;
-  int evtSockfd;
-  int workSockfd;
-  Workspace* activeWorkspace;
-  std::vector<Workspace> workspaces;
+  int evtSockfd, activeWorkspaceId;;
+  std::unordered_map<unsigned int, Workspace> workspaces;
   Json::CharReaderBuilder jsonReader;
+
 
   int getPath();
   Json::Value executeQuery(const std::string&, std::string&);
 
-  public:
 
+  public:
+    int GetActiveWorkspace();
+    Workspace GetActiveWorkspaceInfo();
     int GetWorkspaces();
     int Init(){
       if(getPath()){
@@ -38,18 +39,6 @@ class HyprWorkspaces {
       addr.sun_family = AF_UNIX;
 
       evtSockfd = socket(AF_UNIX, SOCK_STREAM,0);
-      workSockfd = socket(AF_UNIX, SOCK_STREAM,0);
-
-
-
-      // Establish Connection With Hyprland's UNIX Socket for Performing Workspace Related Action
-      sockPath += ".socket.sock";
-      strcpy(addr.sun_path, sockPath.c_str());
-      sockPath = sockPath.substr(0, sockPath.rfind('/')+1);
-      if(connect(workSockfd, (sockaddr*) &addr, sizeof(addr)) == -1){
-              std::cerr<<"[Init Error] Unable to Establish Connection with hyprctl UNIX Socket"<<std::endl;
-              return 1;
-      }
 
       // Establish Connection With Hyprland's UNIX Socket for Listening to Client events
       sockPath += ".socket2.sock";
@@ -60,12 +49,13 @@ class HyprWorkspaces {
         return 1;
       }
 
+      GetWorkspaces();
+
       return 0;
     }
 
   ~HyprWorkspaces(){
       close(evtSockfd);
-      close(workSockfd);
   }
 };
 
@@ -87,39 +77,82 @@ int HyprWorkspaces::getPath(){
 }
 
 Json::Value HyprWorkspaces::executeQuery(const std::string& msg, std::string& err){
+  int workSockfd;
   char buffer[8192];
+
+  workSockfd = socket(AF_UNIX, SOCK_STREAM,0);
+  sockaddr_un addr;
+
+  addr.sun_family = AF_UNIX;
+
+  // Establish Connection With Hyprland's UNIX Socket for Performing Workspace Related Action
+  sockPath += ".socket.sock";
+  strcpy(addr.sun_path, sockPath.c_str());
+  sockPath = sockPath.substr(0, sockPath.rfind('/')+1);
+  if(connect(workSockfd, (sockaddr*) &addr, sizeof(addr)) == -1){
+    std::cerr<<"[IPC Connection Error] Unable to Establish Connection with hyprctl UNIX Socket"<<std::endl;
+    return -3;
+  }
+
+
   if(write(workSockfd, msg.c_str(), msg.size()) == -1){
-    err = "Error While Sending Query";
-    return -1;
+    err = "Failed to Send Query";
+    return -2;
   }
-
-
   if(read(workSockfd, buffer, sizeof(buffer)) <= 0){
-    err = "Error While Reading Response";
-    return -1;
+    err = "Failed to Read Query Response";
+    return -2;
   }
 
+
+  // Closing the Connection
+  if(close(workSockfd) == -1){
+    std::cerr<<"[IPC Connection Error] Unable to Close Connection with hyprctl UNIX Socket"<<std::endl;
+    return -3;
+  }
+
+
+  // Parsing the json response
   Json::Value root;
-
-
   std::istringstream jsonStream(buffer);
-
-
   if(!Json::parseFromStream(jsonReader, jsonStream, &root, &err)){
     return -1;
   }
-
   return root;
 }
 
+int HyprWorkspaces::GetActiveWorkspace(){
+  std::string err;
+  Json::Value workspaceJson = executeQuery("j/activeworkspace", err);
+  if(workspaceJson == -1){
+    std::cerr<<"[Error] Failed to parse Active Workspace Query Response ("<<err<<")"<<std::endl;
+    return 1;
+  }else if(workspaceJson == -2){
+    std::cerr<<"[Error] In Active Workspace Query ("<<err<<")"<<std::endl;
+    return 1;
+  }
 
+   activeWorkspaceId = workspaceJson["id"].asUInt();
+   return 0;
+}
+
+Workspace HyprWorkspaces::GetActiveWorkspaceInfo(){
+  auto ele = workspaces.find(activeWorkspaceId);
+  if(ele == workspaces.end()){
+    return Workspace {};
+  }else{
+    return ele->second;
+  }
+}
 
 int HyprWorkspaces::GetWorkspaces(){
   std::string err;
   Json::Value workspacesJson = executeQuery("j/workspaces", err);
-
   if(workspacesJson == -1){
     std::cerr<<"[Error] Failed to parse Workspaces Query Response ("<<err<<")"<<std::endl;
+    return 1;
+  }else if(workspacesJson == -2){
+    std::cerr<<"[Error] In Workspaces Query ("<<err<<")"<<std::endl;
     return 1;
   }
 
@@ -131,16 +164,7 @@ int HyprWorkspaces::GetWorkspaces(){
         workspace["monitor"].asString(),
       workspace["hasfullscreen"].asBool(),
     };
-    workspaces.push_back(wSpace);
-  }
-
-  for(auto workspace : workspaces){
-    std::cout<<workspace.id<<std::endl;
-    std::cout<<workspace.monitorId<<std::endl;
-    std::cout<<workspace.name<<std::endl;
-    std::cout<<workspace.monitor<<std::endl;
-    std::cout<<workspace.fullScreen<<std::endl;
-    std::cout<<std::endl;
+    workspaces.insert({wSpace.id, wSpace});
   }
 
   return 0;

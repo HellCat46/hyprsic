@@ -19,6 +19,7 @@ pkgs.stdenv.mkDerivation {
     jsoncpp
     dbus-cpp
     dbus.dev
+    libpulseaudio
     libxkbcommon
     cairo
     pango

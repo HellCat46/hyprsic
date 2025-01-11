@@ -2,6 +2,7 @@
 #include "math.h"
 #include "chrono"
 #include "format"
+#include "Hyprland/Workspaces.cpp"
 #include "Collectors/Network.cpp"
 #include "Collectors/SysLoad.cpp"
 #include "Collectors/Memory.cpp"
@@ -21,6 +22,7 @@ class Display {
   Memory mem;
   Disk disk;
   BatteryInfo battery;
+  HyprWorkspaces hyprWS;
   public:
    Display() {
      // Initiating The Network and It's Stats
@@ -35,6 +37,8 @@ class Display {
      disk.Init("/home/hellcat");
 
      battery.Init();
+
+     hyprWS.Init();
    }
   std::string DisplayBar(){
     std::string str;
@@ -54,6 +58,15 @@ class Display {
     }
 
     str += std::to_string(battery.getTotPercent()) + "\t"; //+ "% (" + battery.getStatus() + ")\t";
+
+
+    if(hyprWS.GetActiveWorkspace() == 0){
+      Workspace ws = hyprWS.GetActiveWorkspaceInfo();
+
+      str += "Active WS: "+ ws.name + "\t";
+    }
+
+
 
     str += "\n";
     stat.rx = trx;
