@@ -8,7 +8,7 @@ nix-shell
 ./build.sh
 ```
 ### For Non-Nix Systems
-**Depedencies**
+**Dependencies**
 ```text
 wayland
 libpulse
