@@ -20,7 +20,7 @@ class Display {
   SysLoad load;
   Memory mem;
   Disk disk;
-  Battery battery;
+  BatteryInfo battery;
   public:
    Display() {
      // Initiating The Network and It's Stats
@@ -53,7 +53,7 @@ class Display {
       str += DisplayBytes(stat.diskTotal-stat.diskAvail, 2) + "/" + DisplayBytes(stat.diskTotal, 2) + "\t";
     }
 
-    str += std::to_string(battery.getBatteryPercent()) + "% (" + battery.getStatus() + ")\t";
+    str += std::to_string(battery.getTotPercent()) + "\t"; //+ "% (" + battery.getStatus() + ")\t";
 
     str += "\n";
     stat.rx = trx;
