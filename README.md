@@ -15,3 +15,9 @@ libpulse
 dbus-cpp
 jsoncpp
 ```
+
+## References
+- [Hyprland IPC](https://wiki.hyprland.org/IPC/)
+- [Socket Programming](https://www.linuxhowtos.org/C_C++/socket.htm)
+- [CPP Reference](https://en.cppreference.com/w/)
+- [PulseAudio Async API](https://freedesktop.org/software/pulseaudio/doxygen/async.html)

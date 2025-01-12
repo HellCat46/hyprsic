@@ -7,6 +7,7 @@
 class Battery {
   std::ifstream capacity;
   std::ifstream status;
+  std::string name;
   public:
   	bool failed;
     int Init(std::string basePath){
@@ -21,6 +22,27 @@ class Battery {
         return 1;
       }
 
+      std::ifstream manufacturer, model;
+      manufacturer.open(basePath + "/manufacturer", std::ios::in);
+      model.open(basePath + "/model_name", std::ios::in);
+
+      if(!manufacturer.is_open() || !model.is_open()){
+        std::cerr<<"[Init Error] Failed to Get Battery Manufacturer or Model Name"<<std::endl;
+        name = "Unknown";
+      }else{
+        char in[30];
+        model.getline(in,30);
+        name += in;
+        manufacturer.getline(in, 30);
+        name += " (";
+        name += in;
+        name += ')';
+
+        //std::cout<<name<<std::endl;
+
+        model.close();
+        manufacturer.close();
+      }
 
       failed = 0;
       return 0;

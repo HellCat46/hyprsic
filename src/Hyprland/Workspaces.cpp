@@ -4,9 +4,12 @@
 #include "json/json.h"
 #include "vector"
 #include "unistd.h"
+#include "cstring"
 #include "cstdlib"
 #include "sstream"
 #include "unordered_map"
+#include "thread"
+#include "chrono"
 
 struct Workspace {
   unsigned int id, monitorId;
@@ -23,6 +26,7 @@ class HyprWorkspaces {
 
 
   int getPath();
+  void liveEventListener();
   Json::Value executeQuery(const std::string&, std::string&);
 
 
@@ -30,6 +34,7 @@ class HyprWorkspaces {
     int GetActiveWorkspace();
     Workspace GetActiveWorkspaceInfo();
     int GetWorkspaces();
+
     int Init(){
       if(getPath()){
         return 1;
@@ -50,6 +55,7 @@ class HyprWorkspaces {
       }
 
       GetWorkspaces();
+      liveEventListener();
 
       return 0;
     }
@@ -75,6 +81,53 @@ int HyprWorkspaces::getPath(){
   sockPath.append(runtimeDir).append("/hypr/").append(HIS).append("/");
   return 0;
 }
+
+void HyprWorkspaces::liveEventListener(){
+  std::thread([&](){
+    char buffer[1024];
+    while(true){
+      int res = read(evtSockfd, buffer, 1024);
+      if(res > 0){
+        //std::cout<<"\n\nEvent Info:\n"<<buffer<<"\n\n"<<std::endl;
+
+        // Update the String Length Too If Event name is being updated
+        if(std::strncmp(buffer, "createworkspace", 15) == 0){
+          char *ptr = std::strstr(buffer, "createworkspacev2>>");
+
+          std::cout<<"Workspace Created: ";
+          for(int idx = 19; ptr[idx] != '\n' && ptr[idx] != '\0'; idx++){
+            std::cout<<ptr[idx];
+          }
+          std::cout<<std::endl;
+
+        }else if(std::strncmp(buffer, "destroyworkspace", 16) == 0){
+          char *ptr = std::strstr(buffer, "destroyworkspacev2>>");
+
+          std::cout<<"Workspace Deleted: ";
+          for(int idx = 20; ptr[idx] != '\n' && ptr[idx] != '\0'; idx++){
+            std::cout<<ptr[idx];
+          }
+          std::cout<<std::endl;
+        }else if(std::strncmp(buffer, "workspace", 9) == 0){
+          char *ptr = std::strstr(buffer, "workspacev2>>");
+
+          std::cout<<"Active Workspace Changed: ";
+          for(int idx = 13; ptr[idx] != '\n' && ptr[idx] != '\0'; idx++){
+            std::cout<<ptr[idx];
+          }
+          std::cout<<std::endl;
+        }
+
+
+      }else if(res == 0){
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      }
+    }
+  }).detach();
+}
+
+
+
 
 Json::Value HyprWorkspaces::executeQuery(const std::string& msg, std::string& err){
   int workSockfd;
