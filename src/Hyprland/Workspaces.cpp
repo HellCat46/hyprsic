@@ -1,9 +1,10 @@
 #include "iostream"
 #include "sys/socket.h"
 #include "sys/un.h"
+#include "sys/poll.h"
+#include "unistd.h"
 #include "json/json.h"
 #include "vector"
-#include "unistd.h"
 #include "cstring"
 #include "cstdlib"
 #include "sstream"
@@ -27,6 +28,7 @@ class HyprWorkspaces {
 
   int getPath();
   void liveEventListener();
+  int parseWorkspaceId(char*);
   Json::Value executeQuery(const std::string&, std::string&);
 
 
@@ -85,47 +87,51 @@ int HyprWorkspaces::getPath(){
 void HyprWorkspaces::liveEventListener(){
   std::thread([&](){
     char buffer[1024];
+
+    struct pollfd pollConfig[] = {{
+      evtSockfd,
+      POLLIN,
+      POLLRDBAND
+    }};
+
     while(true){
-      int res = read(evtSockfd, buffer, 1024);
-      if(res > 0){
+      if(poll(pollConfig, 1, -1) > 0){
+        // Reading The Event Info
+        if(read(evtSockfd, buffer, 1024) <= 0){
+          std::cerr<<"Error while reading the event info"<<std::endl;
+          continue;
+        }
         //std::cout<<"\n\nEvent Info:\n"<<buffer<<"\n\n"<<std::endl;
 
         // Update the String Length Too If Event name is being updated
         if(std::strncmp(buffer, "createworkspace", 15) == 0){
           char *ptr = std::strstr(buffer, "createworkspacev2>>");
-
-          std::cout<<"Workspace Created: ";
-          for(int idx = 19; ptr[idx] != '\n' && ptr[idx] != '\0'; idx++){
-            std::cout<<ptr[idx];
-          }
-          std::cout<<std::endl;
+          std::cout<<"Workspace Created: "<<parseWorkspaceId(ptr + 19)<<std::endl;
 
         }else if(std::strncmp(buffer, "destroyworkspace", 16) == 0){
           char *ptr = std::strstr(buffer, "destroyworkspacev2>>");
+          std::cout<<"Workspace Deleted: "<<parseWorkspaceId(ptr + 20)<<std::endl;
 
-          std::cout<<"Workspace Deleted: ";
-          for(int idx = 20; ptr[idx] != '\n' && ptr[idx] != '\0'; idx++){
-            std::cout<<ptr[idx];
-          }
-          std::cout<<std::endl;
         }else if(std::strncmp(buffer, "workspace", 9) == 0){
           char *ptr = std::strstr(buffer, "workspacev2>>");
+          std::cout<<"Active Workspace Changed: "<<parseWorkspaceId(ptr + 13)<<std::endl;
 
-          std::cout<<"Active Workspace Changed: ";
-          for(int idx = 13; ptr[idx] != '\n' && ptr[idx] != '\0'; idx++){
-            std::cout<<ptr[idx];
-          }
-          std::cout<<std::endl;
         }
-
-
-      }else if(res == 0){
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
       }
     }
   }).detach();
 }
 
+int HyprWorkspaces::parseWorkspaceId(char * stPoint){
+  int id = 0;
+
+  for(int idx = 0; stPoint[idx] != '\n' && stPoint[idx] != '\0' && stPoint[idx] != ','; idx++){
+    if(stPoint[idx]>=48 && stPoint[idx]<=57){
+      id = (id*10) + (stPoint[idx]-48);
+    }
+  }
+  return id;
+}
 
 
 
