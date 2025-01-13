@@ -8,6 +8,7 @@
 #include "Collectors/Memory.cpp"
 #include "Collectors/Disk.cpp"
 #include "Collectors/Battery.cpp"
+#include "Collectors/PlayingNow.cpp"
 
 struct Stats {
   double rx, tx;
@@ -22,6 +23,7 @@ class Display {
   Memory mem;
   Disk disk;
   BatteryInfo battery;
+  PlayingNow playing;
   HyprWorkspaces hyprWS;
   public:
    Display() {
@@ -37,6 +39,8 @@ class Display {
      disk.Init("/home/hellcat");
 
      battery.Init();
+
+     playing.Init();
 
      hyprWS.Init();
    }
@@ -62,11 +66,12 @@ class Display {
 
     if(hyprWS.GetActiveWorkspace() == 0){
       Workspace ws = hyprWS.GetActiveWorkspaceInfo();
-
       str += "Active WS: "+ ws.name + "\t";
     }
 
-
+    if(playing.data.out.length() != 0){
+      str += playing.data.out + " ("+ playing.data.client + ") " + "\t";
+    }
 
     str += "\n";
     stat.rx = trx;
