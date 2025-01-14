@@ -28,12 +28,6 @@ class BluetoothDevice {
         }
 
 
-//        if(dbus_bus_request_name(conn, "org.bluez", DBUS_NAME_FLAG_REPLACE_EXISTING, &err) == -1){
-//          std::cerr<<"[Init] Failed to Create Request for Bluez on the DBUS Session: "<<err.name<<"\n[DBUS Error Message] : "<<err.message<<std::endl;
-//          dbus_connection_close(conn);
-//          return 1;
-//        }
-
         getDeviceList();
 
 //        for(auto device: devices){
@@ -164,10 +158,10 @@ int BluetoothDevice::getDeviceList(){
               getProperties(propsIter, properties, 1, values);
 
               // For Connected
-              if(dbus_message_iter_get_arg_type(&values[1]) == DBUS_TYPE_BOOLEAN){
+              if(dbus_message_iter_get_arg_type(&values[0]) == DBUS_TYPE_BOOLEAN){
                 dbus_bool_t value;
-                dbus_message_iter_get_basic(&values[1], &value);
-                deviceInfo.connected = value;
+                dbus_message_iter_get_basic(&values[0], &value);
+                deviceInfo.mediaConnected = value;
               }
             }
 
