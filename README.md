@@ -21,3 +21,6 @@ jsoncpp
 - [Socket Programming](https://www.linuxhowtos.org/C_C++/socket.htm)
 - [CPP Reference](https://en.cppreference.com/w/)
 - [PulseAudio Async API](https://freedesktop.org/software/pulseaudio/doxygen/async.html)
+- [Dbus-1 Docs](https://dbus.freedesktop.org/doc/api/html/group__DBusBus.html)
+
+[//]: # (Why were dbus-1 docs so hard to find ;-;)
