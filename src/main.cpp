@@ -1,10 +1,13 @@
 #include "iostream"
 #include "cstdlib"
-#include "Hyprland/Workspaces.cpp"
+//#include "Hyprland/Workspaces.cpp"
+//#include "Collectors/PlayingNow.cpp"
+#include "Collectors/Bluetooth.cpp"
 #include "wayland-client.h"
 #include "chrono"
 #include "Display.cpp"
 #include "thread"
+#include "cstring"
 
 int main(int argc, const char * argv[])
 {
@@ -20,17 +23,21 @@ int main(int argc, const char * argv[])
 
     wl_display_disconnect(display);
 
+    DbusSystem dbusInstance;
 
 
 
 
 
-  //HyprWorkspaces hyprWS;
-  //hyprWS.Init();
+  BluetoothDevice bl(&dbusInstance);
+//    PlayingNow pn;
+//    pn.Init();
 
     Display dp;
     while(true){
-        std::cout<<dp.DisplayBar();
+        bl.getDeviceList();
+        bl.printDevicesInfo();
+        //std::cout<<dp.DisplayBar();
         std::this_thread::sleep_for (std::chrono::seconds(5));
     }
 

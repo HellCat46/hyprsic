@@ -54,6 +54,7 @@ void PlayingNow::contextStateHandler(pa_context *pulseCtx, void *data){
 
   switch(pa_context_get_state(pulseCtx)){
     case PA_CONTEXT_READY:
+      std::cout<<"PulseAudio Connection Established. Subscribing to Events..."<<std::endl;
       //pa_context_get_sink_info_list(pulseCtx, outputInfoCallBack, data);
       pa_context_get_server_info(pulseCtx, serverInfoCallBack,data);
 
@@ -64,7 +65,7 @@ void PlayingNow::contextStateHandler(pa_context *pulseCtx, void *data){
                            PA_SUBSCRIPTION_EVENT_SERVER |
                            PA_SUBSCRIPTION_EVENT_SOURCE |
                            PA_SUBSCRIPTION_EVENT_SINK), nullptr, nullptr);
-
+      std::cout<<"Successfully Subscribed to Pulseaudio Events."<<std::endl;
       break;
     case PA_CONTEXT_TERMINATED: std::cout<<"Connection Terminated"<<std::endl;
       break;

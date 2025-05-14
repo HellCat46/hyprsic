@@ -2,6 +2,7 @@
 #include "cstring"
 #include "vector"
 #include "dbus/dbus.h"
+#include "../BaseInstances/DbusSystem.cpp"
 
 struct DeviceInfo {
   std::string iface, addr, name, icon;
@@ -11,57 +12,33 @@ struct DeviceInfo {
 
 class BluetoothDevice {
     private:
-      DBusConnection *conn;
-      DBusError err;
+      DbusSystem* dbus;
+      DBusMessage* msg;
       std::vector<DeviceInfo> devices;
 
-      int getDeviceList();
       void getProperties(DBusMessageIter, std::string*, int,DBusMessageIter*);
 
     public:
-      int Init(){
-        dbus_error_init(&err);
-        conn = dbus_bus_get(DBUS_BUS_SYSTEM, &err);
-        if(!conn){
-          std::cerr<<"[Init] Failed to Connect With the DBUS Session: "<<err.name<<"\n[DBUS Error Message] : "<<err.message<<std::endl;
-          return 1;
+      BluetoothDevice(DbusSystem* bluez) {
+        dbus = bluez;
+
+        msg = dbus_message_new_method_call("org.bluez", "/", "org.freedesktop.DBus.ObjectManager", "GetManagedObjects");
+        if(!msg){
+          std::cerr<<"Failed to create a message. "<<dbus->err.message<<std::endl;
+          return;
         }
-
-
-        getDeviceList();
-
-//        for(auto device: devices){
-//          std::cout<<"Device: "<<std::endl;
-//
-//          std::cout<<"\t"<<device.name<<std::endl;
-//          std::cout<<"\t"<<device.addr<<std::endl;
-//          std::cout<<"\t"<<device.iface<<std::endl;
-//          std::cout<<"\t"<<device.icon<<std::endl;
-//          std::cout<<"\t"<<device.connected<<std::endl;
-//          std::cout<<"\t"<<device.mediaConnected<<std::endl;
-//          std::cout<<"\t"<<device.batteryPer<<std::endl;
-//        }
-        return 0;
       }
 
-      ~BluetoothDevice() {
-        dbus_error_free(&err);
-        dbus_connection_flush(conn);
-        dbus_connection_close(conn);
-      }
+      int getDeviceList();
+      bool printDevicesInfo();
+
 };
 
 int BluetoothDevice::getDeviceList(){
 
-        DBusMessage* msg = dbus_message_new_method_call("org.bluez", "/", "org.freedesktop.DBus.ObjectManager", "GetManagedObjects");
-        if(!msg){
-          std::cerr<<"Failed to create a message. "<<err.message<<std::endl;
-          return 1;
-        }
-
-        DBusMessage* reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &err);
+        DBusMessage* reply = dbus_connection_send_with_reply_and_block(dbus->conn, msg, -1, &(dbus->err));
         if(!reply){
-          std::cerr<<"Failed to get a reply. "<<err.message<<std::endl;
+          std::cerr<<"Failed to get a reply. "<<dbus->err.message<<std::endl;
           return 1;
         }
 
@@ -201,4 +178,20 @@ void BluetoothDevice::getProperties(DBusMessageIter propIter, std::string *propN
 
     dbus_message_iter_next(&propIter);
   }
+}
+
+bool BluetoothDevice::printDevicesInfo(){
+  if(devices.size() == 0) return false;
+  for(auto device: devices){
+    std::cout<<"Device: "<<std::endl;
+
+    std::cout<<"\t"<<device.name<<std::endl;
+    std::cout<<"\t"<<device.addr<<std::endl;
+    std::cout<<"\t"<<device.iface<<std::endl;
+    std::cout<<"\t"<<device.icon<<std::endl;
+    std::cout<<"\t"<<device.connected<<std::endl;
+    std::cout<<"\t"<<device.mediaConnected<<std::endl;
+    std::cout<<"\t"<<device.batteryPer<<std::endl;
+  }
+  return true;
 }
