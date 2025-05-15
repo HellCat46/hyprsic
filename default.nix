@@ -24,6 +24,7 @@ pkgs.stdenv.mkDerivation {
     cairo
     pango
     systemd
+    cudaPackages.cuda_nvml_dev
   ];
 
   meta = with pkgs.lib; {

@@ -1,8 +1,9 @@
 #include "iostream"
 #include "cstdlib"
+#include "Managers/Bluetooth.cpp"
 //#include "Hyprland/Workspaces.cpp"
 //#include "Collectors/PlayingNow.cpp"
-#include "Collectors/Bluetooth.cpp"
+// #include "Collectors/Bluetooth.cpp"
 #include "wayland-client.h"
 #include "chrono"
 #include "Display.cpp"
@@ -29,14 +30,18 @@ int main(int argc, const char * argv[])
 
 
 
-  BluetoothDevice bl(&dbusInstance);
+    BluetoothManager bm(&dbusInstance);
+    bm.switchDiscovery();
+std::cout<<"Bluetooth Manager Initialized"<<std::endl;
+//  BluetoothDevice bl(&dbusInstance);
 //    PlayingNow pn;
 //    pn.Init();
 
-    Display dp;
+    //Display dp;
     while(true){
-        bl.getDeviceList();
-        bl.printDevicesInfo();
+        bm.getDeviceList();
+        //bl.getDeviceList();
+        //bl.printDevicesInfo();
         //std::cout<<dp.DisplayBar();
         std::this_thread::sleep_for (std::chrono::seconds(5));
     }

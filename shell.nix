@@ -13,6 +13,8 @@ pkgs.mkShell {
     clang-tools
   ];
 
+  CMAKE_EXPORT_COMPILE_COMMANDS = "ON";
+
   # Environment variables
   shellHook = ''
     export PS1="\n[hyprsic:\w]$ "

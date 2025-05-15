@@ -4,7 +4,7 @@
 #include "dbus/dbus.h"
 #include "../BaseInstances/DbusSystem.cpp"
 
-struct DeviceInfo {
+struct ConnectedDevice {
   std::string iface, addr, name, icon;
   bool connected, mediaConnected;
   short batteryPer;
@@ -14,9 +14,7 @@ class BluetoothDevice {
     private:
       DbusSystem* dbus;
       DBusMessage* msg;
-      std::vector<DeviceInfo> devices;
-
-      void getProperties(DBusMessageIter, std::string*, int,DBusMessageIter*);
+      std::vector<ConnectedDevice> devices;
 
     public:
       BluetoothDevice(DbusSystem* bluez) {
@@ -70,7 +68,7 @@ int BluetoothDevice::getDeviceList(){
           dbus_message_iter_next(&entry);
           dbus_message_iter_recurse(&entry, &ifaceIter);
 
-          DeviceInfo deviceInfo {
+          ConnectedDevice deviceInfo {
             "", "", "", "", false, false, -1
           };
           deviceInfo.iface = objPath;
@@ -89,7 +87,7 @@ int BluetoothDevice::getDeviceList(){
             if(std::strcmp(ifaceName, "org.bluez.Device1") == 0){
               std::string properties[] = {"Address", "Connected", "Icon", "Name"};
               DBusMessageIter values[4];
-              getProperties(propsIter, properties, 4, values);
+              dbus->getProperties(propsIter, properties, 4, values);
 
               // For Address
               if(dbus_message_iter_get_arg_type(&values[0]) == DBUS_TYPE_STRING){
@@ -122,7 +120,7 @@ int BluetoothDevice::getDeviceList(){
             }else if(std::strcmp(ifaceName, "org.bluez.Battery1") == 0){
               std::string properties[] = {"Percentage"};
               DBusMessageIter values[1];
-              getProperties(propsIter, properties, 1, values);
+              dbus->getProperties(propsIter, properties, 1, values);
 
               if(dbus_message_iter_get_arg_type(&values[0]) == DBUS_TYPE_BYTE){
                 int value;
@@ -132,7 +130,7 @@ int BluetoothDevice::getDeviceList(){
             }else if(std::strcmp(ifaceName, "org.bluez.MediaControl1") == 0){
               std::string properties[] = {"Connected"};
               DBusMessageIter values[1];
-              getProperties(propsIter, properties, 1, values);
+              dbus->getProperties(propsIter, properties, 1, values);
 
               // For Connected
               if(dbus_message_iter_get_arg_type(&values[0]) == DBUS_TYPE_BOOLEAN){
@@ -152,32 +150,6 @@ int BluetoothDevice::getDeviceList(){
         }
 
         return 0;
-}
-
-void BluetoothDevice::getProperties(DBusMessageIter propIter, std::string *propNames, int propCount, DBusMessageIter *valueIters){
-  while(dbus_message_iter_get_arg_type(&propIter) == DBUS_TYPE_DICT_ENTRY){
-    DBusMessageIter entry, valueVariant;
-    char* propertyName;
-
-
-    dbus_message_iter_recurse(&propIter, &entry);
-    dbus_message_iter_get_basic(&entry, &propertyName);
-
-    dbus_message_iter_next(&entry);
-    dbus_message_iter_recurse(&entry, &valueVariant);
-
-    int idx =0;
-    while(idx < propCount){
-  		//std::cout<<propertyName<<(dbus_message_iter_get_arg_type(&valueVariant))<<std::endl;
-
-      	if(std::strcmp(propertyName, propNames[idx].c_str()) == 0){
-        	valueIters[idx] = valueVariant;
-      	}
-        idx++;
-    }
-
-    dbus_message_iter_next(&propIter);
-  }
 }
 
 bool BluetoothDevice::printDevicesInfo(){
