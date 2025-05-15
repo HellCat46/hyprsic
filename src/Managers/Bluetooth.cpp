@@ -53,13 +53,13 @@ int BluetoothManager::switchDiscovery(){
   }else {
     DBusMessage* msg = dbus_message_new_method_call("org.bluez", "/org/bluez/hci0", "org.bluez.Adapter1", "StartDiscovery");
     if(!msg){
-      std::cerr<<"Failed to create a message. "<<dbus->err.message<<std::endl;
+      std::cerr<<"[Error] Failed to create a message. "<<dbus->err.message<<std::endl;
       return 1;
     }
 
     DBusMessage* reply = dbus_connection_send_with_reply_and_block(dbus->conn, msg, -1, &(dbus->err));
     if(!reply){
-      std::cerr<<"Failed to get a reply. "<<dbus->err.message<<std::endl;
+      std::cerr<<"[Error] Failed to get a reply. "<<dbus->err.message<<std::endl;
       return 1;
     }
 
@@ -76,19 +76,19 @@ void BluetoothManager::monitorChanges() {
   // Adding Filters to Signals before starting listening to them
   dbus_bus_add_match(dbus->conn, "type='signal', interface='org.freedesktop.DBus.ObjectManager', member='InterfacesAdded'", &(dbus->err));
   if(dbus_error_is_set(&(dbus->err))){
-    std::cerr<<"Failed to add filter for Signal Member InterfaceAdded"<<std::endl;
+    std::cerr<<"[Critical Error] Failed to add filter for Signal Member InterfaceAdded"<<std::endl;
     return;
   }
 
   dbus_bus_add_match(dbus->conn, "type='signal', interface='org.freedesktop.DBus.ObjectManager', member='InterfacesRemoved'", &(dbus->err));
   if(dbus_error_is_set(&(dbus->err))){
-    std::cerr<<"Failed to add filter for Signal Member InterfaceRemoved"<<std::endl;
+    std::cerr<<"[Critical Error] Failed to add filter for Signal Member InterfaceRemoved"<<std::endl;
     return;
   }
 
   dbus_bus_add_match(dbus->conn, "type='signal', interface='org.freedesktop.DBus.Properties', member='PropertiesChanged'", &(dbus->err));
   if(dbus_error_is_set(&(dbus->err))){
-    std::cerr<<"Failed to add filter for Signal Member PropestiesChanged"<<std::endl;
+    std::cerr<<"[Critical Error] Failed to add filter for Signal Member PropestiesChanged"<<std::endl;
     return;
   }
   std::cout<<"[Info] Successfully Added Filters to Bluez Dbus Signals. Started listening to events now."<<std::endl;
@@ -97,7 +97,7 @@ void BluetoothManager::monitorChanges() {
   while(true){
     // Blocks the thread until new message received
     if(!dbus_connection_read_write(dbus->conn, 0)){
-      std::cerr<<"Connection Closed while Waiting for Signal Messages"<<std::endl;
+      std::cerr<<"[Critical Error] Connection Closed while Waiting for Signal Messages"<<std::endl;
       return;
     }
 
@@ -121,16 +121,17 @@ void BluetoothManager::monitorChanges() {
         continue;
       }
 
-      char* value;
-      dbus_message_iter_get_basic(&rootIter, &value);
-      std::cout<<value<<std::endl;
+      // Getting Object Path
+      char* path;
+      dbus_message_iter_get_basic(&rootIter, &path);
+      std::cout<<path<<std::endl;
 
 
       // Moving to next entry after objectPath entry
       dbus_message_iter_next(&rootIter);
       dbus_message_iter_recurse(&rootIter, &entIter);
       if(dbus_message_iter_get_arg_type(&entIter) != DBUS_TYPE_DICT_ENTRY){
-        std::cerr<<"Unable to parse InterfacesAdded Reply. Unknown Format (The Second Entry is not an Object.)"<<std::endl;
+        std::cerr<<"[Error] Unable to parse InterfacesAdded Reply. Unknown Format (The Second Entry is not an Object.)"<<std::endl;
         continue;
       }
 
@@ -148,7 +149,7 @@ void BluetoothManager::monitorChanges() {
       }
 
       if(dbus_message_iter_get_arg_type(&entIter) != DBUS_TYPE_DICT_ENTRY){
-        std::cout<<"Unable to find Device1 Entry in InterfacesAdded Reply."<<std::endl;
+        std::cerr<<"[Error] Unable to find Device1 Entry in InterfacesAdded Reply."<<std::endl;
         continue;
       }
 
@@ -204,10 +205,25 @@ void BluetoothManager::monitorChanges() {
         dev.trusted = value;
       }
 
-      devices.insert({dev.address, dev});
-      std::cout<<"[Info] Added Device to Device List"<<std::endl;
+      devices.insert({path, dev});
+      std::cout<<"[Info] Added Device to Device List. Total Devices: "<<devices.size()<<std::endl;
     }else if(dbus_message_is_signal(msg, "org.freedesktop.DBus.ObjectManager", "InterfacesRemoved")){
       std::cout<<"[Info] Received InterfacesRemoved Signal"<<std::endl;
+      if(dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_OBJECT_PATH){
+        std::cerr<<"[Error] Unable to parse InterfacesRemoved Reply. Unknown Format (The Root is not an array.)"<<std::endl;
+        continue;
+      }
+
+      char* path;
+      dbus_message_iter_get_basic(&rootIter, &path);
+      std::cout<<path<<std::endl;
+      if(devices.find(path) != devices.end()){
+         devices.erase(path);
+         std::cout<<"[Info] Removed Device from Device List. Total Devices: "<<devices.size()<<std::endl;
+      }else {
+         std::cerr<<"[Warning] Unable to find Device in Device List. Skipping."<<std::endl;
+      }
+
     }else if(dbus_message_is_signal(msg, "org.freedesktop.DBus.Properties", "PropertiesChanged")){
       std::cout<<"[Info] Received PropertiesChanged Signal"<<std::endl;
     }else {
