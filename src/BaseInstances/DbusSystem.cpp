@@ -43,6 +43,7 @@ void DbusSystem::getProperties(DBusMessageIter propIter, std::string *propNames,
 
             if(std::strcmp(propertyName, propNames[idx].c_str()) == 0){
                 valueIters[idx] = valueVariant;
+                propNames[idx][0] = ' ';
             }
             idx++;
         }

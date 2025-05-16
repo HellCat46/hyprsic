@@ -31,6 +31,7 @@ class BluetoothManager {
   	std::thread signalThread;
 
     void monitorChanges();
+	int setDeviceProps(Device& dev, DBusMessageIter& propsIter);
   public:
     int getDeviceList();
     int connectDevice();
@@ -106,9 +107,9 @@ void BluetoothManager::monitorChanges() {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
       continue;
     }
-    std::cout<<"[Info] Received Signal Message"<<std::endl;
+    std::cout<<"\n[Info] Received Signal Message"<<std::endl;
 
-    DBusMessageIter rootIter, entIter, devIter, propsIter;
+    DBusMessageIter rootIter;
     dbus_message_iter_init(msg, &rootIter);
 
 
@@ -117,21 +118,20 @@ void BluetoothManager::monitorChanges() {
 
 
       if(dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_OBJECT_PATH){
-        std::cerr<<"Unable to parse InterfacesAdded Reply. Unknown Format (The Root is not an array.)"<<std::endl;
+        std::cerr<<"Unable to parse InterfacesAdded Reply. Unknown Format (The First Entry is not Object Path.)"<<std::endl;
         continue;
       }
 
       // Getting Object Path
       char* path;
       dbus_message_iter_get_basic(&rootIter, &path);
-      std::cout<<path<<std::endl;
-
 
       // Moving to next entry after objectPath entry
+	  DBusMessageIter entIter, devIter, propsIter;
       dbus_message_iter_next(&rootIter);
       dbus_message_iter_recurse(&rootIter, &entIter);
       if(dbus_message_iter_get_arg_type(&entIter) != DBUS_TYPE_DICT_ENTRY){
-        std::cerr<<"[Error] Unable to parse InterfacesAdded Reply. Unknown Format (The Second Entry is not an Object.)"<<std::endl;
+        std::cerr<<"[Error] Unable to parse InterfacesAdded Reply. Unknown Format (The Second Entry is not an Dict Entry.)"<<std::endl;
         continue;
       }
 
@@ -157,66 +157,24 @@ void BluetoothManager::monitorChanges() {
 	    // Getting Properties
       dbus_message_iter_next(&devIter);
       dbus_message_iter_recurse(&devIter, &propsIter);
-      std::string properties[] = {"Adapter", "Address", "Connected", "Paired", "RSSI", "Trusted"};
-      DBusMessageIter values[6];
-      dbus->getProperties(propsIter, properties, 6, values);
-
-      // Check whether Device is already connected
-      if(dbus_message_iter_get_arg_type(&values[2]) == DBUS_TYPE_BOOLEAN){
-        dbus_bool_t value;
-        dbus_message_iter_get_basic(&values[2], &value);
-        if(value) continue;
-      }
 
       Device dev {"", "", "", -110, DeviceType::Unknown, false, false};
-      // For Adapter Path
-      if(dbus_message_iter_get_arg_type(&values[0]) == DBUS_TYPE_OBJECT_PATH){
-        char* value;
-        dbus_message_iter_get_basic(&values[0], &value);
-        dev.adapter = value;
-      }
+	  if(setDeviceProps(dev, propsIter) != 0){
+		continue;
+	  }
 
-      // For Address
-      if(dbus_message_iter_get_arg_type(&values[1]) == DBUS_TYPE_STRING){
-        char* value;
-        dbus_message_iter_get_basic(&values[1], &value);
-        dev.address = value;
-      }
-
-
-      // For Paired
-      if(dbus_message_iter_get_arg_type(&values[3]) == DBUS_TYPE_BOOLEAN){
-        dbus_bool_t value;
-        dbus_message_iter_get_basic(&values[3], &value);
-        dev.paired = value;
-      }
-
-      // For RSSI
-      if(dbus_message_iter_get_arg_type(&values[4]) == DBUS_TYPE_INT16){
-        dbus_int16_t value;
-        dbus_message_iter_get_basic(&values[4], &value);
-        dev.rssi = value;
-      }
-
-      // For Trusted
-      if(dbus_message_iter_get_arg_type(&values[5]) == DBUS_TYPE_BOOLEAN){
-        dbus_bool_t value;
-        dbus_message_iter_get_basic(&values[5], &value);
-        dev.trusted = value;
-      }
 
       devices.insert({path, dev});
       std::cout<<"[Info] Added Device to Device List. Total Devices: "<<devices.size()<<std::endl;
     }else if(dbus_message_is_signal(msg, "org.freedesktop.DBus.ObjectManager", "InterfacesRemoved")){
       std::cout<<"[Info] Received InterfacesRemoved Signal"<<std::endl;
       if(dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_OBJECT_PATH){
-        std::cerr<<"[Error] Unable to parse InterfacesRemoved Reply. Unknown Format (The Root is not an array.)"<<std::endl;
+        std::cerr<<"[Error] Unable to parse InterfacesRemoved Reply. Unknown Format (The First Entry is not Object Path.)"<<std::endl;
         continue;
       }
 
       char* path;
       dbus_message_iter_get_basic(&rootIter, &path);
-      std::cout<<path<<std::endl;
       if(devices.find(path) != devices.end()){
          devices.erase(path);
          std::cout<<"[Info] Removed Device from Device List. Total Devices: "<<devices.size()<<std::endl;
@@ -226,6 +184,53 @@ void BluetoothManager::monitorChanges() {
 
     }else if(dbus_message_is_signal(msg, "org.freedesktop.DBus.Properties", "PropertiesChanged")){
       std::cout<<"[Info] Received PropertiesChanged Signal"<<std::endl;
+	  const char* path = dbus_message_get_path(msg);
+	  if(std::strncmp(path, "/org/bluez", 10) != 0){
+		continue;
+	  }
+
+
+	  auto dev = devices.find(path);
+	  if(dev == devices.end()){
+		std::cerr<<"[Error] Unable to find Device in Device List. Skipping."<<std::endl;
+		continue;
+	  }
+
+	  DBusMessageIter entIter;
+      if(dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_STRING){
+		std::cerr<<"[Error] Unable to parse PropertiesChanged Reply. Unknown Format (The First Entry is not String.)"<<std::endl;
+		continue;
+	  }
+
+	  char* iface;
+	  dbus_message_iter_get_basic(&rootIter, &iface);
+      if(std::strcmp(iface, "org.bluez.Device1") != 0){
+		continue;
+	  }
+
+	  dbus_message_iter_next(&rootIter);
+      while(dbus_message_iter_get_arg_type(&rootIter) == DBUS_TYPE_ARRAY_AS_STRING[0]){
+		dbus_message_iter_recurse(&rootIter, &entIter);
+
+		if(dbus_message_iter_get_arg_type(&entIter) == DBUS_TYPE_DICT_ENTRY){
+		  break;
+		}
+      	std::cout<<dbus_message_iter_get_arg_type(&entIter)<<std::endl;
+
+		dbus_message_iter_next(&rootIter);
+	  }
+	  if(dbus_message_iter_get_arg_type(&entIter) != DBUS_TYPE_DICT_ENTRY){
+		std::cout<<"[Error] Unable to parse PropertiesChanged Reply. Unknown Format (No Dict Entry for Property Found.)"<<std::endl;
+		continue;
+	  }
+
+	  if(setDeviceProps(dev->second, entIter) != 0){
+		devices.erase(dev);
+		std::cout<<"[Info] Removed Device from Device List as It is now connected. Total Devices: "<<devices.size()<<std::endl;
+		continue;
+	  }
+
+      std::cout<<"[Info] Updated Device Properties. Total Devices: "<<devices.size()<<std::endl;
     }else {
       std::cerr<<"[Info] Received Unknown Signal"<<std::endl;
     }
@@ -233,6 +238,56 @@ void BluetoothManager::monitorChanges() {
     dbus_message_unref(msg);
   }
   return;
+}
+
+int BluetoothManager::setDeviceProps(Device& dev, DBusMessageIter& propsIter){
+	std::string props[] = {"Adapter", "Address", "Connected", "Paired", "RSSI", "Trusted"};
+    DBusMessageIter values[6];
+    dbus->getProperties(propsIter, props, 6, values);
+
+      // Check whether Device is already connected
+    if(props[2][0] == ' ' && dbus_message_iter_get_arg_type(&values[2]) == DBUS_TYPE_BOOLEAN){
+      dbus_bool_t value;
+      dbus_message_iter_get_basic(&values[2], &value);
+      if(value) return 1;
+    }
+
+    // For Adapter Path
+    if(props[0][0] == ' ' && dbus_message_iter_get_arg_type(&values[0]) == DBUS_TYPE_OBJECT_PATH){
+      char* value;
+      dbus_message_iter_get_basic(&values[0], &value);
+      dev.adapter = value;
+    }
+
+    // For Address
+    if(props[1][0] == ' ' && dbus_message_iter_get_arg_type(&values[1]) == DBUS_TYPE_STRING){
+      char* value;
+      dbus_message_iter_get_basic(&values[1], &value);
+      dev.address = value;
+    }
+
+
+    // For Paired
+    if(props[3][0] == ' ' && dbus_message_iter_get_arg_type(&values[3]) == DBUS_TYPE_BOOLEAN){
+      dbus_bool_t value;
+      dbus_message_iter_get_basic(&values[3], &value);
+      dev.paired = value;
+    }
+
+    // For RSSI
+    if(props[4][0] == ' ' && dbus_message_iter_get_arg_type(&values[4]) == DBUS_TYPE_INT16){
+      dbus_int16_t value;
+      dbus_message_iter_get_basic(&values[4], &value);
+      dev.rssi = value;
+    }
+
+    // For Trusted
+    if(props[5][0] == ' ' && dbus_message_iter_get_arg_type(&values[5]) == DBUS_TYPE_BOOLEAN){
+      dbus_bool_t value;
+      dbus_message_iter_get_basic(&values[5], &value);
+      dev.trusted = value;
+    }
+	return 0;
 }
 
 int BluetoothManager::getDeviceList(){
