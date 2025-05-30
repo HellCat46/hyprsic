@@ -34,8 +34,41 @@ include_directories(
 )
 
 
+set(COLLECTOR_SOURCES 
+    src/collectors/workspaces/hyprland.cpp
+    src/collectors/battery.cpp
+    src/collectors/bluetooth.cpp
+    src/collectors/disk.cpp
+    src/collectors/memory.cpp
+    src/collectors/network.cpp
+    src/collectors/playing_now.cpp
+    src/collectors/sys_load.cpp
+)
+
+set(UTIL_SOURCES
+    src/utils/dbus_utils.cpp
+)
+
+set(SERVICE_SOURCES
+    src/services/bluetooth.cpp
+)
+
+set(DEBUG_SOURCES
+    src/debug/console_preview.cpp
+)
+
+set(APP_SOURCES
+    src/app/context.cpp
+)
+
+
 add_executable(hyprsic
-        src/main.cpp
+        src/app/main.cpp
+        ${APP_SOURCES}
+        ${DEBUG_SOURCES}
+        ${COLLECTOR_SOURCES}
+        ${UTIL_SOURCES}
+        ${SERVICE_SOURCES}
 )
 target_link_libraries(hyprsic
         dbus-cpp
