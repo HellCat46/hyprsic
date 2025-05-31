@@ -15,7 +15,8 @@ pkg_check_modules(LIBPULSE REQUIRED  libpulse)
 if(ENABLE_NVIDIA_NVML)
     pkg_check_modules(NVML QUIET nvidia-ml)
     if(NVML_FOUND)
-        message(STATUS "Found NVML: YES (Includes: ${NVML_INCLUDE_DIRS}, Libs: ${NVML_LIBRARIES})")
+        message(STATUS
+                "Found NVML: YES (Includes: ${NVML_INCLUDE_DIRS}, Libs: ${NVML_LIBRARIES})")
         list(APPEND APP_INCLUDE_DIRS ${NVML_INCLUDE_DIRS})
         list(APPEND APP_LINK_LIBRARIES ${NVML_LIBRARIES})
         list(APPEND APP_COMPILE_DEFINITIONS "USE_NVML")
@@ -33,6 +34,11 @@ include_directories(
         ${LIBPULSE_INCLUDE_DIRS}
 )
 
+
+set(WAYLAND_SOURCES
+    src/wayland/manager.cpp
+    src/wayland/listener.cpp
+)
 
 set(COLLECTOR_SOURCES 
     src/collectors/workspaces/hyprland.cpp
@@ -66,6 +72,7 @@ add_executable(hyprsic
         src/app/main.cpp
         ${APP_SOURCES}
         ${DEBUG_SOURCES}
+        ${WAYLAND_SOURCES}
         ${COLLECTOR_SOURCES}
         ${UTIL_SOURCES}
         ${SERVICE_SOURCES}

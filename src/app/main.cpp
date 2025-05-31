@@ -5,10 +5,12 @@
 #include "../services/bluetooth.hpp"
 #include "thread"
 #include "cstring"
+#include "../wayland/manager.hpp"
 
 int main(int argc, const char * argv[])
 {
     AppContext ctx;
+    WaylandManager wm;
     
 
 
