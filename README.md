@@ -1,6 +1,9 @@
 # Hyprsic (Work In Progress)
 A Status Bar for Hyprland inspired by Simplicity of i3Bar.
 
+## Features
+
+
 ## Build
 ### For Nix Systems
 ```shell
