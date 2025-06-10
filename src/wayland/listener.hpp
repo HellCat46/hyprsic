@@ -19,6 +19,11 @@ void bufferRelease(void *data, struct wl_buffer *buff);
 void xdgSurfaceConfigure(void *data, struct xdg_surface *xdgSurface,
                          uint32_t serial);
 
+// Seat Listeners
+void wlSeatCapabilities(void *data, struct wl_seat *wlSeat,
+                        uint32_t caps);
+void wlSeatName(void *data, struct wl_seat *wl_seat, const char *name);
+
 // Listener Objects
 const struct wl_registry_listener regListener = {
     .global = registryHandleGlobal,
@@ -30,5 +35,8 @@ const struct xdg_wm_base_listener xdgWMBaseListener = {.ping = xdgWMBasePing};
 
 const struct xdg_surface_listener xdgSurfaceListener = {
     .configure = xdgSurfaceConfigure};
+
+const struct wl_seat_listener seatListener = {
+    .capabilities = wlSeatCapabilities, .name = wlSeatName};
 
 } // namespace WaylandListener

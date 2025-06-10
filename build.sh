@@ -2,16 +2,21 @@
 
 echo "Checking for old build"
 DIRECTORY="build"
-if [ -d "$DIRECTORY" ]; then
+if [ -d "$DIRECTORY" ] && [ "$1" = "clean" ]; then
 	echo "Deleting the old build"
 	rm -rf build
 	echo "Deleted the old build"
+	mkdir build 
 else
-	echo "No old build found"
+	echo "Skipping deletion of build folder..."
+	if ! [ -d "$DIRECTORY" ]; then
+	    mkdir build
+	fi 
 fi
 
 
-mkdir build && cd build || exit
+
+cd build || exit
 cmake ..
 make || exit
 

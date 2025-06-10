@@ -1,7 +1,6 @@
 #include "manager.hpp"
 #include "listener.hpp"
 #include "xdg-shell-client-protocol.h"
-#include <cstddef>
 #include <cstring>
 #include <iostream>
 #include <wayland-client-core.h>
@@ -32,14 +31,13 @@ WaylandManager::WaylandManager() {
   
   
   state.surface = wl_compositor_create_surface(state.compos);
-  state.xdg_surface = xdg_wm_base_get_xdg_surface(state.xdg_wm_base, state.surface);
-  xdg_surface_add_listener(state.xdg_surface, &WaylandListener::xdgSurfaceListener, &state);
+  state.xdgSurface = xdg_wm_base_get_xdg_surface(state.xdgWmBase, state.surface);
+  xdg_surface_add_listener(state.xdgSurface, &WaylandListener::xdgSurfaceListener, &state);
   std::cout<<"[INFO] Successfully Created Wayland and XDG Surface. Also Added Listener to XDG Surface."<<std::endl;
   
-  state.xdg_toplevel = xdg_surface_get_toplevel(state.xdg_surface);
-  xdg_toplevel_set_title(state.xdg_toplevel, "Hyprsic");
+  state.xdgTopLevel = xdg_surface_get_toplevel(state.xdgSurface);
+  xdg_toplevel_set_title(state.xdgTopLevel, "Hyprsic");
   wl_surface_commit(state.surface);
-  std::cout<<"[INFO] Successfully Configured the XDG Surface"<<std::endl;
   
   while (wl_display_dispatch(state.dp)) {
       

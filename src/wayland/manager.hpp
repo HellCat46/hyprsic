@@ -8,12 +8,13 @@ struct WaylandState {
   struct wl_display *dp;
   struct wl_registry *reg;
   struct wl_compositor *compos;
-  struct xdg_wm_base *xdg_wm_base;
+  struct xdg_wm_base *xdgWmBase;
 
   // Objects
+  struct wl_seat *wlSeat;
   struct wl_surface *surface;
-  struct xdg_surface *xdg_surface;
-  struct xdg_toplevel *xdg_toplevel;
+  struct xdg_surface *xdgSurface;
+  struct xdg_toplevel *xdgTopLevel;
   
   // Buffer and Shared Memory
   WaylandFrameBuffer* frameBuffer;
