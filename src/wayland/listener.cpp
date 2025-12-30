@@ -65,6 +65,9 @@ void WaylandListener::xdgSurfaceConfigure(void *data,
   std::cout << "Configuring XDG Surface..." << std::endl;
   struct WaylandState *state = static_cast<struct WaylandState *>(data);
   xdg_surface_ack_configure(xdgSurface, serial);
+  
+  wl_pointer_listener
+  wl_pointer_set_cursor(state->wlPointer, serial, state->surface, , int32_t hotspot_y)
 
   std::cout << "Drawing Frame into buffer and attaching to Surface"
             << std::endl;
@@ -77,13 +80,22 @@ void WaylandListener::wlSeatName(void *data, struct wl_seat *wl_seat,
                                  const char *name) {
   std::cout << "Seat Name: " << name << std::endl;
 }
+
 void WaylandListener::wlSeatCapabilities(void *data, struct wl_seat *wlSeat,
                                          uint32_t caps) {
+  struct WaylandState *state = static_cast<WaylandState *>(data);
+
   if ((caps & WL_SEAT_CAPABILITY_KEYBOARD) > 0) {
-    std::cout << "Found Keyboard" << std::endl;
+    state->wlKeyboard = wl_seat_get_keyboard(wlSeat);
+
+    std::cout << "Successfully Initiated Wayland Keyboard Instance."
+              << std::endl;
   }
   if ((caps & WL_SEAT_CAPABILITY_POINTER) > 0) {
-    std::cout << "Found Pointer" << std::endl;
+    state->wlPointer = wl_seat_get_pointer(wlSeat);
+    
+    std::cout << "Successfully Initiated Wayland Pointer Instance."
+              << std::endl;
   }
   if ((caps & WL_SEAT_CAPABILITY_TOUCH) > 0) {
     std::cout << "Found Touch" << std::endl;

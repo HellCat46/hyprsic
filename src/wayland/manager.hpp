@@ -16,6 +16,10 @@ struct WaylandState {
   struct xdg_surface *xdgSurface;
   struct xdg_toplevel *xdgTopLevel;
   
+  // Inputs
+  struct wl_keyboard *wlKeyboard;
+  struct wl_pointer *wlPointer;
+  
   // Buffer and Shared Memory
   WaylandFrameBuffer* frameBuffer;
 };
