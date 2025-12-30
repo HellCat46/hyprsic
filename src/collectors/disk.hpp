@@ -11,5 +11,5 @@ private:
 public:
   int Init(std::string path);
 
-  int GetDiskInfo(unsigned long *avail, unsigned long *tot);
+  int GetDiskInfo(unsigned long &avail, unsigned long &tot);
 };

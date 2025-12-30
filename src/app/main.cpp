@@ -5,12 +5,14 @@
 #include "../services/bluetooth.hpp"
 #include "thread"
 #include "cstring"
-#include "../wayland/manager.hpp"
+#include "window.hpp"
 
-int main(int argc, const char * argv[])
+int main(int argc, char ** argv)
 {
-    AppContext ctx;
-    WaylandManager wm;
+    MainWindow win;
+    win.RunApp();
+    
+    AppContext ctx;   
     
 
 
@@ -22,4 +24,3 @@ int main(int argc, const char * argv[])
 
     return 0;
 }
-

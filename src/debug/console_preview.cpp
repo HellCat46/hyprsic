@@ -28,21 +28,21 @@ std::string Display::DisplayBar() {
           .count();
 
   double trx = net.GetTotRx(), ttx = net.GetTotTx();
-  str += DisplayBytes(trx, 2) + " (" + DisplayBytes((trx - stat.rx) / sec, 1) +
-         ")\t" + DisplayBytes(ttx, 2) + " (" +
-         DisplayBytes((ttx - stat.tx) / sec, 1) + ")\t";
+  str += Stats::ParseBytes(trx, 2) + " (" + Stats::ParseBytes((trx - stat.rx) / sec, 1) +
+         ")\t" + Stats::ParseBytes(ttx, 2) + " (" +
+         Stats::ParseBytes((ttx - stat.tx) / sec, 1) + ")\t";
   str += std::to_string(load.GetLoad(1)) + " " +
          std::to_string(load.GetLoad(5)) + " " +
          std::to_string(load.GetLoad(15)) + "\t";
-  str += DisplayBytes(mem.GetUsedRAM() * 1024, 2) + "/" +
-         DisplayBytes(mem.GetTotRAM() * 1024, 2) + " " +
-         DisplayBytes(mem.GetUsedSwap() * 1024, 2) + "/" +
-         DisplayBytes(mem.GetTotSwap() * 1024, 2) + "\t";
+  str += Stats::ParseBytes(mem.GetUsedRAM() * 1024, 2) + "/" +
+         Stats::ParseBytes(mem.GetTotRAM() * 1024, 2) + " " +
+         Stats::ParseBytes(mem.GetUsedSwap() * 1024, 2) + "/" +
+         Stats::ParseBytes(mem.GetTotSwap() * 1024, 2) + "\t";
 
-  if (disk.GetDiskInfo(&stat.diskAvail, &stat.diskTotal) == 0) {
+  if (disk.GetDiskInfo(stat.diskAvail, stat.diskTotal) == 0) {
     // std::cout<<stat.diskAvail<<std::endl;
-    str += DisplayBytes(stat.diskTotal - stat.diskAvail, 2) + "/" +
-           DisplayBytes(stat.diskTotal, 2) + "\t";
+    str += Stats::ParseBytes(stat.diskTotal - stat.diskAvail, 2) + "/" +
+           Stats::ParseBytes(stat.diskTotal, 2) + "\t";
   }
 
   str += std::to_string(battery.getTotPercent()) +
@@ -61,31 +61,5 @@ std::string Display::DisplayBar() {
   stat.rx = trx;
   stat.tx = ttx;
   stat.time = curTime;
-  return str;
-}
-std::string Display::DisplayBytes(double bytes, int precision) {
-  std::string str;
-  precision++;
-
-  // std::cout<<std::fixed<<bytes<<"\t"<<pow(1024,3)<<std::endl;
-  if (bytes > pow(1024, 3)) { // GigaBytes
-    str = std::to_string(bytes / pow(1024, 3));
-    str = str.substr(0, str.find('.') + precision);
-    str += " GiB";
-  } else if (bytes > pow(1024, 2)) { // MegaBytes
-    str = std::to_string(bytes / pow(1024, 2));
-    str = str.substr(0, str.find('.') + precision);
-    str += " MiB";
-  } else if (bytes > 1024) { // KiloBytes
-    str = std::to_string(bytes / 1024);
-    str = str.substr(0, str.find('.') + precision);
-    str += " KiB";
-  } else if (bytes > 0) { // Bytes
-    str = std::to_string(bytes);
-    str = str.substr(0, str.find('.'));
-    str += " B";
-  } else {
-    str += "0 B";
-  }
   return str;
 }

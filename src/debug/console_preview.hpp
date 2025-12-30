@@ -1,4 +1,4 @@
-
+#pragma once
 #include "../collectors/battery.hpp"
 #include "../collectors/disk.hpp"
 #include "../collectors/memory.hpp"
@@ -6,14 +6,9 @@
 #include "../collectors/playing_now.hpp"
 #include "../collectors/sys_load.hpp"
 #include "../collectors/workspaces/hyprland.hpp"
-#include "chrono"
+#include "../collectors/stats.hpp"
 #include "math.h"
 
-struct Stats {
-  double rx, tx;
-  unsigned long diskAvail, diskTotal;
-  std::chrono::time_point<std::chrono::steady_clock> time;
-};
 
 class Display {
   Stats stat;
@@ -28,5 +23,4 @@ class Display {
 public:
   Display();
   std::string DisplayBar();
-  std::string DisplayBytes(double bytes, int precision);
 };

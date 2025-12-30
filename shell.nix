@@ -11,6 +11,9 @@ pkgs.mkShell {
     gdb
     valgrind
     clang-tools
+    gtk3
+    gtk-layer-shell
+    cmake
   ];
 
   CMAKE_EXPORT_COMPILE_COMMANDS = "ON";
@@ -18,5 +21,8 @@ pkgs.mkShell {
   # Environment variables
   shellHook = ''
     export PS1="\n[hyprsic:\w]$ "
+    export LC_ALL="en_US.UTF-8"
+    export LANG="en_US.UTF-8"
+    export LOCALE_ARCHIVE="${pkgs.glibcLocales}/lib/locale/locale-archive"
   '';
 }
