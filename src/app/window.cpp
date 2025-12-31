@@ -3,7 +3,6 @@
 #include "glib.h"
 #include "gtk/gtk.h"
 #include <ctime>
-#include <format>
 #include <iomanip>
 #include <string>
 
@@ -27,11 +26,33 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
 
   GtkWidget *main_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_container_add(GTK_CONTAINER(window), main_box);
+  std::string txt = "";
 
+  // Left Box to Show Workspaces Info
+  self->workspaceSecWid = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
+  gtk_box_pack_start(GTK_BOX(main_box), self->workspaceSecWid, FALSE, FALSE,
+                     15);
+
+  // Update Workspaces Info
+  if (!self->hyprWS.GetWorkspaces()) {
+    for (auto workspace : self->hyprWS.workspaces) {
+      txt = std::to_string(workspace.first) + " ";
+
+      if (self->hyprWS.GetActiveWorkspace() == workspace.first) {
+        txt = "[ " + txt + "]";
+      }
+
+      GtkWidget *wsLabel = gtk_label_new(txt.c_str());
+      gtk_box_pack_start(GTK_BOX(self->workspaceSecWid), wsLabel, FALSE, FALSE,
+                         0);
+    }
+  }
+
+  // Right Box to Show System Stats
   GtkWidget *right_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
   gtk_box_pack_end(GTK_BOX(main_box), right_box, FALSE, FALSE, 15);
 
-  std::string txt = "⬇" + self->stat.GetNetRx() + "⬆" + self->stat.GetNetTx();
+  txt = "⬇" + self->stat.GetNetRx() + "⬆" + self->stat.GetNetTx();
   self->netWid = gtk_label_new(txt.c_str());
 
   txt = " " + self->stat.GetDiskAvail() + "/" + self->stat.GetDiskTotal();
@@ -53,7 +74,7 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
   auto t = std::time(nullptr);
   auto tm = *std::localtime(&t);
   std::ostringstream oss;
-  oss << std::put_time(&tm, "%H:%M:%S");;
+  oss << std::put_time(&tm, "%H:%M:%S");
   self->timeWid = gtk_label_new(oss.str().c_str());
 
   gtk_box_pack_start(GTK_BOX(right_box), self->netWid, FALSE, FALSE, 0);
@@ -70,6 +91,7 @@ MainWindow::MainWindow() {
   load.Init();
   mem.Init();
   battery.Init();
+  hyprWS.Init();
 
   app =
       gtk_application_new("com.hyprsic.statusbar", G_APPLICATION_DEFAULT_FLAGS);
@@ -84,9 +106,33 @@ void MainWindow::RunApp() {
 
 gboolean MainWindow::UpdateData(gpointer data) {
   MainWindow *self = static_cast<MainWindow *>(data);
+  std::string txt = "";
+
+  
+  if (!self->hyprWS.GetWorkspaces()) {
+    GList *child =
+        gtk_container_get_children(GTK_CONTAINER(self->workspaceSecWid));
+    for (GList *iter = child; iter != NULL; iter = iter->next) {
+      gtk_widget_destroy(GTK_WIDGET(iter->data));
+    }
+    g_list_free(child);
+
+    for (auto workspace : self->hyprWS.workspaces) {
+      txt = std::to_string(workspace.first) + " ";
+
+      if (self->hyprWS.GetActiveWorkspace() == workspace.first) {
+        txt = "[ " + txt + "]";
+      }
+
+      GtkWidget *wsLabel = gtk_label_new(txt.c_str());
+      gtk_box_pack_start(GTK_BOX(self->workspaceSecWid), wsLabel, FALSE, FALSE,
+                         0);
+    }
+    gtk_widget_show_all(self->workspaceSecWid);
+  }
 
   // Update Network Usage
-  std::string txt = "⬇" + self->stat.GetNetRx() + "⬆" + self->stat.GetNetTx();
+  txt = "⬇" + self->stat.GetNetRx() + "⬆" + self->stat.GetNetTx();
   gtk_label_set_label(GTK_LABEL(self->netWid), txt.c_str());
 
   // Update Disk Usage

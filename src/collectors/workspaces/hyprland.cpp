@@ -8,11 +8,10 @@
 #include "sys/un.h"
 #include "thread"
 #include "unistd.h"
-#include "unordered_map"
 
 int HyprWorkspaces::Init() {
   if (getPath()) {
-    return 1;
+    return -1;
   }
 
   sockaddr_un addr;
@@ -20,8 +19,7 @@ int HyprWorkspaces::Init() {
 
   evtSockfd = socket(AF_UNIX, SOCK_STREAM, 0);
 
-  // Establish Connection With Hyprland's UNIX Socket for Listening to Client
-  // events
+  // Establish Connection With Hyprland's UNIX Socket for Listening to Client events
   sockPath += ".socket2.sock";
   strcpy(addr.sun_path, sockPath.c_str());
   sockPath = sockPath.substr(0, sockPath.rfind('/') + 1);
@@ -29,7 +27,7 @@ int HyprWorkspaces::Init() {
     std::cerr << "[Init Error] Unable to Establish Connection with Hyprland "
                  "Socket UNIX Socket"
               << std::endl;
-    return 1;
+    return -2;
   }
 
   GetWorkspaces();
@@ -44,13 +42,13 @@ int HyprWorkspaces::getPath() {
   char *runtimeDir = std::getenv("XDG_RUNTIME_DIR");
   if (runtimeDir == nullptr) {
     std::cerr << "XDG_RUNTIME_DIR is not set" << std::endl;
-    return 1;
+    return -1;
   }
 
   char *HIS = std::getenv("HYPRLAND_INSTANCE_SIGNATURE");
   if (HIS == nullptr) {
     std::cerr << "HYPRLAND_INSTANCE_SIGNATURE is not set" << std::endl;
-    return 1;
+    return -2;
   }
 
   sockPath.append(runtimeDir).append("/hypr/").append(HIS).append("/");
@@ -125,7 +123,7 @@ Json::Value HyprWorkspaces::executeQuery(const std::string &msg,
     std::cerr << "[IPC Connection Error] Unable to Establish Connection with "
                  "hyprctl UNIX Socket"
               << std::endl;
-    return -3;
+    return -1;
   }
 
   if (write(workSockfd, msg.c_str(), msg.size()) == -1) {
@@ -134,7 +132,7 @@ Json::Value HyprWorkspaces::executeQuery(const std::string &msg,
   }
   if (read(workSockfd, buffer, sizeof(buffer)) <= 0) {
     err = "Failed to Read Query Response";
-    return -2;
+    return -3;
   }
 
   // Closing the Connection
@@ -142,7 +140,7 @@ Json::Value HyprWorkspaces::executeQuery(const std::string &msg,
     std::cerr << "[IPC Connection Error] Unable to Close Connection with "
                  "hyprctl UNIX Socket"
               << std::endl;
-    return -3;
+    return -4;
   }
 
   // Parsing the json response
@@ -160,15 +158,15 @@ int HyprWorkspaces::GetActiveWorkspace() {
   if (workspaceJson == -1) {
     std::cerr << "[Error] Failed to parse Active Workspace Query Response ("
               << err << ")" << std::endl;
-    return 1;
+    return -1;
   } else if (workspaceJson == -2) {
     std::cerr << "[Error] In Active Workspace Query (" << err << ")"
               << std::endl;
-    return 1;
+    return -2;
   }
 
   activeWorkspaceId = workspaceJson["id"].asUInt();
-  return 0;
+  return activeWorkspaceId;
 }
 
 Workspace HyprWorkspaces::GetActiveWorkspaceInfo() {
@@ -186,10 +184,10 @@ int HyprWorkspaces::GetWorkspaces() {
   if (workspacesJson == -1) {
     std::cerr << "[Error] Failed to parse Workspaces Query Response (" << err
               << ")" << std::endl;
-    return 1;
+    return -1;
   } else if (workspacesJson == -2) {
     std::cerr << "[Error] In Workspaces Query (" << err << ")" << std::endl;
-    return 1;
+    return -1;
   }
 
   for (Json::Value workspace : workspacesJson) {

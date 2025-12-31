@@ -3,7 +3,6 @@
 #include "cstdlib"
 #include "cstring"
 #include "string"
-#include "unordered_map"
 #include <json/reader.h>
 
 struct Workspace {
@@ -15,7 +14,6 @@ struct Workspace {
 class HyprWorkspaces {
   std::string sockPath;
   int evtSockfd, activeWorkspaceId;
-  std::unordered_map<unsigned int, Workspace> workspaces;
   Json::CharReaderBuilder jsonReader;
 
   int getPath();
@@ -24,6 +22,7 @@ class HyprWorkspaces {
   Json::Value executeQuery(const std::string &, std::string &);
 
 public:
+  std::map<unsigned int, Workspace> workspaces;
   int GetActiveWorkspace();
   Workspace GetActiveWorkspaceInfo();
   int GetWorkspaces();
