@@ -1,15 +1,35 @@
 #include "window.hpp"
 #include "gio/gio.h"
+#include "glib-object.h"
 #include "glib.h"
+#include "glibconfig.h"
 #include "gtk/gtk.h"
 #include <ctime>
 #include <iomanip>
+#include <iostream>
 #include <string>
 
 typedef struct {
   GtkWidget *time_label;
   GtkWidget *date_label;
 } AppData;
+
+MainWindow::MainWindow() : btInfo(&ctx) {
+  load.Init();
+  mem.Init();
+  battery.Init();
+  hyprWS.Init();
+
+  app =
+      gtk_application_new("com.hyprsic.statusbar", G_APPLICATION_DEFAULT_FLAGS);
+  g_signal_connect(app, "activate", G_CALLBACK(activate), this);
+  g_timeout_add(5000, UpdateData, this);
+}
+
+void MainWindow::RunApp() {
+  int status = g_application_run(G_APPLICATION(app), 0, NULL);
+  g_object_unref(app);
+}
 
 void MainWindow::activate(GtkApplication *app, gpointer user_data) {
   MainWindow *self = static_cast<MainWindow *>(user_data);
@@ -31,7 +51,7 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
   // Left Box to Show Workspaces Info
   self->workspaceSecWid = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
   gtk_box_pack_start(GTK_BOX(main_box), self->workspaceSecWid, FALSE, FALSE,
-                     15);
+                     5);
 
   // Update Workspaces Info
   if (!self->hyprWS.GetWorkspaces()) {
@@ -50,7 +70,7 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
 
   // Right Box to Show System Stats
   GtkWidget *right_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
-  gtk_box_pack_end(GTK_BOX(main_box), right_box, FALSE, FALSE, 15);
+  gtk_box_pack_end(GTK_BOX(main_box), right_box, FALSE, FALSE, 5);
 
   txt = "⬇" + self->stat.GetNetRx() + "⬆" + self->stat.GetNetTx();
   self->netWid = gtk_label_new(txt.c_str());
@@ -84,31 +104,15 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
   gtk_box_pack_start(GTK_BOX(right_box), self->batteryWid, FALSE, FALSE, 0);
   gtk_box_pack_start(GTK_BOX(right_box), self->timeWid, FALSE, FALSE, 0);
 
+  setupBT(right_box, self);
+
   gtk_widget_show_all(window);
-}
-
-MainWindow::MainWindow() {
-  load.Init();
-  mem.Init();
-  battery.Init();
-  hyprWS.Init();
-
-  app =
-      gtk_application_new("com.hyprsic.statusbar", G_APPLICATION_DEFAULT_FLAGS);
-  g_signal_connect(app, "activate", G_CALLBACK(activate), this);
-  g_timeout_add(5000, UpdateData, this);
-}
-
-void MainWindow::RunApp() {
-  int status = g_application_run(G_APPLICATION(app), 0, NULL);
-  g_object_unref(app);
 }
 
 gboolean MainWindow::UpdateData(gpointer data) {
   MainWindow *self = static_cast<MainWindow *>(data);
   std::string txt = "";
 
-  
   if (!self->hyprWS.GetWorkspaces()) {
     GList *child =
         gtk_container_get_children(GTK_CONTAINER(self->workspaceSecWid));
@@ -163,4 +167,85 @@ gboolean MainWindow::UpdateData(gpointer data) {
   self->stat.UpdateData();
 
   return TRUE;
+}
+
+void MainWindow::showBTMenu(GtkWidget *widget, gpointer user_data) {
+  MainWindow *self = static_cast<MainWindow *>(user_data);
+
+  createBTList(self);
+
+  gtk_popover_popup(GTK_POPOVER(self->btPopOverMenu));
+}
+
+void MainWindow::createBTList(MainWindow *self) {
+
+  GList *children = gtk_container_get_children(GTK_CONTAINER(self->btDevList));
+  for (GList *iter = children; iter != NULL; iter = iter->next) {
+    gtk_widget_destroy(GTK_WIDGET(iter->data));
+  }
+  g_list_free(children);
+
+  self->btInfo.getDeviceList();
+
+  // Connected Devices Section
+  if (self->btInfo.connectedDev.size() > 0) {
+    GtkWidget *connDevtitle = gtk_label_new("Connnected Devices: ");
+    gtk_box_pack_start(GTK_BOX(self->btDevList), connDevtitle, FALSE, FALSE, 0);
+    gtk_widget_show(connDevtitle);
+
+    std::cout << "Bluetooth Devices Found: " << self->btInfo.connectedDev.size()
+              << std::endl;
+    for (auto [_, device] : self->btInfo.connectedDev) {
+      std::string devLabel =
+          device.name.length() > 0 ? device.name : device.addr;
+
+      GtkWidget *deviceWid = gtk_button_new_with_label(devLabel.c_str());
+      gtk_box_pack_start(GTK_BOX(self->btDevList), deviceWid, FALSE, FALSE, 2);
+      gtk_widget_show(deviceWid);
+    }
+  }
+
+  // Available Devices Section
+  if (self->btInfo.availDev.size() > 0) {
+    GtkWidget *availDevtitle = gtk_label_new("Available Devices: ");
+    gtk_box_pack_start(GTK_BOX(self->btDevList), availDevtitle, FALSE, FALSE, 0);
+    gtk_widget_show(availDevtitle);
+
+    std::cout << "Bluetooth Devices Found: " << self->btInfo.availDev.size()
+              << std::endl;
+    for (auto [_, device] : self->btInfo.availDev) {
+      std::string devLabel =
+          device.name.length() > 0 ? device.name : device.addr;
+
+      GtkWidget *deviceWid = gtk_button_new_with_label(devLabel.c_str());
+      gtk_box_pack_start(GTK_BOX(self->btDevList), deviceWid, FALSE, FALSE, 2);
+      gtk_widget_show(deviceWid);
+    }
+  }
+
+  gtk_widget_show_all(self->btDevList);
+}
+
+void MainWindow::hideBTMenu(GtkWidget *widget, gpointer user_data) {
+  MainWindow *self = static_cast<MainWindow *>(user_data);
+
+  gtk_popover_popdown(GTK_POPOVER(self->btPopOverMenu));
+}
+
+void MainWindow::setupBT(GtkWidget *box, MainWindow *self) {
+  GtkWidget *bt_img = gtk_button_new_with_label("");
+
+  self->btPopOverMenu = gtk_popover_new(bt_img);
+  gtk_popover_set_modal(GTK_POPOVER(self->btPopOverMenu), FALSE);
+  gtk_popover_set_position(GTK_POPOVER(self->btPopOverMenu), GTK_POS_TOP);
+
+  self->btDevList = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+  gtk_container_add(GTK_CONTAINER(self->btPopOverMenu), self->btDevList);
+  gtk_widget_set_size_request(self->btPopOverMenu, 400, -1);
+
+  g_signal_connect(bt_img, "enter", G_CALLBACK(showBTMenu), self);
+  // g_signal_connect(self->btPopOverMenu, "closed", G_CALLBACK(hideBTMenu),
+  // self);
+
+  gtk_box_pack_start(GTK_BOX(box), bt_img, FALSE, FALSE, 0);
 }

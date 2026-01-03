@@ -1,12 +1,12 @@
 #pragma once
-#include "../collectors/battery.hpp"
-#include "../collectors/disk.hpp"
-#include "../collectors/memory.hpp"
-#include "../collectors/network.hpp"
+#include "../collectors/sysinfo/battery.hpp"
+#include "../collectors/sysinfo/disk.hpp"
+#include "../collectors/sysinfo/memory.hpp"
+#include "../collectors/sysinfo/network.hpp"
 #include "../collectors/playing_now.hpp"
-#include "../collectors/sys_load.hpp"
+#include "../collectors/sysinfo/sys_load.hpp"
 #include "../collectors/workspaces/hyprland.hpp"
-#include "../collectors/stats.hpp"
+#include "../collectors/sysinfo/stats.hpp"
 #include "math.h"
 
 

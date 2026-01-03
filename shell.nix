@@ -11,6 +11,7 @@ pkgs.mkShell {
     gdb
     valgrind
     clang-tools
+    dbus
     gtk3
     gtk-layer-shell
     cmake

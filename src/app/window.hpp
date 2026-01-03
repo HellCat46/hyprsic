@@ -3,17 +3,18 @@
 #include "glib.h"
 #include <gtk-layer-shell.h>
 #include <gtk/gtk.h>
-#include <vector>
 
-#include "../collectors/stats.hpp"
-#include "../collectors/battery.hpp"
-#include "../collectors/memory.hpp"
+#include "../collectors/sysinfo/stats.hpp"
+#include "../collectors/sysinfo/battery.hpp"
+#include "../collectors/sysinfo/memory.hpp"
+#include "../collectors/bluetooth.hpp"
 #include "../collectors/playing_now.hpp"
-#include "../collectors/sys_load.hpp"
+#include "../collectors/sysinfo/sys_load.hpp"
 #include "../collectors/workspaces/hyprland.hpp"
 
 class MainWindow {
   GtkApplication *app = nullptr;
+  AppContext ctx;
   
   Stats stat;
   GtkWidget* netWid;
@@ -32,6 +33,10 @@ class MainWindow {
     
   PlayingNow playing;
   
+  BluetoothDevice btInfo;
+  GtkWidget* btPopOverMenu;
+  GtkWidget* btDevList;
+  
   
   HyprWorkspaces hyprWS;
   GtkWidget* workspaceSecWid;
@@ -41,4 +46,11 @@ public:
   void RunApp();
   static gboolean UpdateData(gpointer data);
   static void activate(GtkApplication *app, gpointer user_data);
+
+  // UI Prep Functions
+  static void setupBT(GtkWidget* box, MainWindow* self);
+  static void showBTMenu(GtkWidget* widget, gpointer user_data);
+  static void hideBTMenu(GtkWidget* widget, gpointer user_data);
+  static void createBTList(MainWindow* self);
+  
 };

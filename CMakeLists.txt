@@ -32,14 +32,14 @@ endif()
 
 set(COLLECTOR_SOURCES 
     src/collectors/workspaces/hyprland.cpp
-    src/collectors/battery.cpp
+    src/collectors/sysinfo/battery.cpp
     src/collectors/bluetooth.cpp
-    src/collectors/disk.cpp
-    src/collectors/memory.cpp
-    src/collectors/network.cpp
+    src/collectors/sysinfo/disk.cpp
+    src/collectors/sysinfo/memory.cpp
+    src/collectors/sysinfo/network.cpp
     src/collectors/playing_now.cpp
-    src/collectors/sys_load.cpp
-    src/collectors/stats.cpp
+    src/collectors/sysinfo/sys_load.cpp
+    src/collectors/sysinfo/stats.cpp
 )
 
 set(UTIL_SOURCES

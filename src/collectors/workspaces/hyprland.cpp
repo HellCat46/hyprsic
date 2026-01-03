@@ -19,7 +19,8 @@ int HyprWorkspaces::Init() {
 
   evtSockfd = socket(AF_UNIX, SOCK_STREAM, 0);
 
-  // Establish Connection With Hyprland's UNIX Socket for Listening to Client events
+  // Establish Connection With Hyprland's UNIX Socket for Listening to Client
+  // events
   sockPath += ".socket2.sock";
   strcpy(addr.sun_path, sockPath.c_str());
   sockPath = sockPath.substr(0, sockPath.rfind('/') + 1);
@@ -69,22 +70,26 @@ void HyprWorkspaces::liveEventListener() {
           continue;
         }
         // std::cout<<"\n\nEvent Info:\n"<<buffer<<"\n\n"<<std::endl;
+        GetWorkspaces();
 
         // Update the String Length Too If Event name is being updated
         if (std::strncmp(buffer, "createworkspace", 15) == 0) {
           char *ptr = std::strstr(buffer, "createworkspacev2>>");
-          std::cout << "Workspace Created: " << parseWorkspaceId(ptr + 19)
-                    << std::endl;
+          int wsId = parseWorkspaceId(ptr + 19);
+          
+          std::cout << "Workspace Created: " << wsId << std::endl;
 
         } else if (std::strncmp(buffer, "destroyworkspace", 16) == 0) {
           char *ptr = std::strstr(buffer, "destroyworkspacev2>>");
-          std::cout << "Workspace Deleted: " << parseWorkspaceId(ptr + 20)
-                    << std::endl;
+          int wsId = parseWorkspaceId(ptr + 20);
+          
+          std::cout << "Workspace Deleted: " << wsId << std::endl;
 
         } else if (std::strncmp(buffer, "workspace", 9) == 0) {
           char *ptr = std::strstr(buffer, "workspacev2>>");
-          std::cout << "Active Workspace Changed: "
-                    << parseWorkspaceId(ptr + 13) << std::endl;
+          int wsId = parseWorkspaceId(ptr + 13);
+          
+          std::cout << "Active Workspace Changed: " << wsId << std::endl;
         }
       }
     }

@@ -19,10 +19,11 @@ fi
 cd build || exit
 cmake ..
 make || exit
+cd ..
 
 printf "\n\n\033[0;32mSuccessfully Built the project. Running the Executable\033[0m\n\n"
 if [ "$1" = "gdb" ]; then
-	gdb hyprsic
+	gdb build/hyprsic
 else
-	./hyprsic
+	./build/hyprsic
 fi

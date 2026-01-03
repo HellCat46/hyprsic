@@ -3,7 +3,6 @@
 #include "cstring"
 #include "dbus/dbus.h"
 #include "iostream"
-#include "vector"
 
 BluetoothDevice::BluetoothDevice(AppContext *context) {
   ctx = context;
@@ -22,6 +21,7 @@ int getDeviceList();
 bool printDevicesInfo();
 
 int BluetoothDevice::getDeviceList() {
+    std::cout<<"Fetching Bluetooth Device List..."<<std::endl;
 
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
       ctx->dbus.conn, msg, -1, &(ctx->dbus.err));
@@ -131,7 +131,15 @@ int BluetoothDevice::getDeviceList() {
       dbus_message_iter_next(&ifaceIter);
     }
 
-    devices.push_back(deviceInfo);
+    if (deviceInfo.connected) {
+      if (connectedDev.find(deviceInfo.addr) == connectedDev.end()) {
+        connectedDev.insert({deviceInfo.addr, deviceInfo});
+      }
+    } else {
+      if (availDev.find(deviceInfo.addr) != availDev.end()) {
+        availDev.erase(deviceInfo.addr);
+      }
+    }
     dbus_message_iter_next(&entIter);
   }
 
@@ -139,9 +147,9 @@ int BluetoothDevice::getDeviceList() {
 }
 
 bool BluetoothDevice::printDevicesInfo() {
-  if (devices.size() == 0)
+  if (availDev.size() == 0)
     return false;
-  for (auto device : devices) {
+  for (auto [_, device] : availDev) {
     std::cout << "Device: " << std::endl;
 
     std::cout << "\t" << device.name << std::endl;

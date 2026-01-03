@@ -1,9 +1,11 @@
 #pragma once
 #include "../app/context.hpp"
 #include "cstring"
-#include "string"
 #include "dbus/dbus.h"
+#include "string"
 #include "vector"
+#include <string>
+#include <unordered_map>
 
 struct ConnectedDevice {
   std::string iface, addr, name, icon;
@@ -15,9 +17,10 @@ class BluetoothDevice {
 private:
   AppContext *ctx;
   DBusMessage *msg;
-  std::vector<ConnectedDevice> devices;
 
 public:
+  std::unordered_map<std::string, ConnectedDevice> connectedDev;
+  std::unordered_map<std::string, ConnectedDevice> availDev;
   BluetoothDevice(AppContext *context);
   int getDeviceList();
   bool printDevicesInfo();
