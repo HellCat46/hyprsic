@@ -1,41 +1,86 @@
 #include "bluetooth.hpp"
+#include "../utils/dbus_utils.hpp"
 #include "cstring"
+#include "dbus/dbus-protocol.h"
+#include "dbus/dbus.h"
 #include "iostream"
 #include "thread"
 #include "unordered_map"
-#include "../utils/dbus_utils.hpp"
 
 BluetoothManager::BluetoothManager(AppContext *context) {
   ctx = context;
-  discover = false;
-  signalThread = std::thread(&BluetoothManager::monitorChanges, this);
+  discovering = false;
+  power = true;
+
+  // signalThread = std::thread(&BluetoothManager::monitorChanges, this);
 }
 
-int BluetoothManager::switchDiscovery() {
-  if (discover) {
-
-    std::cout << "[INFO] Turning off Bluetooth Discovery." << std::endl;
-    discover = false;
-  } else {
-    DBusMessage *msg = dbus_message_new_method_call(
-        "org.bluez", "/org/bluez/hci0", "org.bluez.Adapter1", "StartDiscovery");
-    if (!msg) {
-      std::cerr << "[Error] Failed to create a message. " << ctx->dbus.err.message
-                << std::endl;
-      return 1;
-    }
-
-    DBusMessage *reply = dbus_connection_send_with_reply_and_block(
-        ctx->dbus.conn, msg, -1, &(ctx->dbus.err));
-    if (!reply) {
-      std::cerr << "[Error] Failed to get a reply. " << ctx->dbus.err.message
-                << std::endl;
-      return 1;
-    }
-
-    std::cout << "[INFO] Turning on Bluetooth Discovery." << std::endl;
-    this->discover = true;
+int BluetoothManager::switchPower(bool on) {
+  DBusMessage *msg = dbus_message_new_method_call(
+      "org.bluez", "/org/bluez/hci0", "org.freedesktop.DBus.Properties", "Set");
+  if (!msg) {
+    std::cerr << "[Error] Failed to create a message. " << ctx->dbus.err.message
+              << std::endl;
+    return 1;
   }
+
+  const char *iface = "org.bluez.Adapter1";
+  const char *prop = "Powered";
+  dbus_bool_t value = on ? TRUE : FALSE;
+  DBusMessageIter args, subargs;
+
+  dbus_message_iter_init_append(msg, &args);
+  dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &iface);
+  dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &prop);
+
+  dbus_message_iter_open_container(&args, DBUS_TYPE_VARIANT,
+                                   DBUS_TYPE_BOOLEAN_AS_STRING, &subargs);
+  dbus_message_iter_append_basic(&subargs, DBUS_TYPE_BOOLEAN, &value);
+  dbus_message_iter_close_container(&args, &subargs);
+
+  DBusMessage *reply = dbus_connection_send_with_reply_and_block(
+      ctx->dbus.conn, msg, -1, &(ctx->dbus.err));
+  if (!reply && dbus_error_is_set(&(ctx->dbus.err))) {
+    std::cerr << "[Error] Failed to get a reply. " << ctx->dbus.err.message
+              << std::endl;
+    dbus_error_free(&ctx->dbus.err);
+    return 1;
+  }
+
+  std::cout << "[INFO] Turned " << (on ? "ON" : "OFF") << " Bluetooth Power."
+            << std::endl;
+
+  dbus_message_unref(msg);
+  dbus_message_ref(reply);
+  this->power = on;
+  return 0;
+}
+
+int BluetoothManager::switchDiscovery(bool on) {
+
+  DBusMessage *msg = dbus_message_new_method_call(
+      "org.bluez", "/org/bluez/hci0", "org.bluez.Adapter1",
+      on ? "StartDiscovery" : "StopDiscovery");
+
+  if (!msg) {
+    std::cerr << "[Error] Failed to create a message. " << std::endl;
+    return 1;
+  }
+
+  DBusMessage *reply = dbus_connection_send_with_reply_and_block(
+      ctx->dbus.conn, msg, -1, &(ctx->dbus.err));
+  if (!reply && dbus_error_is_set(&(ctx->dbus.err))) {
+    std::cerr << "[Error] Failed to get a reply. " << ctx->dbus.err.message
+              << std::endl;
+    dbus_error_free(&ctx->dbus.err);
+    return 1;
+  }
+
+  dbus_message_unref(msg);
+  dbus_message_ref(reply);
+  std::cout << "[INFO] Turning on Bluetooth Discovery." << std::endl;
+  this->discovering = true;
+
   return 0;
 }
 
@@ -50,8 +95,9 @@ void BluetoothManager::monitorChanges() {
       &(ctx->dbus.err));
   if (dbus_error_is_set(&(ctx->dbus.err))) {
     std::cerr << "[Critical Error] Failed to add filter for Signal Member "
-                 "InterfaceAdded"
-              << std::endl;
+                 "InterfaceAdded: "
+              << ctx->dbus.err.message << std::endl;
+    dbus_error_free(&ctx->dbus.err);
     return;
   }
 
@@ -62,8 +108,9 @@ void BluetoothManager::monitorChanges() {
       &(ctx->dbus.err));
   if (dbus_error_is_set(&(ctx->dbus.err))) {
     std::cerr << "[Critical Error] Failed to add filter for Signal Member "
-                 "InterfaceRemoved"
-              << std::endl;
+                 "InterfaceRemoved: "
+              << ctx->dbus.err.message << std::endl;
+    dbus_error_free(&ctx->dbus.err);
     return;
   }
 
@@ -74,8 +121,9 @@ void BluetoothManager::monitorChanges() {
       &(ctx->dbus.err));
   if (dbus_error_is_set(&(ctx->dbus.err))) {
     std::cerr << "[Critical Error] Failed to add filter for Signal Member "
-                 "PropestiesChanged"
-              << std::endl;
+                 "PropertiesChanged: "
+              << ctx->dbus.err.message << std::endl;
+    dbus_error_free(&ctx->dbus.err);
     return;
   }
   std::cout << "[Info] Successfully Added Filters to Bluez Dbus Signals. "
@@ -184,9 +232,11 @@ void BluetoothManager::monitorChanges() {
                                       "PropertiesChanged")) {
       std::cout << "[Info] Received PropertiesChanged Signal" << std::endl;
       const char *path = dbus_message_get_path(msg);
-      if (std::strncmp(path, "/org/bluez", 10) != 0) {
+      if (std::strncmp(path, "/org/bluez", 10) != 0)
         continue;
-      }
+
+      std::cout << "[Debug] PropertiesChanged Signal Path: " << path
+                << std::endl;
 
       auto dev = devices.find(path);
       if (dev == devices.end()) {

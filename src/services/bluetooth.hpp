@@ -26,19 +26,22 @@ struct Device {
 
 class BluetoothManager {
   private:
-    bool discover;
     AppContext* ctx;
-    std::unordered_map<std::string, Device> devices;
   	std::thread signalThread;
 
     void monitorChanges();
 	int setDeviceProps(Device& dev, DBusMessageIter& propsIter);
   public:
+    bool discovering, power;
+    std::unordered_map<std::string, Device> devices;
+    
     int getDeviceList();
     int connectDevice();
     int disconnectDevice();
     int removeDevice();
-    int switchDiscovery();
+    
+    int switchDiscovery(bool on);
+    int switchPower(bool on);
 
     BluetoothManager(AppContext* context);
 };

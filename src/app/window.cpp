@@ -14,7 +14,7 @@ typedef struct {
   GtkWidget *date_label;
 } AppData;
 
-MainWindow::MainWindow() : btInfo(&ctx) {
+MainWindow::MainWindow() : btInfo(&ctx), btManager(&ctx) {
   load.Init();
   mem.Init();
   battery.Init();
@@ -33,25 +33,26 @@ void MainWindow::RunApp() {
 
 void MainWindow::activate(GtkApplication *app, gpointer user_data) {
   MainWindow *self = static_cast<MainWindow *>(user_data);
+  self->window = gtk_application_window_new(app);
 
-  GtkWidget *window = gtk_application_window_new(app);
+  gtk_layer_init_for_window(GTK_WINDOW(self->window));
 
-  gtk_layer_init_for_window(GTK_WINDOW(window));
-
-  gtk_layer_set_layer(GTK_WINDOW(window), GTK_LAYER_SHELL_LAYER_TOP);
-  gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_BOTTOM, TRUE);
-  gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_LEFT, TRUE);
-  gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_RIGHT, TRUE);
-  gtk_layer_set_exclusive_zone(GTK_WINDOW(window), 30);
+  gtk_layer_set_layer(GTK_WINDOW(self->window), GTK_LAYER_SHELL_LAYER_TOP);
+  gtk_layer_set_anchor(GTK_WINDOW(self->window), GTK_LAYER_SHELL_EDGE_BOTTOM,
+                       TRUE);
+  gtk_layer_set_anchor(GTK_WINDOW(self->window), GTK_LAYER_SHELL_EDGE_LEFT,
+                       TRUE);
+  gtk_layer_set_anchor(GTK_WINDOW(self->window), GTK_LAYER_SHELL_EDGE_RIGHT,
+                       TRUE);
+  gtk_layer_set_exclusive_zone(GTK_WINDOW(self->window), 30);
 
   GtkWidget *main_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-  gtk_container_add(GTK_CONTAINER(window), main_box);
+  gtk_container_add(GTK_CONTAINER(self->window), main_box);
   std::string txt = "";
 
   // Left Box to Show Workspaces Info
   self->workspaceSecWid = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
-  gtk_box_pack_start(GTK_BOX(main_box), self->workspaceSecWid, FALSE, FALSE,
-                     5);
+  gtk_box_pack_start(GTK_BOX(main_box), self->workspaceSecWid, FALSE, FALSE, 5);
 
   // Update Workspaces Info
   if (!self->hyprWS.GetWorkspaces()) {
@@ -106,7 +107,7 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
 
   setupBT(right_box, self);
 
-  gtk_widget_show_all(window);
+  gtk_widget_show_all(self->window);
 }
 
 gboolean MainWindow::UpdateData(gpointer data) {
@@ -172,12 +173,12 @@ gboolean MainWindow::UpdateData(gpointer data) {
 void MainWindow::showBTMenu(GtkWidget *widget, gpointer user_data) {
   MainWindow *self = static_cast<MainWindow *>(user_data);
 
-  createBTList(self);
+  updateBTList(self);
 
   gtk_popover_popup(GTK_POPOVER(self->btPopOverMenu));
 }
 
-void MainWindow::createBTList(MainWindow *self) {
+void MainWindow::updateBTList(MainWindow *self) {
 
   GList *children = gtk_container_get_children(GTK_CONTAINER(self->btDevList));
   for (GList *iter = children; iter != NULL; iter = iter->next) {
@@ -208,7 +209,8 @@ void MainWindow::createBTList(MainWindow *self) {
   // Available Devices Section
   if (self->btInfo.availDev.size() > 0) {
     GtkWidget *availDevtitle = gtk_label_new("Available Devices: ");
-    gtk_box_pack_start(GTK_BOX(self->btDevList), availDevtitle, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(self->btDevList), availDevtitle, FALSE, FALSE,
+                       0);
     gtk_widget_show(availDevtitle);
 
     std::cout << "Bluetooth Devices Found: " << self->btInfo.availDev.size()
@@ -229,7 +231,8 @@ void MainWindow::createBTList(MainWindow *self) {
 void MainWindow::hideBTMenu(GtkWidget *widget, gpointer user_data) {
   MainWindow *self = static_cast<MainWindow *>(user_data);
 
-  gtk_popover_popdown(GTK_POPOVER(self->btPopOverMenu));
+  if (gtk_widget_get_visible(self->btPopOverMenu))
+    gtk_popover_popdown(GTK_POPOVER(self->btPopOverMenu));
 }
 
 void MainWindow::setupBT(GtkWidget *box, MainWindow *self) {
@@ -239,13 +242,62 @@ void MainWindow::setupBT(GtkWidget *box, MainWindow *self) {
   gtk_popover_set_modal(GTK_POPOVER(self->btPopOverMenu), FALSE);
   gtk_popover_set_position(GTK_POPOVER(self->btPopOverMenu), GTK_POS_TOP);
 
+  // Main Box inside Popover
+  GtkWidget *main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  gtk_container_add(GTK_CONTAINER(self->btPopOverMenu), main_box);
+
+  // Top Box with Power and Scan Buttons
+  GtkWidget *top_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  gtk_box_pack_start(GTK_BOX(main_box), top_box, FALSE, FALSE, 0);
+
+  self->btPowerBtn = gtk_check_button_new_with_label("Power");
+  gtk_box_pack_start(GTK_BOX(top_box), self->btPowerBtn, FALSE, FALSE, 0);
+  g_signal_connect(self->btPowerBtn, "clicked", G_CALLBACK(handlePower), self);
+  //self->btManager.switchPower(true);
+
+  self->btScanBtn = gtk_button_new_with_label("Scan");
+  gtk_box_pack_end(GTK_BOX(top_box), self->btScanBtn, FALSE, FALSE, 0);
+  g_signal_connect(self->btScanBtn, "clicked", G_CALLBACK(handleDiscovery), self);
+  //self->btManager.switchDiscovery(false);
+
   self->btDevList = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-  gtk_container_add(GTK_CONTAINER(self->btPopOverMenu), self->btDevList);
-  gtk_widget_set_size_request(self->btPopOverMenu, 400, -1);
+  gtk_box_pack_end(GTK_BOX(main_box), self->btDevList, FALSE, FALSE, 0);
+
+  gtk_widget_show_all(main_box);
+
+  gtk_widget_set_size_request(self->btPopOverMenu, 400, 200);
+  gtk_widget_set_margin_top(self->btDevList, 20);
+  gtk_widget_set_margin_top(main_box, 5);
+  gtk_widget_set_margin_bottom(main_box, 5);
+  gtk_widget_set_margin_start(main_box, 10);
+  gtk_widget_set_margin_end(main_box, 10);
 
   g_signal_connect(bt_img, "enter", G_CALLBACK(showBTMenu), self);
-  // g_signal_connect(self->btPopOverMenu, "closed", G_CALLBACK(hideBTMenu),
-  // self);
+  // g_signal_connect(self->btPopOverMenu, "leave-notify-event",
+  // G_CALLBACK(hideBTMenu),
+  //                  self);
 
   gtk_box_pack_start(GTK_BOX(box), bt_img, FALSE, FALSE, 0);
+}
+
+void MainWindow::handleDiscovery(GtkWidget *widget, gpointer user_data) {
+  MainWindow *self = static_cast<MainWindow *>(user_data);
+  
+
+  if (self->btManager.discovering) {
+    self->btManager.switchDiscovery(false);
+    gtk_button_set_label(GTK_BUTTON(self->btScanBtn), "Scan");
+  } else {
+    if (self->btManager.switchDiscovery(true) == 0) {
+        updateBTList(self);
+    }
+    gtk_button_set_label(GTK_BUTTON(self->btScanBtn), "Stop");
+  }
+}
+
+void MainWindow::handlePower(GtkWidget *widget, gpointer user_data) {
+  MainWindow *self = static_cast<MainWindow *>(user_data);
+
+  gboolean active = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+  self->btManager.switchPower(active);
 }

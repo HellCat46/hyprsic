@@ -11,23 +11,20 @@ BluetoothDevice::BluetoothDevice(AppContext *context) {
                                      "org.freedesktop.DBus.ObjectManager",
                                      "GetManagedObjects");
   if (!msg) {
-    std::cerr << "Failed to create a message. " << ctx->dbus.err.message
-              << std::endl;
+    std::cerr << "Failed to create a message." << std::endl;
     return;
   }
 }
 
-int getDeviceList();
-bool printDevicesInfo();
-
 int BluetoothDevice::getDeviceList() {
-    std::cout<<"Fetching Bluetooth Device List..."<<std::endl;
+  std::cout << "Fetching Bluetooth Device List..." << std::endl;
 
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
       ctx->dbus.conn, msg, -1, &(ctx->dbus.err));
-  if (!reply) {
+  if (!reply && dbus_error_is_set(&(ctx->dbus.err))) {
     std::cerr << "Failed to get a reply. " << ctx->dbus.err.message
               << std::endl;
+    dbus_error_free(&ctx->dbus.err);
     return 1;
   }
 

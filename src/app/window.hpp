@@ -12,8 +12,11 @@
 #include "../collectors/sysinfo/sys_load.hpp"
 #include "../collectors/workspaces/hyprland.hpp"
 
+#include "../services/bluetooth.hpp"
+
 class MainWindow {
   GtkApplication *app = nullptr;
+  GtkWidget* window = nullptr;
   AppContext ctx;
   
   Stats stat;
@@ -34,6 +37,9 @@ class MainWindow {
   PlayingNow playing;
   
   BluetoothDevice btInfo;
+  BluetoothManager btManager;
+  GtkWidget* btPowerBtn;
+  GtkWidget* btScanBtn;
   GtkWidget* btPopOverMenu;
   GtkWidget* btDevList;
   
@@ -51,6 +57,8 @@ public:
   static void setupBT(GtkWidget* box, MainWindow* self);
   static void showBTMenu(GtkWidget* widget, gpointer user_data);
   static void hideBTMenu(GtkWidget* widget, gpointer user_data);
-  static void createBTList(MainWindow* self);
+  static void updateBTList(MainWindow* self);
+  static void handleDiscovery(GtkWidget* widget, gpointer user_data);
+  static void handlePower(GtkWidget* widget, gpointer user_data);
   
 };
