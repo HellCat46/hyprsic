@@ -46,7 +46,7 @@ BluetoothManager::BluetoothManager(AppContext *context) {
 
   getDeviceList();
 
-  // signalThread = std::thread(&BluetoothManager::monitorChanges, this);
+  signalThread = std::thread(&BluetoothManager::monitorChanges, this);
 }
 
 int BluetoothManager::switchPower(bool on) {
@@ -338,7 +338,7 @@ void BluetoothManager::monitorChanges() {
 
 int BluetoothManager::getDeviceList() {
   devices.clear();
-  std::cout << "[Info] Fetching Bluetooth Device List..." << std::endl;
+  //std::cout << "[Info] Fetching Bluetooth Device List..." << std::endl;
 
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
       ctx->dbus.conn, devListMsg, -1, &(ctx->dbus.err));
@@ -422,8 +422,8 @@ int BluetoothManager::getDeviceList() {
     dbus_message_iter_next(&entIter);
   }
 
-  std::cout << "[Info] Fetched Bluetooth Device List. Total Devices: "
-            << devices.size() << std::endl;
+  // std::cout << "[Info] Fetched Bluetooth Device List. Total Devices: "
+  //           << devices.size() << std::endl;
 
   return 0;
 }
@@ -572,6 +572,8 @@ void BluetoothManager::setDeviceProps(Device &dev, DBusMessageIter &propsIter) {
     dev.deviceType = value;
   }
 }
+
+
 
 bool BluetoothManager::printDevicesInfo() {
   if (devices.size() == 0)

@@ -184,12 +184,13 @@ void MainWindow::updateBTList(MainWindow *self) {
   g_list_free(children);
 
   self->btManager.getDeviceList();
-  //self->btManager.printDevicesInfo();
+  // self->btManager.printDevicesInfo();
 
   // Known Devices Section
   if (self->btManager.devices.size() > 0) {
     GtkWidget *knownDevtitle = gtk_label_new("Known Devices: ");
-    gtk_box_pack_start(GTK_BOX(self->btDevList), knownDevtitle, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(self->btDevList), knownDevtitle, FALSE, FALSE,
+                       0);
     gtk_widget_show(knownDevtitle);
 
     for (auto [_, device] : self->btManager.devices) {
@@ -203,9 +204,16 @@ void MainWindow::updateBTList(MainWindow *self) {
       if (devLabel.size() > 20) {
         devLabel = devLabel.substr(0, 17) + "...";
       }
+      std::string devTooltip = "Address: " + device.addr;
+      if (device.batteryPer != -1)
+        devTooltip += "\nBattery: " + std::to_string(device.batteryPer) + "%";
+      if (device.rssi != -110)
+        devTooltip +=
+            "\nSignal Strength: " + std::to_string(device.rssi) + " dBm";
 
       GtkWidget *devLabelWid = gtk_label_new(devLabel.c_str());
       gtk_box_pack_start(GTK_BOX(devSection), devLabelWid, FALSE, FALSE, 2);
+      gtk_widget_set_tooltip_text(devLabelWid, devTooltip.c_str());
 
       // Device Unpair Button
       GtkWidget *devUnpairBtn = gtk_button_new_with_label("✖");
@@ -238,17 +246,33 @@ void MainWindow::updateBTList(MainWindow *self) {
                        0);
     gtk_widget_show(availDevtitle);
 
-    // std::cout << "Bluetooth Devices Found: " << self->btManager.devices.size()
+    // std::cout << "Bluetooth Devices Found: " <<
+    // self->btManager.devices.size()
     //           << std::endl;
     for (auto [_, device] : self->btManager.devices) {
       if (device.paired)
         continue; // Improve it later on. Combine both Devices Loops
-      
+
+      GtkWidget *devSection = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
       std::string devLabel =
           device.name.length() > 0 ? device.name : device.addr;
-      GtkWidget *deviceWid = gtk_button_new_with_label(devLabel.c_str());
-      gtk_box_pack_start(GTK_BOX(self->btDevList), deviceWid, FALSE, FALSE, 2);
+      GtkWidget *deviceWid = gtk_label_new(devLabel.c_str());
+      gtk_box_pack_start(GTK_BOX(devSection), deviceWid, FALSE, FALSE, 2);
       gtk_widget_show(deviceWid);
+
+      // Device Connect Button Connect Icon
+      GtkWidget *devConnBtn = gtk_button_new_with_label("");
+      gtk_box_pack_end(GTK_BOX(devSection), devConnBtn, FALSE, FALSE, 2);
+
+      FuncArgs *args = g_new0(FuncArgs, 1);
+      args->devIfacePath = g_strdup(device.path.c_str());
+      args->state = !device.connected;
+      args->ctx = &self->ctx;
+      g_signal_connect(devConnBtn, "clicked",
+                       G_CALLBACK(BluetoothManager::connectDevice), args);
+
+      gtk_box_pack_start(GTK_BOX(self->btDevList), devSection, FALSE, FALSE, 2);
+      gtk_widget_show_all(devSection);
     }
   }
 
@@ -273,6 +297,15 @@ void MainWindow::setupBT(GtkWidget *box, MainWindow *self) {
   GtkWidget *main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   gtk_container_add(GTK_CONTAINER(self->btPopOverMenu), main_box);
 
+  
+  // Navigation Box with Close Button
+  GtkWidget *nav_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  gtk_box_pack_start(GTK_BOX(main_box), nav_box, FALSE, FALSE, 0);
+  gtk_widget_set_margin_bottom(nav_box, 10);
+  GtkWidget *closeBtn = gtk_button_new_with_label("✖");
+  gtk_box_pack_end(GTK_BOX(nav_box), closeBtn, FALSE, FALSE, 0);
+
+  
   // Top Box with Power and Scan Buttons
   GtkWidget *top_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
   gtk_box_pack_start(GTK_BOX(main_box), top_box, FALSE, FALSE, 0);
@@ -302,9 +335,7 @@ void MainWindow::setupBT(GtkWidget *box, MainWindow *self) {
   gtk_widget_set_margin_end(main_box, 10);
 
   g_signal_connect(bt_img, "enter", G_CALLBACK(showBTMenu), self);
-  // g_signal_connect(self->window, "leave-notify-event",
-  // G_CALLBACK(hideBTMenu),
-  //                  self);
+  g_signal_connect(closeBtn, "clicked", G_CALLBACK(hideBTMenu), self);
 
   gtk_box_pack_start(GTK_BOX(box), bt_img, FALSE, FALSE, 0);
 }

@@ -43,7 +43,7 @@ class BluetoothManager {
     
     // Device Operations
     static int connectDevice(GtkWidget *widget, gpointer user_data);
-    static int removeDevice(FuncArgs args);
+    static int removeDevice(GtkWidget *widget, gpointer user_data);
     static int trustDevice(FuncArgs args);
     
     int switchDiscovery(bool on);
