@@ -251,14 +251,16 @@ void MainWindow::setupBT(GtkWidget *box, MainWindow *self) {
   gtk_box_pack_start(GTK_BOX(main_box), top_box, FALSE, FALSE, 0);
 
   self->btPowerBtn = gtk_check_button_new_with_label("Power");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(self->btPowerBtn),
+                               self->btManager.power);
   gtk_box_pack_start(GTK_BOX(top_box), self->btPowerBtn, FALSE, FALSE, 0);
   g_signal_connect(self->btPowerBtn, "clicked", G_CALLBACK(handlePower), self);
-  //self->btManager.switchPower(true);
 
-  self->btScanBtn = gtk_button_new_with_label("Scan");
+  self->btScanBtn =
+      gtk_button_new_with_label(self->btManager.discovering ? "Stop" : "Scan");
   gtk_box_pack_end(GTK_BOX(top_box), self->btScanBtn, FALSE, FALSE, 0);
-  g_signal_connect(self->btScanBtn, "clicked", G_CALLBACK(handleDiscovery), self);
-  //self->btManager.switchDiscovery(false);
+  g_signal_connect(self->btScanBtn, "clicked", G_CALLBACK(handleDiscovery),
+                   self);
 
   self->btDevList = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
   gtk_box_pack_end(GTK_BOX(main_box), self->btDevList, FALSE, FALSE, 0);
@@ -282,22 +284,34 @@ void MainWindow::setupBT(GtkWidget *box, MainWindow *self) {
 
 void MainWindow::handleDiscovery(GtkWidget *widget, gpointer user_data) {
   MainWindow *self = static_cast<MainWindow *>(user_data);
-  
 
   if (self->btManager.discovering) {
-    self->btManager.switchDiscovery(false);
-    gtk_button_set_label(GTK_BUTTON(self->btScanBtn), "Scan");
+    std::cout << "[Info] Stopping Bluetooth Discovery." << std::endl;
+
+    if (self->btManager.switchDiscovery(false) == 0)
+      std::cerr << "[Error] Bluetooth Discovery Stopped." << std::endl;
   } else {
+    std::cout << "[Info] Starting Bluetooth Discovery." << std::endl;
+
     if (self->btManager.switchDiscovery(true) == 0) {
-        updateBTList(self);
+      std::cout << "[Info] Bluetooth Discovery Started." << std::endl;
+      updateBTList(self);
     }
-    gtk_button_set_label(GTK_BUTTON(self->btScanBtn), "Stop");
   }
+
+  gtk_button_set_label(GTK_BUTTON(self->btScanBtn),
+                       self->btManager.discovering ? "Stop" : "Scan");
 }
 
 void MainWindow::handlePower(GtkWidget *widget, gpointer user_data) {
   MainWindow *self = static_cast<MainWindow *>(user_data);
 
   gboolean active = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-  self->btManager.switchPower(active);
+  if (!self->btManager.switchPower(active)) {
+    std::cout << "[Info] Bluetooth Power Switched " << (active ? "ON" : "OFF")
+              << std::endl;
+  }
+
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget),
+                               self->btManager.power);
 }

@@ -12,6 +12,30 @@ BluetoothManager::BluetoothManager(AppContext *context) {
   discovering = false;
   power = true;
 
+  int res = getPropertyVal("Powered");
+  if (res >= 0) {
+    std::cout << "[Info] Initial Bluetooth Power State: "
+              << (res ? "ON" : "OFF") << std::endl;
+    power = res;
+  } else {
+    std::cerr << "[Warning] Unable to get initial Bluetooth Power State. "
+                 "Setting to ON by default."
+              << std::endl;
+    power = true;
+  }
+
+  res = getPropertyVal("Discovering");
+  if (res >= 0) {
+    std::cout << "[Info] Initial Bluetooth Discovery State: "
+              << (res ? "ON" : "OFF") << std::endl;
+    discovering = res;
+  } else {
+    std::cerr << "[Warning] Unable to get initial Bluetooth Discovery State. "
+                 "Setting to OFF by default."
+              << std::endl;
+    discovering = false;
+  }
+
   // signalThread = std::thread(&BluetoothManager::monitorChanges, this);
 }
 
@@ -57,7 +81,6 @@ int BluetoothManager::switchPower(bool on) {
 }
 
 int BluetoothManager::switchDiscovery(bool on) {
-
   DBusMessage *msg = dbus_message_new_method_call(
       "org.bluez", "/org/bluez/hci0", "org.bluez.Adapter1",
       on ? "StartDiscovery" : "StopDiscovery");
@@ -78,8 +101,8 @@ int BluetoothManager::switchDiscovery(bool on) {
 
   dbus_message_unref(msg);
   dbus_message_ref(reply);
-  std::cout << "[INFO] Turning on Bluetooth Discovery." << std::endl;
-  this->discovering = true;
+  std::cout << "[INFO] Turning "<< (on ? "ON" : "OFF") <<" Bluetooth Discovery." << std::endl;
+  this->discovering = on;
 
   return 0;
 }
@@ -370,4 +393,55 @@ int BluetoothManager::getDeviceList() {
 
   std::cout << "[Info] Device Count: " << devices.size() << std::endl;
   return 0;
+}
+
+int BluetoothManager::getPropertyVal(const char *prop) {
+  DBusMessage *msg = dbus_message_new_method_call(
+      "org.bluez", "/org/bluez/hci0", "org.freedesktop.DBus.Properties", "Get");
+  if (!msg) {
+    std::cerr << "[Error] Failed to create a message. " << std::endl;
+    return -1;
+  }
+
+  const char *iface = "org.bluez.Adapter1";
+
+  DBusMessageIter args;
+  dbus_message_iter_init_append(msg, &args);
+  dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &iface);
+  dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &prop);
+
+  DBusMessage *reply = dbus_connection_send_with_reply_and_block(
+      ctx->dbus.conn, msg, -1, &(ctx->dbus.err));
+  if (!reply && dbus_error_is_set(&(ctx->dbus.err))) {
+    std::cerr << "[Error] Failed to get a reply. " << ctx->dbus.err.message
+              << std::endl;
+    dbus_error_free(&ctx->dbus.err);
+    return -1;
+  }
+  dbus_message_unref(msg);
+
+  DBusMessageIter rootIter, variant;
+
+  if (!dbus_message_iter_init(reply, &rootIter)) {
+    std::cout << "[Error] Reply has no arguments!" << std::endl;
+    return -1;
+  }
+
+  if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_VARIANT) {
+    std::cout << "[Error] Argument is not a variant!" << std::endl;
+    return -1;
+  }
+
+  dbus_message_iter_recurse(&rootIter, &variant);
+
+  if (dbus_message_iter_get_arg_type(&variant) == DBUS_TYPE_BOOLEAN) {
+    dbus_bool_t value;
+    dbus_message_iter_get_basic(&variant, &value);
+    return value;
+  } else {
+    std::cout << "[Error] Argument is not a boolean!" << std::endl;
+    return -1;
+  }
+
+  return -1;
 }

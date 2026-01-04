@@ -31,6 +31,7 @@ class BluetoothManager {
 
     void monitorChanges();
 	int setDeviceProps(Device& dev, DBusMessageIter& propsIter);
+	int getPropertyVal(const char* prop);
   public:
     bool discovering, power;
     std::unordered_map<std::string, Device> devices;
