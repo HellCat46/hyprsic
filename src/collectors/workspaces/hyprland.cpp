@@ -69,27 +69,32 @@ void HyprWorkspaces::liveEventListener() {
           std::cerr << "Error while reading the event info" << std::endl;
           continue;
         }
-        // std::cout<<"\n\nEvent Info:\n"<<buffer<<"\n\n"<<std::endl;
+
+        //std::cout << "\n\nEvent Info:\n" << buffer << "\n\n" << std::endl;
         GetWorkspaces();
 
         // Update the String Length Too If Event name is being updated
         if (std::strncmp(buffer, "createworkspace", 15) == 0) {
           char *ptr = std::strstr(buffer, "createworkspacev2>>");
           int wsId = parseWorkspaceId(ptr + 19);
-          
-          std::cout << "Workspace Created: " << wsId << std::endl;
 
-        } else if (std::strncmp(buffer, "destroyworkspace", 16) == 0) {
-          char *ptr = std::strstr(buffer, "destroyworkspacev2>>");
-          int wsId = parseWorkspaceId(ptr + 20);
-          
-          std::cout << "Workspace Deleted: " << wsId << std::endl;
+          std::cout << "Workspace Created: " << wsId << std::endl;
 
         } else if (std::strncmp(buffer, "workspace", 9) == 0) {
           char *ptr = std::strstr(buffer, "workspacev2>>");
           int wsId = parseWorkspaceId(ptr + 13);
           
+          activeWorkspaceId = wsId;
           std::cout << "Active Workspace Changed: " << wsId << std::endl;
+        } else {
+            
+          if (std::strstr(buffer, "destroyworkspace") != nullptr) {
+            char *ptr = std::strstr(buffer, "destroyworkspacev2>>");
+            int wsId = parseWorkspaceId(ptr + 20);
+            
+            workspaces.erase(wsId);
+            std::cout << "Workspace Deleted: " << wsId << std::endl;
+          }
         }
       }
     }
@@ -157,31 +162,8 @@ Json::Value HyprWorkspaces::executeQuery(const std::string &msg,
   return root;
 }
 
-int HyprWorkspaces::GetActiveWorkspace() {
-  std::string err;
-  Json::Value workspaceJson = executeQuery("j/activeworkspace", err);
-  if (workspaceJson == -1) {
-    std::cerr << "[Error] Failed to parse Active Workspace Query Response ("
-              << err << ")" << std::endl;
-    return -1;
-  } else if (workspaceJson == -2) {
-    std::cerr << "[Error] In Active Workspace Query (" << err << ")"
-              << std::endl;
-    return -2;
-  }
 
-  activeWorkspaceId = workspaceJson["id"].asUInt();
-  return activeWorkspaceId;
-}
 
-Workspace HyprWorkspaces::GetActiveWorkspaceInfo() {
-  auto ele = workspaces.find(activeWorkspaceId);
-  if (ele == workspaces.end()) {
-    return Workspace{};
-  } else {
-    return ele->second;
-  }
-}
 
 int HyprWorkspaces::GetWorkspaces() {
   std::string err;

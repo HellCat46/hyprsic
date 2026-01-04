@@ -54,7 +54,7 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
     for (auto workspace : self->hyprWS.workspaces) {
       txt = std::to_string(workspace.first) + " ";
 
-      if (self->hyprWS.GetActiveWorkspace() == workspace.first) {
+      if (self->hyprWS.activeWorkspaceId == workspace.first) {
         txt = "[ " + txt + "]";
       }
 
@@ -120,7 +120,7 @@ gboolean MainWindow::UpdateData(gpointer data) {
     for (auto workspace : self->hyprWS.workspaces) {
       txt = std::to_string(workspace.first) + " ";
 
-      if (self->hyprWS.GetActiveWorkspace() == workspace.first) {
+      if (self->hyprWS.activeWorkspaceId == workspace.first) {
         txt = "[ " + txt + "]";
       }
 

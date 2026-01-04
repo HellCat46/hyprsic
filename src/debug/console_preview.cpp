@@ -48,9 +48,9 @@ std::string Display::DisplayBar() {
   str += std::to_string(battery.getTotPercent()) +
          "\t"; //+ "% (" + battery.getStatus() + ")\t";
 
-  if (hyprWS.GetActiveWorkspace() == 0) {
-    Workspace ws = hyprWS.GetActiveWorkspaceInfo();
-    str += "Active WS: " + ws.name + "\t";
+  if (hyprWS.activeWorkspaceId == 0) {
+    auto wsEntry = hyprWS.workspaces.find(hyprWS.activeWorkspaceId);
+    str += "Active WS: " + wsEntry->second.name + "\t";
   }
 
   if (playing.data.out.length() != 0) {

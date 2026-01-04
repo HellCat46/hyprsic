@@ -13,7 +13,7 @@ struct Workspace {
 
 class HyprWorkspaces {
   std::string sockPath;
-  int evtSockfd, activeWorkspaceId;
+  int evtSockfd;
   Json::CharReaderBuilder jsonReader;
 
   int getPath();
@@ -22,9 +22,8 @@ class HyprWorkspaces {
   Json::Value executeQuery(const std::string &, std::string &);
 
 public:
+  int activeWorkspaceId;
   std::map<unsigned int, Workspace> workspaces;
-  int GetActiveWorkspace();
-  Workspace GetActiveWorkspaceInfo();
   int GetWorkspaces();
   int Init();
 
