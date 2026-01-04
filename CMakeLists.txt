@@ -33,7 +33,6 @@ endif()
 set(COLLECTOR_SOURCES 
     src/collectors/workspaces/hyprland.cpp
     src/collectors/sysinfo/battery.cpp
-    src/collectors/bluetooth.cpp
     src/collectors/sysinfo/disk.cpp
     src/collectors/sysinfo/memory.cpp
     src/collectors/sysinfo/network.cpp

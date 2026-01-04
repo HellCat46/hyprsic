@@ -7,7 +7,6 @@
 #include "../collectors/sysinfo/stats.hpp"
 #include "../collectors/sysinfo/battery.hpp"
 #include "../collectors/sysinfo/memory.hpp"
-#include "../collectors/bluetooth.hpp"
 #include "../collectors/playing_now.hpp"
 #include "../collectors/sysinfo/sys_load.hpp"
 #include "../collectors/workspaces/hyprland.hpp"
@@ -36,7 +35,6 @@ class MainWindow {
     
   PlayingNow playing;
   
-  BluetoothDevice btInfo;
   BluetoothManager btManager;
   GtkWidget* btPowerBtn;
   GtkWidget* btScanBtn;

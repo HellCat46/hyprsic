@@ -12,6 +12,14 @@ BluetoothManager::BluetoothManager(AppContext *context) {
   discovering = false;
   power = true;
 
+  devListMsg = dbus_message_new_method_call(
+      "org.bluez", "/", "org.freedesktop.DBus.ObjectManager",
+      "GetManagedObjects");
+  if (!devListMsg) {
+    std::cerr << "Failed to create a message." << std::endl;
+    return;
+  }
+
   int res = getPropertyVal("Powered");
   if (res >= 0) {
     std::cout << "[Info] Initial Bluetooth Power State: "
@@ -35,6 +43,8 @@ BluetoothManager::BluetoothManager(AppContext *context) {
               << std::endl;
     discovering = false;
   }
+
+  getDeviceList();
 
   // signalThread = std::thread(&BluetoothManager::monitorChanges, this);
 }
@@ -101,7 +111,8 @@ int BluetoothManager::switchDiscovery(bool on) {
 
   dbus_message_unref(msg);
   dbus_message_ref(reply);
-  std::cout << "[INFO] Turning "<< (on ? "ON" : "OFF") <<" Bluetooth Discovery." << std::endl;
+  std::cout << "[INFO] Turning " << (on ? "ON" : "OFF")
+            << " Bluetooth Discovery." << std::endl;
   this->discovering = on;
 
   return 0;
@@ -222,10 +233,8 @@ void BluetoothManager::monitorChanges() {
       dbus_message_iter_next(&devIter);
       dbus_message_iter_recurse(&devIter, &propsIter);
 
-      Device dev{"", "", "", -110, DeviceType::Unknown, false, false};
-      if (setDeviceProps(dev, propsIter) != 0) {
-        continue;
-      }
+      Device dev{"", "", path, "", -110, false, false, false, false, -1};
+      setDeviceProps(dev, propsIter);
 
       devices.insert({path, dev});
       std::cout << "[Info] Added Device to Device List. Total Devices: "
@@ -250,7 +259,6 @@ void BluetoothManager::monitorChanges() {
         std::cerr << "[Warning] Unable to find Device in Device List. Skipping."
                   << std::endl;
       }
-
     } else if (dbus_message_is_signal(msg, "org.freedesktop.DBus.Properties",
                                       "PropertiesChanged")) {
       std::cout << "[Info] Received PropertiesChanged Signal" << std::endl;
@@ -261,10 +269,20 @@ void BluetoothManager::monitorChanges() {
       std::cout << "[Debug] PropertiesChanged Signal Path: " << path
                 << std::endl;
 
-      auto dev = devices.find(path);
+      char addr[18];
+      for (int i = 0; i < 17; i++) {
+        if (path[20 + i] == '_')
+          addr[i] = ':';
+        else
+          addr[i] = path[20 + i];
+      }
+      addr[17] = '\0';
+      // std::cout<<"[Debug] Parsed Address from Path: " << addr << std::endl;
+
+      auto dev = devices.find(addr);
       if (dev == devices.end()) {
         std::cerr << "[Error] Unable to find Device in Device List. Skipping."
-                  << std::endl;
+                  << addr << std::endl;
         continue;
       }
 
@@ -301,16 +319,14 @@ void BluetoothManager::monitorChanges() {
         continue;
       }
 
-      if (setDeviceProps(dev->second, entIter) != 0) {
-        devices.erase(dev);
-        std::cout << "[Info] Removed Device from Device List as It is now "
-                     "connected. Total Devices: "
-                  << devices.size() << std::endl;
-        continue;
-      }
+      Device newDevData{"", "", "", "", -110, false, false, false, false, -1};
+      setDeviceProps(newDevData, entIter);
+      devices.insert({dev->first, newDevData});
 
       std::cout << "[Info] Updated Device Properties. Total Devices: "
                 << devices.size() << std::endl;
+
+      getDeviceList();
     } else {
       std::cerr << "[Info] Received Unknown Signal" << std::endl;
     }
@@ -320,78 +336,95 @@ void BluetoothManager::monitorChanges() {
   return;
 }
 
-int BluetoothManager::setDeviceProps(Device &dev, DBusMessageIter &propsIter) {
-  std::string props[] = {"Adapter", "Address", "Connected",
-                         "Paired",  "RSSI",    "Trusted"};
-  DBusMessageIter values[6];
-  DbusUtils::getProperties(propsIter, props, 6, values);
-
-  // Check whether Device is already connected
-  if (props[2][0] == ' ' &&
-      dbus_message_iter_get_arg_type(&values[2]) == DBUS_TYPE_BOOLEAN) {
-    dbus_bool_t value;
-    dbus_message_iter_get_basic(&values[2], &value);
-    if (value)
-      return 1;
-  }
-
-  // For Adapter Path
-  if (props[0][0] == ' ' &&
-      dbus_message_iter_get_arg_type(&values[0]) == DBUS_TYPE_OBJECT_PATH) {
-    char *value;
-    dbus_message_iter_get_basic(&values[0], &value);
-    dev.adapter = value;
-  }
-
-  // For Address
-  if (props[1][0] == ' ' &&
-      dbus_message_iter_get_arg_type(&values[1]) == DBUS_TYPE_STRING) {
-    char *value;
-    dbus_message_iter_get_basic(&values[1], &value);
-    dev.address = value;
-  }
-
-  // For Paired
-  if (props[3][0] == ' ' &&
-      dbus_message_iter_get_arg_type(&values[3]) == DBUS_TYPE_BOOLEAN) {
-    dbus_bool_t value;
-    dbus_message_iter_get_basic(&values[3], &value);
-    dev.paired = value;
-  }
-
-  // For RSSI
-  if (props[4][0] == ' ' &&
-      dbus_message_iter_get_arg_type(&values[4]) == DBUS_TYPE_INT16) {
-    dbus_int16_t value;
-    dbus_message_iter_get_basic(&values[4], &value);
-    dev.rssi = value;
-  }
-
-  // For Trusted
-  if (props[5][0] == ' ' &&
-      dbus_message_iter_get_arg_type(&values[5]) == DBUS_TYPE_BOOLEAN) {
-    dbus_bool_t value;
-    dbus_message_iter_get_basic(&values[5], &value);
-    dev.trusted = value;
-  }
-  return 0;
-}
-
 int BluetoothManager::getDeviceList() {
-  if (devices.size() == 0)
-    return 1;
+  devices.clear();
+  std::cout << "[Info] Fetching Bluetooth Device List..." << std::endl;
 
-  for (auto &[_, value] : devices) {
-    std::cout << "Device: " << std::endl;
-    std::cout << "\t" << value.name << std::endl;
-    std::cout << "\t" << value.address << std::endl;
-    std::cout << "\t" << value.adapter << std::endl;
-    std::cout << "\t" << value.paired << std::endl;
-    std::cout << "\t" << value.trusted << std::endl;
-    std::cout << "\t" << value.rssi << std::endl;
+  DBusMessage *reply = dbus_connection_send_with_reply_and_block(
+      ctx->dbus.conn, devListMsg, -1, &(ctx->dbus.err));
+  if (!reply && dbus_error_is_set(&(ctx->dbus.err))) {
+    std::cerr << "Failed to get a reply. " << ctx->dbus.err.message
+              << std::endl;
+    dbus_error_free(&ctx->dbus.err);
+    return 1;
   }
 
-  std::cout << "[Info] Device Count: " << devices.size() << std::endl;
+  DBusMessageIter rootIter, entIter;
+  dbus_message_iter_init(reply, &rootIter);
+
+  if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_ARRAY) {
+    std::cerr << "No Device Connected" << std::endl;
+    return -1;
+  }
+
+  dbus_message_iter_recurse(&rootIter, &entIter);
+
+  while (dbus_message_iter_get_arg_type(&entIter) == DBUS_TYPE_DICT_ENTRY) {
+    DBusMessageIter entry, ifaceIter;
+    char *objPath;
+
+    dbus_message_iter_recurse(&entIter, &entry);
+    dbus_message_iter_get_basic(&entry, &objPath);
+
+    // Skip every entry (including endpoint and transport) except the actual
+    // device
+    if (!(std::strlen(objPath) == 37 &&
+          std::strncmp(objPath, "/org/bluez/hci0/dev", 19) == 0)) {
+      dbus_message_iter_next(&entIter);
+      continue;
+    }
+
+    dbus_message_iter_next(&entry);
+    dbus_message_iter_recurse(&entry, &ifaceIter);
+
+    Device deviceInfo{"",    "",    objPath, "",    -110,
+                      false, false, false, false, -1};
+
+    while (dbus_message_iter_get_arg_type(&ifaceIter) == DBUS_TYPE_DICT_ENTRY) {
+      DBusMessageIter ifaceEntry, propsIter;
+      char *ifaceName;
+
+      dbus_message_iter_recurse(&ifaceIter, &ifaceEntry);
+      dbus_message_iter_get_basic(&ifaceEntry, &ifaceName);
+
+      dbus_message_iter_next(&ifaceEntry);
+      dbus_message_iter_recurse(&ifaceEntry, &propsIter);
+
+      if (std::strcmp(ifaceName, "org.bluez.Device1") == 0) {
+        setDeviceProps(deviceInfo, propsIter);
+      } else if (std::strcmp(ifaceName, "org.bluez.Battery1") == 0) {
+        std::string properties[] = {"Percentage"};
+        DBusMessageIter values[1];
+        DbusUtils::getProperties(propsIter, properties, 1, values);
+
+        if (dbus_message_iter_get_arg_type(&values[0]) == DBUS_TYPE_BYTE) {
+          int value;
+          dbus_message_iter_get_basic(&values[0], &value);
+          deviceInfo.batteryPer = value;
+        }
+      } else if (std::strcmp(ifaceName, "org.bluez.MediaControl1") == 0) {
+        std::string properties[] = {"Connected"};
+        DBusMessageIter values[1];
+        DbusUtils::getProperties(propsIter, properties, 1, values);
+
+        // For Connected
+        if (dbus_message_iter_get_arg_type(&values[0]) == DBUS_TYPE_BOOLEAN) {
+          dbus_bool_t value;
+          dbus_message_iter_get_basic(&values[0], &value);
+          deviceInfo.mediaConnected = value;
+        }
+      }
+
+      dbus_message_iter_next(&ifaceIter);
+    }
+
+    devices.insert({deviceInfo.addr, deviceInfo});
+    dbus_message_iter_next(&entIter);
+  }
+
+  std::cout << "[Info] Fetched Bluetooth Device List. Total Devices: "
+            << devices.size() << std::endl;
+
   return 0;
 }
 
@@ -444,4 +477,119 @@ int BluetoothManager::getPropertyVal(const char *prop) {
   }
 
   return -1;
+}
+
+int BluetoothManager::connectDevice(GtkWidget *widget, gpointer user_data) {
+  FuncArgs *args = static_cast<FuncArgs *>(user_data);
+  std::cout << "[Info] " << (args->state ? "Connecting" : "Disconnecting")
+            << " to Device: " << args->devIfacePath << std::endl;
+
+  DBusMessage *msg = dbus_message_new_method_call(
+      "org.bluez", args->devIfacePath, "org.bluez.Device1",
+      args->state ? "Connect" : "Disconnect");
+  if (!msg) {
+    std::cerr << "[Error] Failed to create a message. " << std::endl
+              << std::endl;
+    return 1;
+  }
+
+  DBusMessage *reply = dbus_connection_send_with_reply_and_block(
+      args->ctx->dbus.conn, msg, -1, &(args->ctx->dbus.err));
+  if (!reply && dbus_error_is_set(&(args->ctx->dbus.err))) {
+    std::cerr << "[Error] Failed to get a reply. "
+              << args->ctx->dbus.err.message << std::endl;
+    dbus_error_free(&args->ctx->dbus.err);
+    return 1;
+  }
+
+  dbus_message_unref(msg);
+  dbus_message_ref(reply);
+  std::cout << "[INFO]" << (args->state ? "Connected" : "Disconnected")
+            << " to Device: " << args->devIfacePath << std::endl;
+
+  return 0;
+}
+
+void BluetoothManager::setDeviceProps(Device &dev, DBusMessageIter &propsIter) {
+  std::string props[] = {"Name", "Address", "Connected", "Paired",
+                         "RSSI", "Trusted", "Icon"};
+  DBusMessageIter values[7];
+  DbusUtils::getProperties(propsIter, props, 7, values);
+
+  // For Connected 
+  if (props[2][0] == ' ' &&
+      dbus_message_iter_get_arg_type(&values[2]) == DBUS_TYPE_BOOLEAN) {
+    dbus_bool_t value;
+    dbus_message_iter_get_basic(&values[2], &value);
+    dev.connected = value;
+  }
+
+  // For Device Name (Alias)
+  if (props[0][0] == ' ' &&
+      dbus_message_iter_get_arg_type(&values[0]) == DBUS_TYPE_STRING) {
+    char *value;
+    dbus_message_iter_get_basic(&values[0], &value);
+    dev.name = value;
+  }
+
+  // For Address
+  if (props[1][0] == ' ' &&
+      dbus_message_iter_get_arg_type(&values[1]) == DBUS_TYPE_STRING) {
+    char *value;
+    dbus_message_iter_get_basic(&values[1], &value);
+    dev.addr = value;
+  }
+
+  // For Paired
+  if (props[3][0] == ' ' &&
+      dbus_message_iter_get_arg_type(&values[3]) == DBUS_TYPE_BOOLEAN) {
+    dbus_bool_t value;
+    dbus_message_iter_get_basic(&values[3], &value);
+    dev.paired = value;
+  }
+
+  // For RSSI
+  if (props[4][0] == ' ' &&
+      dbus_message_iter_get_arg_type(&values[4]) == DBUS_TYPE_INT16) {
+    dbus_int16_t value;
+    dbus_message_iter_get_basic(&values[4], &value);
+    dev.rssi = value;
+  }
+
+  // For Trusted
+  if (props[5][0] == ' ' &&
+      dbus_message_iter_get_arg_type(&values[5]) == DBUS_TYPE_BOOLEAN) {
+    dbus_bool_t value;
+    dbus_message_iter_get_basic(&values[5], &value);
+    dev.trusted = value;
+  }
+
+  // For Device Icon/Type
+  if (props[6][0] == ' ' &&
+      dbus_message_iter_get_arg_type(&values[1]) == DBUS_TYPE_STRING) {
+    char *value;
+    dbus_message_iter_get_basic(&values[1], &value);
+    dev.deviceType = value;
+  }
+}
+
+bool BluetoothManager::printDevicesInfo() {
+  if (devices.size() == 0)
+    return false;
+
+  for (auto [_, device] : devices) {
+    std::cout << "Device: " << std::endl;
+
+    std::cout << "\t" << device.name << std::endl;
+    std::cout << "\t" << device.addr << std::endl;
+    std::cout << "\t" << device.path << std::endl;
+    std::cout << "\t" << device.rssi << std::endl;
+    std::cout << "\t" << device.paired << std::endl;
+    std::cout << "\t" << device.trusted << std::endl;
+    std::cout << "\t" << device.deviceType << std::endl;
+    std::cout << "\t" << device.connected << std::endl;
+    std::cout << "\t" << device.mediaConnected << std::endl;
+    std::cout << "\t" << device.batteryPer << std::endl;
+  }
+  return true;
 }

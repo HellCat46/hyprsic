@@ -1,48 +1,55 @@
 #pragma once
 
 #include "cstring"
+#include "dbus/dbus.h"
+#include "gtk/gtk.h"
 #include "thread"
 #include "string"
 #include "../app/context.hpp"
 #include "unordered_map"
-
-
-enum DeviceType {
-  Speaker,
-  Microphone,
-  Headphone,
-  Phone,
-  Unknown
-};
+#include <string>
+#include <unordered_map>
 
 
 struct Device {
-  std::string address, adapter, name;
+  std::string addr, name, path, deviceType;
   short rssi;
-  DeviceType device;
-  bool paired, trusted;
+  bool paired, trusted, connected, mediaConnected;
+  short batteryPer;
 };
 
+
+struct FuncArgs {
+  AppContext* ctx;
+  char* devIfacePath;
+  bool state;
+};
 
 class BluetoothManager {
   private:
     AppContext* ctx;
+    DBusMessage* devListMsg;
   	std::thread signalThread;
 
     void monitorChanges();
-	int setDeviceProps(Device& dev, DBusMessageIter& propsIter);
+	void setDeviceProps(Device& dev, DBusMessageIter& propsIter);
 	int getPropertyVal(const char* prop);
   public:
     bool discovering, power;
     std::unordered_map<std::string, Device> devices;
     
     int getDeviceList();
-    int connectDevice();
-    int disconnectDevice();
-    int removeDevice();
+    bool printDevicesInfo();
+    
+    // Device Operations
+    static int connectDevice(GtkWidget *widget, gpointer user_data);
+    static int removeDevice(FuncArgs args);
+    static int trustDevice(FuncArgs args);
     
     int switchDiscovery(bool on);
     int switchPower(bool on);
 
     BluetoothManager(AppContext* context);
 };
+
+

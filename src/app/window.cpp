@@ -9,12 +9,7 @@
 #include <iostream>
 #include <string>
 
-typedef struct {
-  GtkWidget *time_label;
-  GtkWidget *date_label;
-} AppData;
-
-MainWindow::MainWindow() : btInfo(&ctx), btManager(&ctx) {
+MainWindow::MainWindow() : btManager(&ctx) {
   load.Init();
   mem.Init();
   battery.Init();
@@ -167,7 +162,9 @@ gboolean MainWindow::UpdateData(gpointer data) {
 
   self->stat.UpdateData();
 
-  return TRUE;
+  updateBTList(self);
+
+  return true;
 }
 
 void MainWindow::showBTMenu(GtkWidget *widget, gpointer user_data) {
@@ -186,39 +183,69 @@ void MainWindow::updateBTList(MainWindow *self) {
   }
   g_list_free(children);
 
-  self->btInfo.getDeviceList();
+  self->btManager.getDeviceList();
+  //self->btManager.printDevicesInfo();
 
-  // Connected Devices Section
-  if (self->btInfo.connectedDev.size() > 0) {
-    GtkWidget *connDevtitle = gtk_label_new("Connnected Devices: ");
-    gtk_box_pack_start(GTK_BOX(self->btDevList), connDevtitle, FALSE, FALSE, 0);
-    gtk_widget_show(connDevtitle);
+  // Known Devices Section
+  if (self->btManager.devices.size() > 0) {
+    GtkWidget *knownDevtitle = gtk_label_new("Known Devices: ");
+    gtk_box_pack_start(GTK_BOX(self->btDevList), knownDevtitle, FALSE, FALSE, 0);
+    gtk_widget_show(knownDevtitle);
 
-    std::cout << "Bluetooth Devices Found: " << self->btInfo.connectedDev.size()
-              << std::endl;
-    for (auto [_, device] : self->btInfo.connectedDev) {
+    for (auto [_, device] : self->btManager.devices) {
+      if (!device.paired)
+        continue; // Improve it later on. Combine both Devices Loops
+      GtkWidget *devSection = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+
+      // Device Label
       std::string devLabel =
           device.name.length() > 0 ? device.name : device.addr;
+      if (devLabel.size() > 20) {
+        devLabel = devLabel.substr(0, 17) + "...";
+      }
 
-      GtkWidget *deviceWid = gtk_button_new_with_label(devLabel.c_str());
-      gtk_box_pack_start(GTK_BOX(self->btDevList), deviceWid, FALSE, FALSE, 2);
-      gtk_widget_show(deviceWid);
+      GtkWidget *devLabelWid = gtk_label_new(devLabel.c_str());
+      gtk_box_pack_start(GTK_BOX(devSection), devLabelWid, FALSE, FALSE, 2);
+
+      // Device Unpair Button
+      GtkWidget *devUnpairBtn = gtk_button_new_with_label("✖");
+      gtk_box_pack_end(GTK_BOX(devSection), devUnpairBtn, FALSE, FALSE, 2);
+
+      // Device Trust Button
+      GtkWidget *devTrustBtn = gtk_button_new_with_label("");
+      gtk_box_pack_end(GTK_BOX(devSection), devTrustBtn, FALSE, FALSE, 2);
+
+      // Device Connect Button Connect Icon
+      GtkWidget *devConnBtn = gtk_button_new_with_label("");
+      gtk_box_pack_end(GTK_BOX(devSection), devConnBtn, FALSE, FALSE, 2);
+
+      FuncArgs *args = g_new0(FuncArgs, 1);
+      args->devIfacePath = g_strdup(device.path.c_str());
+      args->state = !device.connected;
+      args->ctx = &self->ctx;
+      g_signal_connect(devConnBtn, "clicked",
+                       G_CALLBACK(BluetoothManager::connectDevice), args);
+
+      gtk_box_pack_start(GTK_BOX(self->btDevList), devSection, FALSE, FALSE, 2);
+      gtk_widget_show_all(devSection);
     }
   }
 
   // Available Devices Section
-  if (self->btInfo.availDev.size() > 0) {
+  if (self->btManager.devices.size() > 0) {
     GtkWidget *availDevtitle = gtk_label_new("Available Devices: ");
     gtk_box_pack_start(GTK_BOX(self->btDevList), availDevtitle, FALSE, FALSE,
                        0);
     gtk_widget_show(availDevtitle);
 
-    std::cout << "Bluetooth Devices Found: " << self->btInfo.availDev.size()
-              << std::endl;
-    for (auto [_, device] : self->btInfo.availDev) {
+    // std::cout << "Bluetooth Devices Found: " << self->btManager.devices.size()
+    //           << std::endl;
+    for (auto [_, device] : self->btManager.devices) {
+      if (device.paired)
+        continue; // Improve it later on. Combine both Devices Loops
+      
       std::string devLabel =
           device.name.length() > 0 ? device.name : device.addr;
-
       GtkWidget *deviceWid = gtk_button_new_with_label(devLabel.c_str());
       gtk_box_pack_start(GTK_BOX(self->btDevList), deviceWid, FALSE, FALSE, 2);
       gtk_widget_show(deviceWid);
@@ -263,7 +290,7 @@ void MainWindow::setupBT(GtkWidget *box, MainWindow *self) {
                    self);
 
   self->btDevList = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-  gtk_box_pack_end(GTK_BOX(main_box), self->btDevList, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(main_box), self->btDevList, FALSE, FALSE, 0);
 
   gtk_widget_show_all(main_box);
 
@@ -275,7 +302,7 @@ void MainWindow::setupBT(GtkWidget *box, MainWindow *self) {
   gtk_widget_set_margin_end(main_box, 10);
 
   g_signal_connect(bt_img, "enter", G_CALLBACK(showBTMenu), self);
-  // g_signal_connect(self->btPopOverMenu, "leave-notify-event",
+  // g_signal_connect(self->window, "leave-notify-event",
   // G_CALLBACK(hideBTMenu),
   //                  self);
 
