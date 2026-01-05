@@ -50,19 +50,7 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
   gtk_box_pack_start(GTK_BOX(main_box), self->workspaceSecWid, FALSE, FALSE, 5);
 
   // Update Workspaces Info
-  if (!self->hyprWS.GetWorkspaces()) {
-    for (auto workspace : self->hyprWS.workspaces) {
-      txt = std::to_string(workspace.first) + " ";
-
-      if (self->hyprWS.activeWorkspaceId == workspace.first) {
-        txt = "[ " + txt + "]";
-      }
-
-      GtkWidget *wsLabel = gtk_label_new(txt.c_str());
-      gtk_box_pack_start(GTK_BOX(self->workspaceSecWid), wsLabel, FALSE, FALSE,
-                         0);
-    }
-  }
+  self->setupWorkspaces();
 
   // Right Box to Show System Stats
   GtkWidget *right_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
@@ -108,28 +96,8 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
 gboolean MainWindow::UpdateData(gpointer data) {
   MainWindow *self = static_cast<MainWindow *>(data);
   std::string txt = "";
-
-  if (!self->hyprWS.GetWorkspaces()) {
-    GList *child =
-        gtk_container_get_children(GTK_CONTAINER(self->workspaceSecWid));
-    for (GList *iter = child; iter != NULL; iter = iter->next) {
-      gtk_widget_destroy(GTK_WIDGET(iter->data));
-    }
-    g_list_free(child);
-
-    for (auto workspace : self->hyprWS.workspaces) {
-      txt = std::to_string(workspace.first) + " ";
-
-      if (self->hyprWS.activeWorkspaceId == workspace.first) {
-        txt = "[ " + txt + "]";
-      }
-
-      GtkWidget *wsLabel = gtk_label_new(txt.c_str());
-      gtk_box_pack_start(GTK_BOX(self->workspaceSecWid), wsLabel, FALSE, FALSE,
-                         0);
-    }
-    gtk_widget_show_all(self->workspaceSecWid);
-  }
+  
+  self->setupWorkspaces();
 
   // Update Network Usage
   txt = "⬇" + self->stat.GetNetRx() + "⬆" + self->stat.GetNetTx();
@@ -340,6 +308,7 @@ void MainWindow::setupBT(GtkWidget *box, MainWindow *self) {
   gtk_box_pack_start(GTK_BOX(box), bt_img, FALSE, FALSE, 0);
 }
 
+
 void MainWindow::handleDiscovery(GtkWidget *widget, gpointer user_data) {
   MainWindow *self = static_cast<MainWindow *>(user_data);
 
@@ -361,6 +330,7 @@ void MainWindow::handleDiscovery(GtkWidget *widget, gpointer user_data) {
                        self->btManager.discovering ? "Stop" : "Scan");
 }
 
+
 void MainWindow::handlePower(GtkWidget *widget, gpointer user_data) {
   MainWindow *self = static_cast<MainWindow *>(user_data);
 
@@ -372,4 +342,48 @@ void MainWindow::handlePower(GtkWidget *widget, gpointer user_data) {
 
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget),
                                self->btManager.power);
+}
+
+
+void MainWindow::setupWorkspaces() {
+    std::string txt = ""; 
+    if (!this->hyprWS.GetWorkspaces()) {
+      GList *child =
+          gtk_container_get_children(GTK_CONTAINER(this->workspaceSecWid));
+      for (GList *iter = child; iter != NULL; iter = iter->next) {
+        gtk_widget_destroy(GTK_WIDGET(iter->data));
+      }
+      g_list_free(child);
+  
+      for (auto workspace : this->hyprWS.workspaces) {
+        txt = std::to_string(workspace.first) + " ";
+  
+        if (this->hyprWS.activeWorkspaceId == workspace.first) {
+          txt = "[ " + txt + "]";
+        }
+  
+        GtkWidget *evtBox = gtk_event_box_new();
+        GtkWidget *wsLabel = gtk_label_new(txt.c_str());
+        
+        gtk_container_add(GTK_CONTAINER(evtBox), wsLabel);
+        gtk_box_pack_start(GTK_BOX(this->workspaceSecWid), evtBox, FALSE, FALSE,
+                           0);
+    
+        
+        ChgWSArgs* args = g_new0(ChgWSArgs, 1);
+        args->wsInstance = &this->hyprWS;
+        args->wsId = workspace.first;
+       
+        g_signal_connect_data(evtBox, "button-press-event", G_CALLBACK(MainWindow::chgWorkspace), args, (GClosureNotify)g_free, (GConnectFlags)0);
+      }
+      gtk_widget_show_all(this->workspaceSecWid);
+    }
+}
+
+void MainWindow::chgWorkspace(GtkWidget *widget, GdkEvent* e, gpointer user_data){
+    ChgWSArgs* args = static_cast<ChgWSArgs*>(user_data);
+    
+    if(args->wsInstance->SwitchToWorkspace(args->wsInstance, args->wsId) != 0){
+        std::cerr<<"[Error] Failed to Switch Workspace"<<std::endl;
+    }
 }

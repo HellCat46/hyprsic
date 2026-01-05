@@ -26,6 +26,7 @@ public:
   std::map<unsigned int, Workspace> workspaces;
   int GetWorkspaces();
   int Init();
+  static int SwitchToWorkspace(HyprWorkspaces* wsInstance, int wsId);
 
   ~HyprWorkspaces();
 };

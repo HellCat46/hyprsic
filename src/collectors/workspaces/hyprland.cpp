@@ -9,6 +9,8 @@
 #include "thread"
 #include "unistd.h"
 
+
+
 int HyprWorkspaces::Init() {
   if (getPath()) {
     return -1;
@@ -162,7 +164,19 @@ Json::Value HyprWorkspaces::executeQuery(const std::string &msg,
   return root;
 }
 
-
+int HyprWorkspaces::SwitchToWorkspace(HyprWorkspaces* wsInstance, int wsId){
+    if(wsInstance->workspaces.find(wsId) == wsInstance->workspaces.end()){
+        std::cout<<"[Error] Workspace Not Found"<<std::endl;
+        return 1;
+    }
+    
+    std::string err;    
+    if(wsInstance->executeQuery("s/dispatch workspace " + std::to_string(wsId), err) == -2){
+        std::cerr<<"[Error] Failed toerr Switch to Workspace: "<<err<<std::endl;
+        return 1;
+    }
+    return 0;
+}
 
 
 int HyprWorkspaces::GetWorkspaces() {
