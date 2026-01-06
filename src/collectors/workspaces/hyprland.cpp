@@ -9,8 +9,6 @@
 #include "thread"
 #include "unistd.h"
 
-
-
 int HyprWorkspaces::Init() {
   if (getPath()) {
     return -1;
@@ -34,8 +32,6 @@ int HyprWorkspaces::Init() {
   }
 
   GetWorkspaces();
-  liveEventListener();
-
   return 0;
 }
 
@@ -58,8 +54,11 @@ int HyprWorkspaces::getPath() {
   return 0;
 }
 
-void HyprWorkspaces::liveEventListener() {
-  std::thread([&]() {
+void HyprWorkspaces::liveEventListener(
+    std::function<void(HyprWorkspaces *wsInstance, GtkWidget *workspaceBox)>
+        updateFunc,
+    GtkWidget *workspaceBox) {
+  std::thread([this, updateFunc, workspaceBox]() {
     char buffer[1024];
 
     struct pollfd pollConfig[] = {{evtSockfd, POLLIN, POLLRDBAND}};
@@ -72,7 +71,7 @@ void HyprWorkspaces::liveEventListener() {
           continue;
         }
 
-        //std::cout << "\n\nEvent Info:\n" << buffer << "\n\n" << std::endl;
+        // std::cout << "\n\nEvent Info:\n" << buffer << "\n\n" << std::endl;
         GetWorkspaces();
 
         // Update the String Length Too If Event name is being updated
@@ -85,19 +84,21 @@ void HyprWorkspaces::liveEventListener() {
         } else if (std::strncmp(buffer, "workspace", 9) == 0) {
           char *ptr = std::strstr(buffer, "workspacev2>>");
           int wsId = parseWorkspaceId(ptr + 13);
-          
+
           activeWorkspaceId = wsId;
           std::cout << "Active Workspace Changed: " << wsId << std::endl;
         } else {
-            
+
           if (std::strstr(buffer, "destroyworkspace") != nullptr) {
             char *ptr = std::strstr(buffer, "destroyworkspacev2>>");
             int wsId = parseWorkspaceId(ptr + 20);
-            
+
             workspaces.erase(wsId);
             std::cout << "Workspace Deleted: " << wsId << std::endl;
           }
         }
+
+        updateFunc(this, workspaceBox);
       }
     }
   }).detach();
@@ -164,20 +165,21 @@ Json::Value HyprWorkspaces::executeQuery(const std::string &msg,
   return root;
 }
 
-int HyprWorkspaces::SwitchToWorkspace(HyprWorkspaces* wsInstance, int wsId){
-    if(wsInstance->workspaces.find(wsId) == wsInstance->workspaces.end()){
-        std::cout<<"[Error] Workspace Not Found"<<std::endl;
-        return 1;
-    }
-    
-    std::string err;    
-    if(wsInstance->executeQuery("s/dispatch workspace " + std::to_string(wsId), err) == -2){
-        std::cerr<<"[Error] Failed toerr Switch to Workspace: "<<err<<std::endl;
-        return 1;
-    }
-    return 0;
-}
+int HyprWorkspaces::SwitchToWorkspace(HyprWorkspaces *wsInstance, int wsId) {
+  if (wsInstance->workspaces.find(wsId) == wsInstance->workspaces.end()) {
+    std::cout << "[Error] Workspace Not Found" << std::endl;
+    return 1;
+  }
 
+  std::string err;
+  if (wsInstance->executeQuery("s/dispatch workspace " + std::to_string(wsId),
+                               err) == -2) {
+    std::cerr << "[Error] Failed toerr Switch to Workspace: " << err
+              << std::endl;
+    return 1;
+  }
+  return 0;
+}
 
 int HyprWorkspaces::GetWorkspaces() {
   std::string err;
@@ -202,5 +204,16 @@ int HyprWorkspaces::GetWorkspaces() {
     workspaces.insert({wSpace.id, wSpace});
   }
 
+  Json::Value activeWsJson = executeQuery("j/activeworkspace", err);
+  if (activeWsJson == -1) {
+    std::cerr << "[Error] Failed to parse Active Workspace Query Response ("
+              << err << ")" << std::endl;
+    return -1;
+  } else if (activeWsJson == -2) {
+    std::cerr << "[Error] In Active Workspace Query (" << err << ")"
+              << std::endl;
+    return -1;
+  }
+  activeWorkspaceId = activeWsJson["id"].asUInt();
   return 0;
 }

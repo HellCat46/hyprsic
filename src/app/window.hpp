@@ -65,6 +65,6 @@ public:
   static void handlePower(GtkWidget* widget, gpointer user_data);
   
   // UI Hyprland Workspace Functions
-  void setupWorkspaces();
+  static void setupWorkspaces(HyprWorkspaces* wsInstance, GtkWidget* workspaceBox);
   static void chgWorkspace(GtkWidget* widget, GdkEvent* e, gpointer user_data);
 };

@@ -50,7 +50,11 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
   gtk_box_pack_start(GTK_BOX(main_box), self->workspaceSecWid, FALSE, FALSE, 5);
 
   // Update Workspaces Info
-  self->setupWorkspaces();
+  self->setupWorkspaces(&self->hyprWS, self->workspaceSecWid);
+  self->hyprWS.liveEventListener(
+      MainWindow::setupWorkspaces,
+      self->workspaceSecWid);
+
 
   // Right Box to Show System Stats
   GtkWidget *right_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
@@ -96,8 +100,6 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
 gboolean MainWindow::UpdateData(gpointer data) {
   MainWindow *self = static_cast<MainWindow *>(data);
   std::string txt = "";
-  
-  self->setupWorkspaces();
 
   // Update Network Usage
   txt = "⬇" + self->stat.GetNetRx() + "⬆" + self->stat.GetNetTx();
@@ -265,7 +267,6 @@ void MainWindow::setupBT(GtkWidget *box, MainWindow *self) {
   GtkWidget *main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   gtk_container_add(GTK_CONTAINER(self->btPopOverMenu), main_box);
 
-  
   // Navigation Box with Close Button
   GtkWidget *nav_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
   gtk_box_pack_start(GTK_BOX(main_box), nav_box, FALSE, FALSE, 0);
@@ -273,7 +274,6 @@ void MainWindow::setupBT(GtkWidget *box, MainWindow *self) {
   GtkWidget *closeBtn = gtk_button_new_with_label("✖");
   gtk_box_pack_end(GTK_BOX(nav_box), closeBtn, FALSE, FALSE, 0);
 
-  
   // Top Box with Power and Scan Buttons
   GtkWidget *top_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
   gtk_box_pack_start(GTK_BOX(main_box), top_box, FALSE, FALSE, 0);
@@ -308,7 +308,6 @@ void MainWindow::setupBT(GtkWidget *box, MainWindow *self) {
   gtk_box_pack_start(GTK_BOX(box), bt_img, FALSE, FALSE, 0);
 }
 
-
 void MainWindow::handleDiscovery(GtkWidget *widget, gpointer user_data) {
   MainWindow *self = static_cast<MainWindow *>(user_data);
 
@@ -330,7 +329,6 @@ void MainWindow::handleDiscovery(GtkWidget *widget, gpointer user_data) {
                        self->btManager.discovering ? "Stop" : "Scan");
 }
 
-
 void MainWindow::handlePower(GtkWidget *widget, gpointer user_data) {
   MainWindow *self = static_cast<MainWindow *>(user_data);
 
@@ -344,46 +342,46 @@ void MainWindow::handlePower(GtkWidget *widget, gpointer user_data) {
                                self->btManager.power);
 }
 
-
-void MainWindow::setupWorkspaces() {
-    std::string txt = ""; 
-    if (!this->hyprWS.GetWorkspaces()) {
-      GList *child =
-          gtk_container_get_children(GTK_CONTAINER(this->workspaceSecWid));
-      for (GList *iter = child; iter != NULL; iter = iter->next) {
-        gtk_widget_destroy(GTK_WIDGET(iter->data));
-      }
-      g_list_free(child);
-  
-      for (auto workspace : this->hyprWS.workspaces) {
-        txt = std::to_string(workspace.first) + " ";
-  
-        if (this->hyprWS.activeWorkspaceId == workspace.first) {
-          txt = "[ " + txt + "]";
-        }
-  
-        GtkWidget *evtBox = gtk_event_box_new();
-        GtkWidget *wsLabel = gtk_label_new(txt.c_str());
-        
-        gtk_container_add(GTK_CONTAINER(evtBox), wsLabel);
-        gtk_box_pack_start(GTK_BOX(this->workspaceSecWid), evtBox, FALSE, FALSE,
-                           0);
-    
-        
-        ChgWSArgs* args = g_new0(ChgWSArgs, 1);
-        args->wsInstance = &this->hyprWS;
-        args->wsId = workspace.first;
-       
-        g_signal_connect_data(evtBox, "button-press-event", G_CALLBACK(MainWindow::chgWorkspace), args, (GClosureNotify)g_free, (GConnectFlags)0);
-      }
-      gtk_widget_show_all(this->workspaceSecWid);
+void MainWindow::setupWorkspaces(HyprWorkspaces *wsInstance,
+                                 GtkWidget *workspaceBox) {
+  std::string txt = "";
+  if (!wsInstance->GetWorkspaces()) {
+    GList *child = gtk_container_get_children(GTK_CONTAINER(workspaceBox));
+    for (GList *iter = child; iter != NULL; iter = iter->next) {
+      gtk_widget_destroy(GTK_WIDGET(iter->data));
     }
+    g_list_free(child);
+
+    for (auto workspace : wsInstance->workspaces) {
+      txt = std::to_string(workspace.first) + " ";
+
+      if (wsInstance->activeWorkspaceId == workspace.first) {
+        txt = "[ " + txt + "]";
+      }
+
+      GtkWidget *evtBox = gtk_event_box_new();
+      GtkWidget *wsLabel = gtk_label_new(txt.c_str());
+
+      gtk_container_add(GTK_CONTAINER(evtBox), wsLabel);
+      gtk_box_pack_start(GTK_BOX(workspaceBox), evtBox, FALSE, FALSE, 0);
+
+      ChgWSArgs *args = g_new0(ChgWSArgs, 1);
+      args->wsInstance = wsInstance;
+      args->wsId = workspace.first;
+
+      g_signal_connect_data(evtBox, "button-press-event",
+                            G_CALLBACK(MainWindow::chgWorkspace), args,
+                            (GClosureNotify)g_free, (GConnectFlags)0);
+    }
+    gtk_widget_show_all(workspaceBox);
+  }
 }
 
-void MainWindow::chgWorkspace(GtkWidget *widget, GdkEvent* e, gpointer user_data){
-    ChgWSArgs* args = static_cast<ChgWSArgs*>(user_data);
-    
-    if(args->wsInstance->SwitchToWorkspace(args->wsInstance, args->wsId) != 0){
-        std::cerr<<"[Error] Failed to Switch Workspace"<<std::endl;
-    }
+void MainWindow::chgWorkspace(GtkWidget *widget, GdkEvent *e,
+                              gpointer user_data) {
+  ChgWSArgs *args = static_cast<ChgWSArgs *>(user_data);
+
+  if (args->wsInstance->SwitchToWorkspace(args->wsInstance, args->wsId) != 0) {
+    std::cerr << "[Error] Failed to Switch Workspace" << std::endl;
+  }
 }
