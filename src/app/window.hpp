@@ -4,14 +4,15 @@
 #include <gtk-layer-shell.h>
 #include <gtk/gtk.h>
 
-#include "../collectors/sysinfo/stats.hpp"
-#include "../collectors/sysinfo/battery.hpp"
-#include "../collectors/sysinfo/memory.hpp"
-#include "../collectors/playing_now.hpp"
-#include "../collectors/sysinfo/sys_load.hpp"
-#include "../collectors/workspaces/hyprland.hpp"
+#include "../modules/sysinfo/stats.hpp"
+#include "../modules/sysinfo/battery.hpp"
+#include "../modules/sysinfo/memory.hpp"
+#include "../modules/media/playing_now.hpp"
+#include "../modules/sysinfo/sys_load.hpp"
+#include "../modules/workspaces/hyprland.hpp"
+#include "../modules/notifications/notification_manager.hpp"
 
-#include "../services/bluetooth.hpp"
+#include "../modules/bluetooth/bluetooth_manager.hpp"
 
 struct ChgWSArgs {
   HyprWorkspaces* wsInstance;
@@ -45,6 +46,9 @@ class MainWindow {
   GtkWidget* btScanBtn;
   GtkWidget* btPopOverMenu;
   GtkWidget* btDevList;
+
+  NotificationManager notifManager;
+  
   
   
   HyprWorkspaces hyprWS;

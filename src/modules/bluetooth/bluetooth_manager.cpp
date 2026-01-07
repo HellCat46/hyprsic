@@ -1,5 +1,5 @@
-#include "bluetooth.hpp"
-#include "../utils/dbus_utils.hpp"
+#include "bluetooth_manager.hpp"
+#include "../../utils/dbus_utils.hpp"
 #include "cstring"
 #include "dbus/dbus-protocol.h"
 #include "dbus/dbus.h"
@@ -53,8 +53,8 @@ int BluetoothManager::switchPower(bool on) {
   DBusMessage *msg = dbus_message_new_method_call(
       "org.bluez", "/org/bluez/hci0", "org.freedesktop.DBus.Properties", "Set");
   if (!msg) {
-    std::cerr << "[Error] Failed to create a message. " << ctx->dbus.err.message
-              << std::endl;
+    std::cerr << "[Error] Failed to create a message. "
+              << ctx->dbus.sysErr.message << std::endl;
     return 1;
   }
 
@@ -73,11 +73,11 @@ int BluetoothManager::switchPower(bool on) {
   dbus_message_iter_close_container(&args, &subargs);
 
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
-      ctx->dbus.conn, msg, -1, &(ctx->dbus.err));
-  if (!reply && dbus_error_is_set(&(ctx->dbus.err))) {
-    std::cerr << "[Error] Failed to get a reply. " << ctx->dbus.err.message
+      ctx->dbus.sysConn, msg, -1, &(ctx->dbus.sysErr));
+  if (!reply && dbus_error_is_set(&(ctx->dbus.sysErr))) {
+    std::cerr << "[Error] Failed to get a reply. " << ctx->dbus.sysErr.message
               << std::endl;
-    dbus_error_free(&ctx->dbus.err);
+    dbus_error_free(&ctx->dbus.sysErr);
     return 1;
   }
 
@@ -101,11 +101,11 @@ int BluetoothManager::switchDiscovery(bool on) {
   }
 
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
-      ctx->dbus.conn, msg, -1, &(ctx->dbus.err));
-  if (!reply && dbus_error_is_set(&(ctx->dbus.err))) {
-    std::cerr << "[Error] Failed to get a reply. " << ctx->dbus.err.message
+      ctx->dbus.sysConn, msg, -1, &(ctx->dbus.sysErr));
+  if (!reply && dbus_error_is_set(&(ctx->dbus.sysErr))) {
+    std::cerr << "[Error] Failed to get a reply. " << ctx->dbus.sysErr.message
               << std::endl;
-    dbus_error_free(&ctx->dbus.err);
+    dbus_error_free(&ctx->dbus.sysErr);
     return 1;
   }
 
@@ -123,41 +123,41 @@ void BluetoothManager::monitorChanges() {
 
   // Adding Filters to Signals before starting listening to them
   dbus_bus_add_match(
-      ctx->dbus.conn,
+      ctx->dbus.sysConn,
       "type='signal', interface='org.freedesktop.DBus.ObjectManager', "
       "member='InterfacesAdded'",
-      &(ctx->dbus.err));
-  if (dbus_error_is_set(&(ctx->dbus.err))) {
+      &(ctx->dbus.sysErr));
+  if (dbus_error_is_set(&(ctx->dbus.sysErr))) {
     std::cerr << "[Critical Error] Failed to add filter for Signal Member "
                  "InterfaceAdded: "
-              << ctx->dbus.err.message << std::endl;
-    dbus_error_free(&ctx->dbus.err);
+              << ctx->dbus.sysErr.message << std::endl;
+    dbus_error_free(&ctx->dbus.sysErr);
     return;
   }
 
   dbus_bus_add_match(
-      ctx->dbus.conn,
+      ctx->dbus.sysConn,
       "type='signal', interface='org.freedesktop.DBus.ObjectManager', "
       "member='InterfacesRemoved'",
-      &(ctx->dbus.err));
-  if (dbus_error_is_set(&(ctx->dbus.err))) {
+      &(ctx->dbus.sysErr));
+  if (dbus_error_is_set(&(ctx->dbus.sysErr))) {
     std::cerr << "[Critical Error] Failed to add filter for Signal Member "
                  "InterfaceRemoved: "
-              << ctx->dbus.err.message << std::endl;
-    dbus_error_free(&ctx->dbus.err);
+              << ctx->dbus.sysErr.message << std::endl;
+    dbus_error_free(&ctx->dbus.sysErr);
     return;
   }
 
   dbus_bus_add_match(
-      ctx->dbus.conn,
+      ctx->dbus.sysConn,
       "type='signal', interface='org.freedesktop.DBus.Properties', "
       "member='PropertiesChanged'",
-      &(ctx->dbus.err));
-  if (dbus_error_is_set(&(ctx->dbus.err))) {
+      &(ctx->dbus.sysErr));
+  if (dbus_error_is_set(&(ctx->dbus.sysErr))) {
     std::cerr << "[Critical Error] Failed to add filter for Signal Member "
                  "PropertiesChanged: "
-              << ctx->dbus.err.message << std::endl;
-    dbus_error_free(&ctx->dbus.err);
+              << ctx->dbus.sysErr.message << std::endl;
+    dbus_error_free(&ctx->dbus.sysErr);
     return;
   }
   std::cout << "[Info] Successfully Added Filters to Bluez Dbus Signals. "
@@ -167,14 +167,14 @@ void BluetoothManager::monitorChanges() {
   DBusMessage *msg;
   while (true) {
     // Blocks the thread until new message received
-    if (!dbus_connection_read_write(ctx->dbus.conn, 0)) {
+    if (!dbus_connection_read_write(ctx->dbus.sysConn, 0)) {
       std::cerr << "[Critical Error] Connection Closed while Waiting for "
                    "Signal Messages"
                 << std::endl;
       return;
     }
 
-    msg = dbus_connection_pop_message(ctx->dbus.conn);
+    msg = dbus_connection_pop_message(ctx->dbus.sysConn);
     if (!msg) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
       continue;
@@ -338,14 +338,14 @@ void BluetoothManager::monitorChanges() {
 
 int BluetoothManager::getDeviceList() {
   devices.clear();
-  //std::cout << "[Info] Fetching Bluetooth Device List..." << std::endl;
+  // std::cout << "[Info] Fetching Bluetooth Device List..." << std::endl;
 
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
-      ctx->dbus.conn, devListMsg, -1, &(ctx->dbus.err));
-  if (!reply && dbus_error_is_set(&(ctx->dbus.err))) {
-    std::cerr << "Failed to get a reply. " << ctx->dbus.err.message
+      ctx->dbus.sysConn, devListMsg, -1, &(ctx->dbus.sysErr));
+  if (!reply && dbus_error_is_set(&(ctx->dbus.sysErr))) {
+    std::cerr << "Failed to get a reply. " << ctx->dbus.sysErr.message
               << std::endl;
-    dbus_error_free(&ctx->dbus.err);
+    dbus_error_free(&ctx->dbus.sysErr);
     return 1;
   }
 
@@ -378,7 +378,7 @@ int BluetoothManager::getDeviceList() {
     dbus_message_iter_recurse(&entry, &ifaceIter);
 
     Device deviceInfo{"",    "",    objPath, "",    -110,
-                      false, false, false, false, -1};
+                      false, false, false,   false, -1};
 
     while (dbus_message_iter_get_arg_type(&ifaceIter) == DBUS_TYPE_DICT_ENTRY) {
       DBusMessageIter ifaceEntry, propsIter;
@@ -444,11 +444,11 @@ int BluetoothManager::getPropertyVal(const char *prop) {
   dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &prop);
 
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
-      ctx->dbus.conn, msg, -1, &(ctx->dbus.err));
-  if (!reply && dbus_error_is_set(&(ctx->dbus.err))) {
-    std::cerr << "[Error] Failed to get a reply. " << ctx->dbus.err.message
+      ctx->dbus.sysConn, msg, -1, &(ctx->dbus.sysErr));
+  if (!reply && dbus_error_is_set(&(ctx->dbus.sysErr))) {
+    std::cerr << "[Error] Failed to get a reply. " << ctx->dbus.sysErr.message
               << std::endl;
-    dbus_error_free(&ctx->dbus.err);
+    dbus_error_free(&ctx->dbus.sysErr);
     return -1;
   }
   dbus_message_unref(msg);
@@ -494,11 +494,11 @@ int BluetoothManager::connectDevice(GtkWidget *widget, gpointer user_data) {
   }
 
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
-      args->ctx->dbus.conn, msg, -1, &(args->ctx->dbus.err));
-  if (!reply && dbus_error_is_set(&(args->ctx->dbus.err))) {
+      args->ctx->dbus.sysConn, msg, -1, &(args->ctx->dbus.sysErr));
+  if (!reply && dbus_error_is_set(&(args->ctx->dbus.sysErr))) {
     std::cerr << "[Error] Failed to get a reply. "
-              << args->ctx->dbus.err.message << std::endl;
-    dbus_error_free(&args->ctx->dbus.err);
+              << args->ctx->dbus.sysErr.message << std::endl;
+    dbus_error_free(&args->ctx->dbus.sysErr);
     return 1;
   }
 
@@ -516,7 +516,7 @@ void BluetoothManager::setDeviceProps(Device &dev, DBusMessageIter &propsIter) {
   DBusMessageIter values[7];
   DbusUtils::getProperties(propsIter, props, 7, values);
 
-  // For Connected 
+  // For Connected
   if (props[2][0] == ' ' &&
       dbus_message_iter_get_arg_type(&values[2]) == DBUS_TYPE_BOOLEAN) {
     dbus_bool_t value;
@@ -572,8 +572,6 @@ void BluetoothManager::setDeviceProps(Device &dev, DBusMessageIter &propsIter) {
     dev.deviceType = value;
   }
 }
-
-
 
 bool BluetoothManager::printDevicesInfo() {
   if (devices.size() == 0)

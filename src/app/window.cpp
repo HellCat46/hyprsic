@@ -9,7 +9,8 @@
 #include <iostream>
 #include <string>
 
-MainWindow::MainWindow() : btManager(&ctx) {
+MainWindow::MainWindow() : btManager(&ctx), notifManager(&ctx) {
+  //notifManager.captureNotification();
   load.Init();
   mem.Init();
   battery.Init();
@@ -22,7 +23,7 @@ MainWindow::MainWindow() : btManager(&ctx) {
 }
 
 void MainWindow::RunApp() {
-  int status = g_application_run(G_APPLICATION(app), 0, NULL);
+  int status = g_application_run(G_APPLICATION(app), 0, nullptr);
   g_object_unref(app);
 }
 
@@ -39,7 +40,7 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
                        TRUE);
   gtk_layer_set_anchor(GTK_WINDOW(self->window), GTK_LAYER_SHELL_EDGE_RIGHT,
                        TRUE);
-  gtk_layer_set_exclusive_zone(GTK_WINDOW(self->window), 30);
+  gtk_layer_set_exclusive_zone(GTK_WINDOW(self->window), 35);
 
   GtkWidget *main_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_container_add(GTK_CONTAINER(self->window), main_box);
@@ -51,10 +52,8 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
 
   // Update Workspaces Info
   self->setupWorkspaces(&self->hyprWS, self->workspaceSecWid);
-  self->hyprWS.liveEventListener(
-      MainWindow::setupWorkspaces,
-      self->workspaceSecWid);
-
+  self->hyprWS.liveEventListener(MainWindow::setupWorkspaces,
+                                 self->workspaceSecWid);
 
   // Right Box to Show System Stats
   GtkWidget *right_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
@@ -148,7 +147,7 @@ void MainWindow::showBTMenu(GtkWidget *widget, gpointer user_data) {
 void MainWindow::updateBTList(MainWindow *self) {
 
   GList *children = gtk_container_get_children(GTK_CONTAINER(self->btDevList));
-  for (GList *iter = children; iter != NULL; iter = iter->next) {
+  for (GList *iter = children; iter != nullptr; iter = iter->next) {
     gtk_widget_destroy(GTK_WIDGET(iter->data));
   }
   g_list_free(children);
@@ -347,7 +346,7 @@ void MainWindow::setupWorkspaces(HyprWorkspaces *wsInstance,
   std::string txt = "";
   if (!wsInstance->GetWorkspaces()) {
     GList *child = gtk_container_get_children(GTK_CONTAINER(workspaceBox));
-    for (GList *iter = child; iter != NULL; iter = iter->next) {
+    for (GList *iter = child; iter != nullptr; iter = iter->next) {
       gtk_widget_destroy(GTK_WIDGET(iter->data));
     }
     g_list_free(child);

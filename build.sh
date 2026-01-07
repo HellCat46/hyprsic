@@ -24,6 +24,8 @@ cd ..
 printf "\n\n\033[0;32mSuccessfully Built the project. Running the Executable\033[0m\n\n"
 if [ "$1" = "gdb" ]; then
 	gdb build/hyprsic
+elif [ "$1" = "valgrind" ]; then
+    valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose build/hyprsic
 else
 	./build/hyprsic
 fi

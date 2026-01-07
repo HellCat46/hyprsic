@@ -30,23 +30,25 @@ if(ENABLE_NVIDIA_NVML)
 endif()
 
 
-set(COLLECTOR_SOURCES 
-    src/collectors/workspaces/hyprland.cpp
-    src/collectors/sysinfo/battery.cpp
-    src/collectors/sysinfo/disk.cpp
-    src/collectors/sysinfo/memory.cpp
-    src/collectors/sysinfo/network.cpp
-    src/collectors/playing_now.cpp
-    src/collectors/sysinfo/sys_load.cpp
-    src/collectors/sysinfo/stats.cpp
+set(MODULES_SOURCES 
+    src/modules/workspaces/hyprland.cpp
+    src/modules/sysinfo/battery.cpp
+    src/modules/sysinfo/disk.cpp
+    src/modules/sysinfo/memory.cpp
+    src/modules/sysinfo/network.cpp
+    src/modules/media/playing_now.cpp
+    src/modules/sysinfo/sys_load.cpp
+    src/modules/sysinfo/stats.cpp
+    src/modules/bluetooth/bluetooth_manager.cpp
+    src/modules/notifications/notification_manager.cpp
+)
+
+set(DATABASE_SOURCES
+    src/database/db_manager.cpp
 )
 
 set(UTIL_SOURCES
     src/utils/dbus_utils.cpp
-)
-
-set(SERVICE_SOURCES
-    src/services/bluetooth.cpp
 )
 
 set(DEBUG_SOURCES
@@ -68,12 +70,14 @@ include_directories(
         ${GTK_LAYER_SHELL_INCLUDE_DIRS}
 )
 
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/thirdparty/SQLiteCpp)
 
 add_executable(hyprsic
         src/app/main.cpp
         ${APP_SOURCES}
+        ${DATABASE_SOURCES}
         ${DEBUG_SOURCES}
-        ${COLLECTOR_SOURCES}
+        ${MODULES_SOURCES}
         ${UTIL_SOURCES}
         ${SERVICE_SOURCES}
         ${XDG_SOURCES}
@@ -84,6 +88,8 @@ target_sources(hyprsic PRIVATE
 )
 
 target_link_libraries(hyprsic
+        SQLiteCpp
+        sqlite3
         ${JSONCPP_LIBRARIES}
         ${DBUS_LIBRARIES}
         ${LIBPULSE_LIBRARIES}

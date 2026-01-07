@@ -62,6 +62,7 @@ void HyprWorkspaces::liveEventListener(
     char buffer[1024];
 
     struct pollfd pollConfig[] = {{evtSockfd, POLLIN, POLLRDBAND}};
+    bool chngMade = false;
 
     while (true) {
       if (poll(pollConfig, 1, -1) > 0) {
@@ -70,20 +71,24 @@ void HyprWorkspaces::liveEventListener(
           std::cerr << "Error while reading the event info" << std::endl;
           continue;
         }
+        
 
         // std::cout << "\n\nEvent Info:\n" << buffer << "\n\n" << std::endl;
         GetWorkspaces();
+        chngMade = false;
 
         // Update the String Length Too If Event name is being updated
         if (std::strncmp(buffer, "createworkspace", 15) == 0) {
           char *ptr = std::strstr(buffer, "createworkspacev2>>");
           int wsId = parseWorkspaceId(ptr + 19);
+          chngMade = true;
 
           std::cout << "Workspace Created: " << wsId << std::endl;
 
         } else if (std::strncmp(buffer, "workspace", 9) == 0) {
           char *ptr = std::strstr(buffer, "workspacev2>>");
           int wsId = parseWorkspaceId(ptr + 13);
+          chngMade = true;
 
           activeWorkspaceId = wsId;
           std::cout << "Active Workspace Changed: " << wsId << std::endl;
@@ -92,13 +97,14 @@ void HyprWorkspaces::liveEventListener(
           if (std::strstr(buffer, "destroyworkspace") != nullptr) {
             char *ptr = std::strstr(buffer, "destroyworkspacev2>>");
             int wsId = parseWorkspaceId(ptr + 20);
+            chngMade = true;
 
             workspaces.erase(wsId);
             std::cout << "Workspace Deleted: " << wsId << std::endl;
           }
         }
 
-        updateFunc(this, workspaceBox);
+        if(chngMade) updateFunc(this, workspaceBox);
       }
     }
   }).detach();
