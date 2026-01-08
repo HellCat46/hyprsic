@@ -19,11 +19,7 @@ struct Device {
 };
 
 
-struct FuncArgs {
-  AppContext* ctx;
-  char* devIfacePath;
-  bool state;
-};
+
 
 class BluetoothManager {
   private:
@@ -42,9 +38,9 @@ class BluetoothManager {
     bool printDevicesInfo();
     
     // Device Operations
-    static int connectDevice(GtkWidget *widget, gpointer user_data);
-    static int removeDevice(GtkWidget *widget, gpointer user_data);
-    static int trustDevice(FuncArgs args);
+    int connectDevice(bool state, const char* devPath);
+    int removeDevice(bool state, const char* devPath);
+    int trustDevice(bool state, const char* devPath);
     
     int switchDiscovery(bool on);
     int switchPower(bool on);

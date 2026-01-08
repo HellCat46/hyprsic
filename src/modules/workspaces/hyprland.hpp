@@ -6,6 +6,7 @@
 #include "string"
 #include <functional>
 #include <json/reader.h>
+#include <thread>
 
 struct Workspace {
   unsigned int id, monitorId;
@@ -16,10 +17,11 @@ struct Workspace {
 class HyprWorkspaces {
   std::string sockPath;
   int evtSockfd;
+  std::thread eventListenerThread;
   Json::CharReaderBuilder jsonReader;
 
   int getPath();
-  
+
   int parseWorkspaceId(char *);
   Json::Value executeQuery(const std::string &, std::string &);
 

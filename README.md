@@ -25,5 +25,6 @@ jsoncpp
 - [CPP Reference](https://en.cppreference.com/w/)
 - [PulseAudio Async API](https://freedesktop.org/software/pulseaudio/doxygen/async.html)
 - [Dbus-1 Docs](https://dbus.freedesktop.org/doc/api/html/group__DBusBus.html)
+- [Desktop Notification Specs - Linux](https://specifications.freedesktop.org/notification/latest/)
 
 [//]: # (Why were dbus-1 docs so hard to find ;-;)

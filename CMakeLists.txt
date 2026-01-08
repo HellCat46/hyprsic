@@ -39,7 +39,8 @@ set(MODULES_SOURCES
     src/modules/media/playing_now.cpp
     src/modules/sysinfo/sys_load.cpp
     src/modules/sysinfo/stats.cpp
-    src/modules/bluetooth/bluetooth_manager.cpp
+    src/modules/bluetooth/manager.cpp
+    src/modules/bluetooth/module.cpp
     src/modules/notifications/notification_manager.cpp
 )
 

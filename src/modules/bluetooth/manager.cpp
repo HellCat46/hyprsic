@@ -1,4 +1,4 @@
-#include "bluetooth_manager.hpp"
+#include "manager.hpp"
 #include "../../utils/dbus_utils.hpp"
 #include "cstring"
 #include "dbus/dbus-protocol.h"
@@ -479,14 +479,13 @@ int BluetoothManager::getPropertyVal(const char *prop) {
   return -1;
 }
 
-int BluetoothManager::connectDevice(GtkWidget *widget, gpointer user_data) {
-  FuncArgs *args = static_cast<FuncArgs *>(user_data);
-  std::cout << "[Info] " << (args->state ? "Connecting" : "Disconnecting")
-            << " to Device: " << args->devIfacePath << std::endl;
+int BluetoothManager::connectDevice(bool state, const char *devPath) {
+  std::cout << "[Info] " << (state ? "Connecting" : "Disconnecting")
+            << " to Device: " << devPath << std::endl;
 
   DBusMessage *msg = dbus_message_new_method_call(
-      "org.bluez", args->devIfacePath, "org.bluez.Device1",
-      args->state ? "Connect" : "Disconnect");
+      "org.bluez", devPath, "org.bluez.Device1",
+      state ? "Connect" : "Disconnect");
   if (!msg) {
     std::cerr << "[Error] Failed to create a message. " << std::endl
               << std::endl;
@@ -494,18 +493,18 @@ int BluetoothManager::connectDevice(GtkWidget *widget, gpointer user_data) {
   }
 
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
-      args->ctx->dbus.sysConn, msg, -1, &(args->ctx->dbus.sysErr));
-  if (!reply && dbus_error_is_set(&(args->ctx->dbus.sysErr))) {
+      ctx->dbus.sysConn, msg, -1, &(ctx->dbus.sysErr));
+  if (!reply && dbus_error_is_set(&(ctx->dbus.sysErr))) {
     std::cerr << "[Error] Failed to get a reply. "
-              << args->ctx->dbus.sysErr.message << std::endl;
-    dbus_error_free(&args->ctx->dbus.sysErr);
+              << ctx->dbus.sysErr.message << std::endl;
+    dbus_error_free(&ctx->dbus.sysErr);
     return 1;
   }
 
   dbus_message_unref(msg);
   dbus_message_ref(reply);
-  std::cout << "[INFO]" << (args->state ? "Connected" : "Disconnected")
-            << " to Device: " << args->devIfacePath << std::endl;
+  std::cout << "[INFO]" << (state ? "Connected" : "Disconnected")
+            << " to Device: " << devPath << std::endl;
 
   return 0;
 }

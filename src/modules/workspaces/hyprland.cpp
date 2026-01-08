@@ -32,6 +32,7 @@ int HyprWorkspaces::Init() {
   }
 
   GetWorkspaces();
+
   return 0;
 }
 
@@ -58,7 +59,8 @@ void HyprWorkspaces::liveEventListener(
     std::function<void(HyprWorkspaces *wsInstance, GtkWidget *workspaceBox)>
         updateFunc,
     GtkWidget *workspaceBox) {
-  std::thread([this, updateFunc, workspaceBox]() {
+
+  eventListenerThread = std::thread([this, updateFunc, workspaceBox]() {
     char buffer[1024];
 
     struct pollfd pollConfig[] = {{evtSockfd, POLLIN, POLLRDBAND}};
@@ -71,7 +73,6 @@ void HyprWorkspaces::liveEventListener(
           std::cerr << "Error while reading the event info" << std::endl;
           continue;
         }
-        
 
         // std::cout << "\n\nEvent Info:\n" << buffer << "\n\n" << std::endl;
         GetWorkspaces();
@@ -104,10 +105,11 @@ void HyprWorkspaces::liveEventListener(
           }
         }
 
-        if(chngMade) updateFunc(this, workspaceBox);
+        if (chngMade)
+          updateFunc(this, workspaceBox);
       }
     }
-  }).detach();
+  });
 }
 
 int HyprWorkspaces::parseWorkspaceId(char *stPoint) {
