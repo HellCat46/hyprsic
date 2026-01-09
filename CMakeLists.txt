@@ -48,6 +48,10 @@ set(DATABASE_SOURCES
     src/database/db_manager.cpp
 )
 
+set(LOGGING_SOURCES
+    src/logging/manager.cpp
+)
+
 set(UTIL_SOURCES
     src/utils/dbus_utils.cpp
 )
@@ -82,6 +86,7 @@ add_executable(hyprsic
         ${UTIL_SOURCES}
         ${SERVICE_SOURCES}
         ${XDG_SOURCES}
+        ${LOGGING_SOURCES}
 )
 
 target_sources(hyprsic PRIVATE

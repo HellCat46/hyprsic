@@ -7,6 +7,7 @@
 #include <functional>
 #include <json/reader.h>
 #include <thread>
+#include "../../logging/manager.hpp"
 
 struct Workspace {
   unsigned int id, monitorId;
@@ -19,6 +20,7 @@ class HyprWorkspaces {
   int evtSockfd;
   std::thread eventListenerThread;
   Json::CharReaderBuilder jsonReader;
+  LoggingManager *logger;
 
   int getPath();
 
@@ -29,7 +31,7 @@ public:
   int activeWorkspaceId;
   std::map<unsigned int, Workspace> workspaces;
   int GetWorkspaces();
-  int Init();
+  int Init(LoggingManager *logMgr);
   void liveEventListener(std::function<void(HyprWorkspaces* wsInstance, GtkWidget* workspaceBox)> updateFunc, GtkWidget* workspaceBox);
   static int SwitchToWorkspace(HyprWorkspaces* wsInstance, int wsId);
 

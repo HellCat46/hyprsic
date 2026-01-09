@@ -2,19 +2,23 @@
 #include "cstring"
 #include "dirent.h"
 #include "fstream"
-#include "iostream"
 #include "vector"
 
-int Battery::Init(std::string basePath) {
-  std::cout << "[Init Info] Initiating Info Object for Battery "
-            << basePath.substr(basePath.rfind("/") + 1, basePath.size()) << "."
-            << std::endl;
+#define TAG "Battery"
+
+int Battery::Init(std::string basePath, LoggingManager *logMgr) {
+  logger = logMgr;
+  
+  std::string msg = "Initiating Info Object for Battery ";
+  msg += basePath.substr(basePath.rfind("/") + 1, basePath.size());
+  msg += ".";
+  logger->LogInfo(TAG, msg);
+  
   capacity.open(basePath + "/capacity", std::ios::in);
   status.open(basePath + "/status", std::ios::in);
 
   if (!capacity.is_open() || !status.is_open()) {
-    std::cerr << "[Init Error] Failed to Open Files Required for Battery Stats"
-              << std::endl;
+    logger->LogError(TAG, "Failed to Open Files Required for Battery Stats");
 
     failed = 1;
     return 1;
@@ -25,8 +29,7 @@ int Battery::Init(std::string basePath) {
   model.open(basePath + "/model_name", std::ios::in);
 
   if (!manufacturer.is_open() || !model.is_open()) {
-    std::cerr << "[Init Error] Failed to Get Battery Manufacturer or Model Name"
-              << std::endl;
+    logger->LogError(TAG, "Failed to Get Battery Manufacturer or Model Name");
     name = "Unknown";
   } else {
     char in[30];
@@ -36,8 +39,6 @@ int Battery::Init(std::string basePath) {
     name += " (";
     name += in;
     name += ')';
-
-    // std::cout<<name<<std::endl;
 
     model.close();
     manufacturer.close();
@@ -76,7 +77,9 @@ Battery::~Battery() {
   status.close();
 }
 
-int BatteryInfo::Init() {
+int BatteryInfo::Init(LoggingManager *logMgr) {
+  logger = logMgr;
+  
   DIR *dir;
   std::string basePath = "/sys/class/power_supply/";
   char folderStr[] = "BAT";
@@ -99,7 +102,7 @@ int BatteryInfo::Init() {
 
   int idx = 0;
   for (auto batt : battPaths) {
-    batteries[idx++].Init(basePath + batt);
+    batteries[idx++].Init(basePath + batt, logger);
   }
 
   return 0;

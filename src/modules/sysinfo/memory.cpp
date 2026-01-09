@@ -1,12 +1,15 @@
 #include "memory.hpp"
 #include "cstring"
 #include "fstream"
-#include "iostream"
 
-int Memory::Init() {
+#define TAG "Memory"
+
+int Memory::Init(LoggingManager *logMgr) {
+  logger = logMgr;
+
   memInfo.open("/proc/meminfo", std::ios::in);
   if (!memInfo.is_open()) {
-    std::cerr << "[Init] Failed to Open Memory Info";
+    logger->LogError(TAG, "Failed to Open Memory Info");
     return 1;
   }
   return 0;
@@ -42,6 +45,5 @@ long Memory::parseInfo(std::string type) {
   memInfo.clear();
   memInfo.seekg(0);
 
-  // std::cout<<"\n"<<type<<" "<<amt<<std::endl;
   return amt;
 }

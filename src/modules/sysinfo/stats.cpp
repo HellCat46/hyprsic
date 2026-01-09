@@ -2,9 +2,21 @@
 #include <cmath>
 #include <string>
 
+#define TAG "Stats"
+
 Stats::Stats() {
-  net.Init();
-  disk.Init("/");
+  logger = nullptr;
+  rx = 0;
+  tx = 0;
+  diskAvail = 0;
+  diskTotal = 0;
+}
+
+void Stats::Init(LoggingManager *logMgr) {
+  logger = logMgr;
+  
+  net.Init(logger);
+  disk.Init("/", logger);
 
   rx = net.GetTotRx();
   tx = net.GetTotTx();
@@ -48,7 +60,6 @@ std::string Stats::ParseBytes(double bytes, int precision) {
   std::string str;
   precision++;
 
-  // std::cout<<std::fixed<<bytes<<"\t"<<pow(1024,3)<<std::endl;
   if (bytes > pow(1024, 3)) { // GigaBytes
     str = std::to_string(bytes / pow(1024, 3));
     str = str.substr(0, str.find('.') + precision);

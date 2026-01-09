@@ -1,7 +1,6 @@
 #include "hyprland.hpp"
 #include "cstdlib"
 #include "cstring"
-#include "iostream"
 #include "sstream"
 #include "sys/poll.h"
 #include "sys/socket.h"
@@ -9,7 +8,11 @@
 #include "thread"
 #include "unistd.h"
 
-int HyprWorkspaces::Init() {
+#define TAG "HyprWorkspaces"
+
+int HyprWorkspaces::Init(LoggingManager *logMgr) {
+  logger = logMgr;
+  
   if (getPath()) {
     return -1;
   }
@@ -25,9 +28,7 @@ int HyprWorkspaces::Init() {
   strcpy(addr.sun_path, sockPath.c_str());
   sockPath = sockPath.substr(0, sockPath.rfind('/') + 1);
   if (connect(evtSockfd, (sockaddr *)&addr, sizeof(addr)) == -1) {
-    std::cerr << "[Init Error] Unable to Establish Connection with Hyprland "
-                 "Socket UNIX Socket"
-              << std::endl;
+    logger->LogError(TAG, "Unable to Establish Connection with Hyprland Socket UNIX Socket");
     return -2;
   }
 
@@ -41,13 +42,13 @@ HyprWorkspaces::~HyprWorkspaces() { close(evtSockfd); }
 int HyprWorkspaces::getPath() {
   char *runtimeDir = std::getenv("XDG_RUNTIME_DIR");
   if (runtimeDir == nullptr) {
-    std::cerr << "XDG_RUNTIME_DIR is not set" << std::endl;
+    logger->LogError(TAG, "XDG_RUNTIME_DIR is not set");
     return -1;
   }
 
   char *HIS = std::getenv("HYPRLAND_INSTANCE_SIGNATURE");
   if (HIS == nullptr) {
-    std::cerr << "HYPRLAND_INSTANCE_SIGNATURE is not set" << std::endl;
+    logger->LogError(TAG, "HYPRLAND_INSTANCE_SIGNATURE is not set");
     return -2;
   }
 
@@ -70,11 +71,10 @@ void HyprWorkspaces::liveEventListener(
       if (poll(pollConfig, 1, -1) > 0) {
         // Reading The Event Info
         if (read(evtSockfd, buffer, 1024) <= 0) {
-          std::cerr << "Error while reading the event info" << std::endl;
+          logger->LogError(TAG, "Error while reading the event info");
           continue;
         }
 
-        // std::cout << "\n\nEvent Info:\n" << buffer << "\n\n" << std::endl;
         GetWorkspaces();
         chngMade = false;
 
@@ -84,7 +84,9 @@ void HyprWorkspaces::liveEventListener(
           int wsId = parseWorkspaceId(ptr + 19);
           chngMade = true;
 
-          std::cout << "Workspace Created: " << wsId << std::endl;
+          std::string msg = "Workspace Created: ";
+          msg += std::to_string(wsId);
+          logger->LogInfo(TAG, msg);
 
         } else if (std::strncmp(buffer, "workspace", 9) == 0) {
           char *ptr = std::strstr(buffer, "workspacev2>>");
@@ -92,7 +94,9 @@ void HyprWorkspaces::liveEventListener(
           chngMade = true;
 
           activeWorkspaceId = wsId;
-          std::cout << "Active Workspace Changed: " << wsId << std::endl;
+          std::string msg = "Active Workspace Changed: ";
+          msg += std::to_string(wsId);
+          logger->LogInfo(TAG, msg);
         } else {
 
           if (std::strstr(buffer, "destroyworkspace") != nullptr) {
@@ -101,7 +105,9 @@ void HyprWorkspaces::liveEventListener(
             chngMade = true;
 
             workspaces.erase(wsId);
-            std::cout << "Workspace Deleted: " << wsId << std::endl;
+            std::string msg = "Workspace Deleted: ";
+            msg += std::to_string(wsId);
+            logger->LogInfo(TAG, msg);
           }
         }
 
@@ -141,9 +147,7 @@ Json::Value HyprWorkspaces::executeQuery(const std::string &msg,
   strcpy(addr.sun_path, sockPath.c_str());
   sockPath = sockPath.substr(0, sockPath.rfind('/') + 1);
   if (connect(workSockfd, (sockaddr *)&addr, sizeof(addr)) == -1) {
-    std::cerr << "[IPC Connection Error] Unable to Establish Connection with "
-                 "hyprctl UNIX Socket"
-              << std::endl;
+    logger->LogError(TAG, "Unable to Establish Connection with hyprctl UNIX Socket");
     return -1;
   }
 
@@ -158,9 +162,7 @@ Json::Value HyprWorkspaces::executeQuery(const std::string &msg,
 
   // Closing the Connection
   if (close(workSockfd) == -1) {
-    std::cerr << "[IPC Connection Error] Unable to Close Connection with "
-                 "hyprctl UNIX Socket"
-              << std::endl;
+    logger->LogError(TAG, "Unable to Close Connection with hyprctl UNIX Socket");
     return -4;
   }
 
@@ -175,15 +177,16 @@ Json::Value HyprWorkspaces::executeQuery(const std::string &msg,
 
 int HyprWorkspaces::SwitchToWorkspace(HyprWorkspaces *wsInstance, int wsId) {
   if (wsInstance->workspaces.find(wsId) == wsInstance->workspaces.end()) {
-    std::cout << "[Error] Workspace Not Found" << std::endl;
+    wsInstance->logger->LogError(TAG, "Workspace Not Found");
     return 1;
   }
 
   std::string err;
   if (wsInstance->executeQuery("s/dispatch workspace " + std::to_string(wsId),
                                err) == -2) {
-    std::cerr << "[Error] Failed toerr Switch to Workspace: " << err
-              << std::endl;
+    std::string errMsg = "Failed to Switch to Workspace: ";
+    errMsg += err;
+    wsInstance->logger->LogError(TAG, errMsg);
     return 1;
   }
   return 0;
@@ -193,11 +196,16 @@ int HyprWorkspaces::GetWorkspaces() {
   std::string err;
   Json::Value workspacesJson = executeQuery("j/workspaces", err);
   if (workspacesJson == -1) {
-    std::cerr << "[Error] Failed to parse Workspaces Query Response (" << err
-              << ")" << std::endl;
+    std::string errMsg = "Failed to parse Workspaces Query Response (";
+    errMsg += err;
+    errMsg += ")";
+    logger->LogError(TAG, errMsg);
     return -1;
   } else if (workspacesJson == -2) {
-    std::cerr << "[Error] In Workspaces Query (" << err << ")" << std::endl;
+    std::string errMsg = "In Workspaces Query (";
+    errMsg += err;
+    errMsg += ")";
+    logger->LogError(TAG, errMsg);
     return -1;
   }
 
@@ -214,12 +222,16 @@ int HyprWorkspaces::GetWorkspaces() {
 
   Json::Value activeWsJson = executeQuery("j/activeworkspace", err);
   if (activeWsJson == -1) {
-    std::cerr << "[Error] Failed to parse Active Workspace Query Response ("
-              << err << ")" << std::endl;
+    std::string errMsg = "Failed to parse Active Workspace Query Response (";
+    errMsg += err;
+    errMsg += ")";
+    logger->LogError(TAG, errMsg);
     return -1;
   } else if (activeWsJson == -2) {
-    std::cerr << "[Error] In Active Workspace Query (" << err << ")"
-              << std::endl;
+    std::string errMsg = "In Active Workspace Query (";
+    errMsg += err;
+    errMsg += ")";
+    logger->LogError(TAG, errMsg);
     return -1;
   }
   activeWorkspaceId = activeWsJson["id"].asUInt();

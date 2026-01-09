@@ -1,4 +1,5 @@
 #pragma once
+#include "../../logging/manager.hpp"
 #include "string"
 #include <pulse/context.h>
 #include <pulse/introspect.h>
@@ -10,6 +11,7 @@ struct PulseAudioData {
 class PlayingNow {
 private:
   pa_context *pulseContext;
+  LoggingManager *logger;
   static void contextStateHandler(pa_context *, void *);
   static void handleStateChanges(pa_context *, const pa_subscription_event_type,
                                  unsigned int, void *);
@@ -24,5 +26,5 @@ private:
 
 public:
   PulseAudioData data;
-  int Init();
+  int Init(LoggingManager *logMgr);
 };

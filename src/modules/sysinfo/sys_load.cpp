@@ -2,12 +2,15 @@
 #include "cmath"
 #include "cstring"
 #include "fstream"
-#include "iostream"
 
-int SysLoad::Init() {
+#define TAG "SysLoad"
+
+int SysLoad::Init(LoggingManager *logMgr) {
+  logger = logMgr;
+  
   loadAvg.open("/proc/loadavg", std::ios::in);
   if (!loadAvg.is_open()) {
-    std::cerr << "[Init Error] Failed to Open Load Avg File";
+    logger->LogError(TAG, "Failed to Open Load Avg File");
     return 1;
   }
   return 0;
@@ -24,7 +27,7 @@ float SysLoad::GetLoad(int dur) {
   else if (dur == 1)
     jump = 0;
   else {
-    std::cerr << "Invalid Time Duration for System Load." << std::endl;
+    logger->LogError(TAG, "Invalid Time Duration for System Load.");
     return -1;
   }
 

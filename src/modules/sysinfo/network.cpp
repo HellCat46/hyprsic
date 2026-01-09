@@ -2,14 +2,19 @@
 #include "cstring"
 #include "dirent.h"
 #include "fstream"
-#include "iostream"
 #include "vector"
+
+#define TAG "Network"
 
 NetInterface::NetInterface() { err = "Not Initialized"; }
 
-int NetInterface::Init(std::string ifaceName) {
-  std::cout << "[Init Info] Initiating Interface " << ifaceName << " Object."
-            << std::endl;
+int NetInterface::Init(std::string ifaceName, LoggingManager *logMgr) {
+  logger = logMgr;
+  
+  std::string msg = "Initiating Interface ";
+  msg += ifaceName;
+  msg += " Object.";
+  logger->LogInfo(TAG, msg);
 
   this->interface = ifaceName;
   std::string path = "/sys/class/net/" + interface;
@@ -93,12 +98,13 @@ double Network::GetTotTx() {
   return bytes;
 }
 
-int Network::Init() {
+int Network::Init(LoggingManager *logMgr) {
+  logger = logMgr;
+  
   DIR *dir;
   dir = opendir("/sys/class/net/");
   if (dir == nullptr) {
-    std::cerr << "[Init Error] Failed to Open /sys/class/net/ Directory"
-              << std::endl;
+    logger->LogError(TAG, "Failed to Open /sys/class/net/ Directory");
     return 1;
   }
 
@@ -113,7 +119,6 @@ int Network::Init() {
             0) {
           availIfaces.push_back(ent->d_name);
         }
-        // std::cout<<ent->d_name<<"\t"<<(int)ent->d_type<<std::endl;
       }
     }
   }
@@ -123,7 +128,7 @@ int Network::Init() {
   ifaceSize = availIfaces.size();
   int idx = 0;
   for (auto ifaceName : availIfaces) {
-    activeIfaces[idx++].Init(ifaceName);
+    activeIfaces[idx++].Init(ifaceName, logger);
   }
   return 0;
 }

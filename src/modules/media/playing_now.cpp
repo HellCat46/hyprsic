@@ -1,21 +1,22 @@
 #include "playing_now.hpp"
-#include "iostream"
 #include <pulse/subscribe.h>
 #include <pulse/thread-mainloop.h>
 
-int PlayingNow::Init() {
+#define TAG "PlayingNow"
+
+int PlayingNow::Init(LoggingManager *logMgr) {
+  logger = logMgr;
+
   pa_threaded_mainloop *mainLoop = pa_threaded_mainloop_new();
   if (mainLoop == nullptr) {
-    std::cerr << "[Init Error] Failed to Get Pulseaudio Main Loop."
-              << std::endl;
+    logger->LogError(TAG, "Failed to Get Pulseaudio Main Loop.");
     return 1;
   }
 
   pa_mainloop_api *mainLoopAPI = pa_threaded_mainloop_get_api(mainLoop);
   pulseContext = pa_context_new(mainLoopAPI, "hyprsic");
   if (!pulseContext) {
-    std::cerr << "[Init Error] Failed to Create a Pulseaudio Context."
-              << std::endl;
+    logger->LogError(TAG, "Failed to Create a Pulseaudio Context.");
     return 1;
   }
 
@@ -23,27 +24,25 @@ int PlayingNow::Init() {
 
   if (pa_context_connect(pulseContext, nullptr, PA_CONTEXT_NOFAIL, nullptr) <
       0) {
-    std::cerr << "[Init Error] Failed to Connect the Pulseaudio Context."
-              << std::endl;
+    logger->LogError(TAG, "Failed to Connect the Pulseaudio Context.");
     return 1;
   }
 
   if (pa_threaded_mainloop_start(mainLoop) < 0) {
-    std::cerr << "[Init Error] Failed to Start the Pulseaudio Context."
-              << std::endl;
+    logger->LogError(TAG, "Failed to Start the Pulseaudio Context.");
     return 1;
   }
 
   return 0;
 }
+
 void PlayingNow::contextStateHandler(pa_context *pulseCtx, void *data) {
-  // std::cout<<pa_context_get_state(pulseCtx)<<std::endl;
+  PlayingNow *self = static_cast<PlayingNow *>(data);
 
   switch (pa_context_get_state(pulseCtx)) {
   case PA_CONTEXT_READY:
-    std::cout << "PulseAudio Connection Established. Subscribing to Events..."
-              << std::endl;
-    // pa_context_get_sink_info_list(pulseCtx, outputInfoCallBack, data);
+    self->logger->LogInfo(
+        TAG, "PulseAudio Connection Established. Subscribing to Events...");
     pa_context_get_server_info(pulseCtx, serverInfoCallBack, data);
 
     pa_context_set_subscribe_callback(pulseCtx, handleStateChanges, data);
@@ -54,13 +53,15 @@ void PlayingNow::contextStateHandler(pa_context *pulseCtx, void *data) {
             PA_SUBSCRIPTION_EVENT_SOURCE_OUTPUT | PA_SUBSCRIPTION_EVENT_SERVER |
             PA_SUBSCRIPTION_EVENT_SOURCE | PA_SUBSCRIPTION_EVENT_SINK),
         nullptr, nullptr);
-    std::cout << "Successfully Subscribed to Pulseaudio Events." << std::endl;
+    self->logger->LogInfo(TAG, "Successfully Subscribed to Pulseaudio Events.");
     break;
   case PA_CONTEXT_TERMINATED:
-    std::cout << "Connection Terminated" << std::endl;
+    self->logger->LogInfo(TAG, "Connection Terminated");
     break;
   case PA_CONTEXT_FAILED:
-    std::cout << "Connection Failed" << std::endl;
+    self->logger->LogError(TAG, "Connection Failed");
+    break;
+  default:
     break;
   }
 }
@@ -125,5 +126,8 @@ void PlayingNow::inputInfoCallBack(pa_context *pulseCtx,
   if (info == nullptr)
     return;
 
-  std::cout << "Input Name: " << info->name << std::endl;
+  PlayingNow *self = static_cast<PlayingNow *>(data);
+  std::string msg = "Input Name: ";
+  msg += info->name;
+  self->logger->LogInfo(TAG, msg);
 }

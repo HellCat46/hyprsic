@@ -1,9 +1,10 @@
 #include "module.hpp"
 #include "gtk/gtk.h"
 #include <cstddef>
-#include <iostream>
 
-BluetoothModule::BluetoothModule(AppContext *ctx) : btManager(ctx) {}
+#define TAG "BluetoothModule"
+
+BluetoothModule::BluetoothModule(AppContext *ctx) : btManager(ctx, &ctx->logging), logger(&ctx->logging) {}
 
 void BluetoothModule::setupBT(GtkWidget *box) {
   GtkWidget *bt_img = gtk_button_new_with_label("");
@@ -145,9 +146,6 @@ void BluetoothModule::updateBTList() {
     gtk_box_pack_start(GTK_BOX(btDevList), availDevtitle, FALSE, FALSE, 0);
     gtk_widget_show(availDevtitle);
 
-    // std::cout << "Bluetooth Devices Found: " <<
-    // btManager.devices.size()
-    //           << std::endl;
     for (auto [_, device] : btManager.devices) {
       if (device.paired)
         continue; // Improve it later on. Combine both Devices Loops
@@ -190,15 +188,15 @@ void BluetoothModule::handleDiscovery(GtkWidget *widget, gpointer user_data) {
   BluetoothModule *self = static_cast<BluetoothModule *>(user_data);
 
   if (self->btManager.discovering) {
-    std::cout << "[Info] Stopping Bluetooth Discovery." << std::endl;
+    self->logger->LogInfo(TAG, "Stopping Bluetooth Discovery.");
 
     if (self->btManager.switchDiscovery(false) == 0)
-      std::cerr << "[Error] Bluetooth Discovery Stopped." << std::endl;
+      self->logger->LogError(TAG, "Bluetooth Discovery Stopped.");
   } else {
-    std::cout << "[Info] Starting Bluetooth Discovery." << std::endl;
+    self->logger->LogInfo(TAG, "Starting Bluetooth Discovery.");
 
     if (self->btManager.switchDiscovery(true) == 0) {
-      std::cout << "[Info] Bluetooth Discovery Started." << std::endl;
+      self->logger->LogInfo(TAG, "Bluetooth Discovery Started.");
       self->updateBTList();
     }
   }
@@ -212,8 +210,9 @@ void BluetoothModule::handlePower(GtkWidget *widget, gpointer user_data) {
 
   gboolean active = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
   if (!self->btManager.switchPower(active)) {
-    std::cout << "[Info] Bluetooth Power Switched " << (active ? "ON" : "OFF")
-              << std::endl;
+    std::string msg = "Bluetooth Power Switched ";
+    msg += (active ? "ON" : "OFF");
+    self->logger->LogInfo(TAG, msg);
   }
 
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget),
@@ -224,7 +223,5 @@ void BluetoothModule::handleDeviceConnect(GtkWidget *widget,
                                           gpointer user_data) {
   FuncArgs *args = static_cast<FuncArgs *>(user_data);
 
-  if (args->btManager->connectDevice(args->state, args->devIfacePath) == 0) {
-    std::cout << "[Info] Device Connection State Changed." << std::endl;
-  }
+  args->btManager->connectDevice(args->state, args->devIfacePath);
 }

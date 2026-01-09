@@ -25,6 +25,7 @@ class BluetoothManager {
   private:
     AppContext* ctx;
     DBusMessage* devListMsg;
+    LoggingManager* logger;
   	std::thread signalThread;
 
     void monitorChanges();
@@ -45,7 +46,7 @@ class BluetoothManager {
     int switchDiscovery(bool on);
     int switchPower(bool on);
 
-    BluetoothManager(AppContext* context);
+    BluetoothManager(AppContext* context, LoggingManager* logMgr);
 };
 
 

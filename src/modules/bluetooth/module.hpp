@@ -10,6 +10,7 @@ struct FuncArgs {
 
 class BluetoothModule {
   BluetoothManager btManager;
+  LoggingManager *logger;
   GtkWidget *btPowerBtn;
   GtkWidget *btScanBtn;
   GtkWidget *btPopOverMenu;

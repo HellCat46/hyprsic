@@ -1,23 +1,26 @@
 #include "console_preview.hpp"
 #include "math.h"
 
+#define TAG "Display"
+
 Display::Display() {
   // Initiating The Network and It's Stats
-  net.Init();
+  net.Init(&logger);
+  stat.Init(&logger);
   stat.rx = net.GetTotRx();
   stat.tx = net.GetTotTx();
   stat.time = std::chrono::steady_clock::now();
 
-  load.Init();
-  mem.Init();
+  load.Init(&logger);
+  mem.Init(&logger);
 
-  disk.Init("/home/hellcat");
+  disk.Init("/home/hellcat", &logger);
 
-  battery.Init();
+  battery.Init(&logger);
 
-  playing.Init();
+  playing.Init(&logger);
 
-  hyprWS.Init();
+  hyprWS.Init(&logger);
 }
 std::string Display::DisplayBar() {
   std::string str;
@@ -40,13 +43,12 @@ std::string Display::DisplayBar() {
          Stats::ParseBytes(mem.GetTotSwap() * 1024, 2) + "\t";
 
   if (disk.GetDiskInfo(stat.diskAvail, stat.diskTotal) == 0) {
-    // std::cout<<stat.diskAvail<<std::endl;
     str += Stats::ParseBytes(stat.diskTotal - stat.diskAvail, 2) + "/" +
            Stats::ParseBytes(stat.diskTotal, 2) + "\t";
   }
 
   str += std::to_string(battery.getTotPercent()) +
-         "\t"; //+ "% (" + battery.getStatus() + ")\t";
+         "\t";
 
   if (hyprWS.activeWorkspaceId == 0) {
     auto wsEntry = hyprWS.workspaces.find(hyprWS.activeWorkspaceId);

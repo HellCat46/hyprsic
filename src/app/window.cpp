@@ -9,12 +9,16 @@
 #include <iostream>
 #include <string>
 
+#define TAG "MainWindow"
+
 MainWindow::MainWindow() : btModule(&ctx), notifManager(&ctx) {
-  //notifManager.captureNotification();
-  load.Init();
-  mem.Init();
-  battery.Init();
-  hyprWS.Init();
+  notifManager.RunService();
+  load.Init(&ctx.logging);
+  mem.Init(&ctx.logging);
+  battery.Init(&ctx.logging);
+  hyprWS.Init(&ctx.logging);
+  stat.Init(&ctx.logging);
+  playing.Init(&ctx.logging);
 
   app =
       gtk_application_new("com.hyprsic.statusbar", G_APPLICATION_DEFAULT_FLAGS);

@@ -3,7 +3,7 @@
 #include "dbus/dbus.h"
 #include "iostream"
 
-AppContext::AppContext() : dbus(), dbManager() {}
+AppContext::AppContext() : dbus(), dbManager(), logging(true) {}
 
 DbusSystem::DbusSystem() {
   dbus_error_init(&sysErr);
@@ -11,7 +11,8 @@ DbusSystem::DbusSystem() {
   sysConn = dbus_bus_get(DBUS_BUS_SYSTEM, &sysErr);
   if (!sysConn) {
     std::cerr << "[Error] Failed to Connect With the DBUS System: "
-              << sysErr.name << "\n[DBUS Error Message] : " << sysErr.message
+              << sysErr.name
+              << "\n[DBUS Error Message - Context] : " << sysErr.message
               << std::endl;
     return;
   }
@@ -19,13 +20,10 @@ DbusSystem::DbusSystem() {
   ssnConn = dbus_bus_get(DBUS_BUS_SESSION, &ssnErr);
   if (!ssnConn) {
     std::cerr << "[Error] Failed to Connect With the DBUS Session: "
-              << ssnErr.name << "\n[DBUS Error Message] : " << ssnErr.message
+              << ssnErr.name
+              << "\n[DBUS Error Message - Context] : " << ssnErr.message
               << std::endl;
   }
-
-  std::cout
-      << "[Info] Successfully created a connection to Dbus System Session."
-      << std::endl;
 }
 
 DbusSystem::~DbusSystem() {

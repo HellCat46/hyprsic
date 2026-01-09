@@ -1,10 +1,13 @@
 #include "disk.hpp"
-#include "iostream"
 #include "sys/statvfs.h"
 
-int Disk::Init(std::string path) {
+#define TAG "Disk"
+
+int Disk::Init(std::string path, LoggingManager *logMgr) {
+  logger = logMgr;
+  
   if (statvfs(path.c_str(), &data) < 0) {
-    std::cerr << "[Init Error] Failed to Get Info about the Path." << std::endl;
+    logger->LogError(TAG, "Failed to Get Info about the Path.");
     return 1;
   }
 
@@ -14,7 +17,7 @@ int Disk::Init(std::string path) {
 
 int Disk::GetDiskInfo(unsigned long& avail, unsigned long& tot) {
   if (statvfs(mountpoint.c_str(), &data) < 0) {
-    std::cerr << "[Disk Info] Failed to Get Info about the Path." << std::endl;
+    logger->LogError(TAG, "Failed to Get Info about the Path.");
     return 1;
   }
 
