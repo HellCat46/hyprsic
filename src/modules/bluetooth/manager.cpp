@@ -31,7 +31,8 @@ BluetoothManager::BluetoothManager(AppContext *context,
     logger->LogInfo(TAG, msg);
     power = res;
   } else {
-    logger->LogWarning(TAG, "Unable to get initial Bluetooth Power State. Setting to ON by default.");
+    logger->LogWarning(TAG, "Unable to get initial Bluetooth Power State. "
+                            "Setting to ON by default.");
     power = true;
   }
 
@@ -42,7 +43,8 @@ BluetoothManager::BluetoothManager(AppContext *context,
     logger->LogInfo(TAG, msg);
     discovering = res;
   } else {
-    logger->LogWarning(TAG, "Unable to get initial Bluetooth Discovery State. Setting to OFF by default.");
+    logger->LogWarning(TAG, "Unable to get initial Bluetooth Discovery State. "
+                            "Setting to OFF by default.");
     discovering = false;
   }
 
@@ -118,7 +120,7 @@ int BluetoothManager::switchDiscovery(bool on) {
 
   dbus_message_unref(msg);
   dbus_message_ref(reply);
-  
+
   std::string logMsg = "Turning ";
   logMsg += (on ? "ON" : "OFF");
   logMsg += " Bluetooth Discovery.";
@@ -138,7 +140,8 @@ void BluetoothManager::monitorChanges() {
       "member='InterfacesAdded'",
       &(ctx->dbus.sysErr));
   if (dbus_error_is_set(&(ctx->dbus.sysErr))) {
-    std::string errMsg = "Failed to add filter for Signal Member InterfaceAdded: ";
+    std::string errMsg =
+        "Failed to add filter for Signal Member InterfaceAdded: ";
     errMsg += ctx->dbus.sysErr.message;
     logger->LogError(TAG, errMsg);
     dbus_error_free(&ctx->dbus.sysErr);
@@ -151,7 +154,8 @@ void BluetoothManager::monitorChanges() {
       "member='InterfacesRemoved'",
       &(ctx->dbus.sysErr));
   if (dbus_error_is_set(&(ctx->dbus.sysErr))) {
-    std::string errMsg = "Failed to add filter for Signal Member InterfaceRemoved: ";
+    std::string errMsg =
+        "Failed to add filter for Signal Member InterfaceRemoved: ";
     errMsg += ctx->dbus.sysErr.message;
     logger->LogError(TAG, errMsg);
     dbus_error_free(&ctx->dbus.sysErr);
@@ -164,19 +168,22 @@ void BluetoothManager::monitorChanges() {
       "member='PropertiesChanged'",
       &(ctx->dbus.sysErr));
   if (dbus_error_is_set(&(ctx->dbus.sysErr))) {
-    std::string errMsg = "Failed to add filter for Signal Member PropertiesChanged: ";
+    std::string errMsg =
+        "Failed to add filter for Signal Member PropertiesChanged: ";
     errMsg += ctx->dbus.sysErr.message;
     logger->LogError(TAG, errMsg);
     dbus_error_free(&ctx->dbus.sysErr);
     return;
   }
-  logger->LogInfo(TAG, "Successfully Added Filters to Bluez Dbus Signals. Started listening to events now.");
+  logger->LogInfo(TAG, "Successfully Added Filters to Bluez Dbus Signals. "
+                       "Started listening to events now.");
 
   DBusMessage *msg;
   while (true) {
     // Blocks the thread until new message received
     if (!dbus_connection_read_write(ctx->dbus.sysConn, 0)) {
-      logger->LogError(TAG, "Connection Closed while Waiting for Signal Messages");
+      logger->LogError(TAG,
+                       "Connection Closed while Waiting for Signal Messages");
       return;
     }
 
@@ -195,7 +202,8 @@ void BluetoothManager::monitorChanges() {
       logger->LogInfo(TAG, "Received InterfacesAdded Signal");
 
       if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_OBJECT_PATH) {
-        logger->LogError(TAG, "Unable to parse InterfacesAdded Reply. Unknown Format (The First Entry is not Object Path.)");
+        logger->LogError(TAG, "Unable to parse InterfacesAdded Reply. Unknown "
+                              "Format (The First Entry is not Object Path.)");
         continue;
       }
 
@@ -208,7 +216,9 @@ void BluetoothManager::monitorChanges() {
       dbus_message_iter_next(&rootIter);
       dbus_message_iter_recurse(&rootIter, &entIter);
       if (dbus_message_iter_get_arg_type(&entIter) != DBUS_TYPE_DICT_ENTRY) {
-        logger->LogError(TAG, "Unable to parse InterfacesAdded Reply. Unknown Format (The Second Entry is not an Dict Entry.)");
+        logger->LogError(TAG,
+                         "Unable to parse InterfacesAdded Reply. Unknown "
+                         "Format (The Second Entry is not an Dict Entry.)");
         continue;
       }
 
@@ -225,7 +235,8 @@ void BluetoothManager::monitorChanges() {
       }
 
       if (dbus_message_iter_get_arg_type(&entIter) != DBUS_TYPE_DICT_ENTRY) {
-        logger->LogError(TAG, "Unable to find Device1 Entry in InterfacesAdded Reply.");
+        logger->LogError(
+            TAG, "Unable to find Device1 Entry in InterfacesAdded Reply.");
         continue;
       }
 
@@ -244,7 +255,9 @@ void BluetoothManager::monitorChanges() {
                                       "InterfacesRemoved")) {
       logger->LogInfo(TAG, "Received InterfacesRemoved Signal");
       if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_OBJECT_PATH) {
-        logger->LogError(TAG, "Unable to parse InterfacesRemoved Reply. Unknown Format (The First Entry is not Object Path.)");
+        logger->LogError(TAG,
+                         "Unable to parse InterfacesRemoved Reply. Unknown "
+                         "Format (The First Entry is not Object Path.)");
         continue;
       }
 
@@ -256,13 +269,14 @@ void BluetoothManager::monitorChanges() {
         logMsg += std::to_string(devices.size());
         logger->LogInfo(TAG, logMsg);
       } else {
-        logger->LogWarning(TAG, "Unable to find Device in Device List. Skipping.");
+        logger->LogWarning(TAG,
+                           "Unable to find Device in Device List. Skipping.");
       }
     } else if (dbus_message_is_signal(msg, "org.freedesktop.DBus.Properties",
                                       "PropertiesChanged")) {
       logger->LogInfo(TAG, "Received PropertiesChanged Signal");
       const char *path = dbus_message_get_path(msg);
-      if (std::strncmp(path, "/org/bluez", 10) != 0)
+      if (std::strncmp(path, "/org/bluez", 10) != 0 || std::strlen(path) > 37)
         continue;
 
       std::string logMsg = "PropertiesChanged Signal Path: ";
@@ -288,7 +302,9 @@ void BluetoothManager::monitorChanges() {
 
       DBusMessageIter entIter;
       if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_STRING) {
-        logger->LogError(TAG, "Unable to parse PropertiesChanged Reply. Unknown Format (The First Entry is not String.)");
+        logger->LogError(TAG,
+                         "Unable to parse PropertiesChanged Reply. Unknown "
+                         "Format (The First Entry is not String.)");
         continue;
       }
 
@@ -306,12 +322,15 @@ void BluetoothManager::monitorChanges() {
         if (dbus_message_iter_get_arg_type(&entIter) == DBUS_TYPE_DICT_ENTRY) {
           break;
         }
-        logger->LogInfo(TAG, std::to_string(dbus_message_iter_get_arg_type(&entIter)));
+        logger->LogInfo(
+            TAG, std::to_string(dbus_message_iter_get_arg_type(&entIter)));
 
         dbus_message_iter_next(&rootIter);
       }
       if (dbus_message_iter_get_arg_type(&entIter) != DBUS_TYPE_DICT_ENTRY) {
-        logger->LogError(TAG, "Unable to parse PropertiesChanged Reply. Unknown Format (No Dict Entry for Property Found.)");
+        logger->LogError(TAG,
+                         "Unable to parse PropertiesChanged Reply. Unknown "
+                         "Format (No Dict Entry for Property Found.)");
         continue;
       }
 

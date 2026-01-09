@@ -31,7 +31,8 @@ endif()
 
 
 set(MODULES_SOURCES 
-    src/modules/workspaces/hyprland.cpp
+    src/modules/workspaces/hyprland/manager.cpp
+    src/modules/workspaces/hyprland/module.cpp
     src/modules/sysinfo/battery.cpp
     src/modules/sysinfo/disk.cpp
     src/modules/sysinfo/memory.cpp

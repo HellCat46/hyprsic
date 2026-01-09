@@ -1,4 +1,4 @@
-#include "hyprland.hpp"
+#include "manager.hpp"
 #include "cstdlib"
 #include "cstring"
 #include "sstream"
@@ -12,7 +12,7 @@
 
 int HyprWorkspaces::Init(LoggingManager *logMgr) {
   logger = logMgr;
-  
+
   if (getPath()) {
     return -1;
   }
@@ -28,7 +28,8 @@ int HyprWorkspaces::Init(LoggingManager *logMgr) {
   strcpy(addr.sun_path, sockPath.c_str());
   sockPath = sockPath.substr(0, sockPath.rfind('/') + 1);
   if (connect(evtSockfd, (sockaddr *)&addr, sizeof(addr)) == -1) {
-    logger->LogError(TAG, "Unable to Establish Connection with Hyprland Socket UNIX Socket");
+    logger->LogError(
+        TAG, "Unable to Establish Connection with Hyprland Socket UNIX Socket");
     return -2;
   }
 
@@ -147,7 +148,8 @@ Json::Value HyprWorkspaces::executeQuery(const std::string &msg,
   strcpy(addr.sun_path, sockPath.c_str());
   sockPath = sockPath.substr(0, sockPath.rfind('/') + 1);
   if (connect(workSockfd, (sockaddr *)&addr, sizeof(addr)) == -1) {
-    logger->LogError(TAG, "Unable to Establish Connection with hyprctl UNIX Socket");
+    logger->LogError(TAG,
+                     "Unable to Establish Connection with hyprctl UNIX Socket");
     return -1;
   }
 
@@ -162,7 +164,8 @@ Json::Value HyprWorkspaces::executeQuery(const std::string &msg,
 
   // Closing the Connection
   if (close(workSockfd) == -1) {
-    logger->LogError(TAG, "Unable to Close Connection with hyprctl UNIX Socket");
+    logger->LogError(TAG,
+                     "Unable to Close Connection with hyprctl UNIX Socket");
     return -4;
   }
 

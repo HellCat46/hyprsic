@@ -10,14 +10,8 @@
 #include "../modules/sysinfo/memory.hpp"
 #include "../modules/sysinfo/stats.hpp"
 #include "../modules/sysinfo/sys_load.hpp"
-#include "../modules/workspaces/hyprland.hpp"
-
+#include "../modules/workspaces/hyprland/module.hpp"
 #include "../modules/bluetooth/module.hpp"
-
-struct ChgWSArgs {
-  HyprWorkspaces *wsInstance;
-  unsigned int wsId;
-};
 
 class MainWindow {
   GtkApplication *app = nullptr;
@@ -40,22 +34,15 @@ class MainWindow {
   GtkWidget *timeWid;
 
   PlayingNow playing;
-
+  
   BluetoothModule btModule;
-
+  HyprWSModule hyprModule;
+  
   NotificationManager notifManager;
-
-  HyprWorkspaces hyprWS;
-  GtkWidget *workspaceSecWid;
 
 public:
   MainWindow();
   void RunApp();
   static gboolean UpdateData(gpointer data);
   static void activate(GtkApplication *app, gpointer user_data);
-
-  // UI Hyprland Workspace Functions
-  static void setupWorkspaces(HyprWorkspaces *wsInstance,
-                              GtkWidget *workspaceBox);
-  static void chgWorkspace(GtkWidget *widget, GdkEvent *e, gpointer user_data);
 };

@@ -7,7 +7,7 @@
 #include "../modules/sysinfo/network.hpp"
 #include "../modules/sysinfo/stats.hpp"
 #include "../modules/sysinfo/sys_load.hpp"
-#include "../modules/workspaces/hyprland.hpp"
+#include "../modules/workspaces/hyprland/manager.hpp"
 #include "math.h"
 
 class Display {

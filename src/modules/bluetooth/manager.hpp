@@ -2,7 +2,6 @@
 
 #include "cstring"
 #include "dbus/dbus.h"
-#include "gtk/gtk.h"
 #include "thread"
 #include "string"
 #include "../../app/context.hpp"

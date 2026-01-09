@@ -7,7 +7,7 @@
 #include <functional>
 #include <json/reader.h>
 #include <thread>
-#include "../../logging/manager.hpp"
+#include "../../../logging/manager.hpp"
 
 struct Workspace {
   unsigned int id, monitorId;

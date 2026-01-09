@@ -6,17 +6,15 @@
 #include "gtk/gtk.h"
 #include <ctime>
 #include <iomanip>
-#include <iostream>
 #include <string>
 
 #define TAG "MainWindow"
 
-MainWindow::MainWindow() : btModule(&ctx), notifManager(&ctx) {
+MainWindow::MainWindow() : btModule(&ctx), hyprModule(&ctx), notifManager(&ctx) {
   notifManager.RunService();
   load.Init(&ctx.logging);
   mem.Init(&ctx.logging);
   battery.Init(&ctx.logging);
-  hyprWS.Init(&ctx.logging);
   stat.Init(&ctx.logging);
   playing.Init(&ctx.logging);
 
@@ -50,14 +48,6 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
   gtk_container_add(GTK_CONTAINER(self->window), main_box);
   std::string txt = "";
 
-  // Left Box to Show Workspaces Info
-  self->workspaceSecWid = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
-  gtk_box_pack_start(GTK_BOX(main_box), self->workspaceSecWid, FALSE, FALSE, 5);
-
-  // Update Workspaces Info
-  self->setupWorkspaces(&self->hyprWS, self->workspaceSecWid);
-  self->hyprWS.liveEventListener(MainWindow::setupWorkspaces,
-                                 self->workspaceSecWid);
 
   // Right Box to Show System Stats
   GtkWidget *right_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
@@ -95,6 +85,7 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
   gtk_box_pack_start(GTK_BOX(right_box), self->batteryWid, FALSE, FALSE, 0);
   gtk_box_pack_start(GTK_BOX(right_box), self->timeWid, FALSE, FALSE, 0);
 
+  self->hyprModule.setupWorkspaces(main_box);
   self->btModule.setupBT(right_box);
 
   gtk_widget_show_all(self->window);
@@ -138,48 +129,4 @@ gboolean MainWindow::UpdateData(gpointer data) {
   self->btModule.updateBTList();
 
   return true;
-}
-
-void MainWindow::setupWorkspaces(HyprWorkspaces *wsInstance,
-                                 GtkWidget *workspaceBox) {
-  std::string txt = "";
-  if (!wsInstance->GetWorkspaces()) {
-    GList *child = gtk_container_get_children(GTK_CONTAINER(workspaceBox));
-    for (GList *iter = child; iter != nullptr; iter = iter->next) {
-      gtk_widget_destroy(GTK_WIDGET(iter->data));
-    }
-    g_list_free(child);
-
-    for (auto workspace : wsInstance->workspaces) {
-      txt = std::to_string(workspace.first) + " ";
-
-      if (wsInstance->activeWorkspaceId == workspace.first) {
-        txt = "[ " + txt + "]";
-      }
-
-      GtkWidget *evtBox = gtk_event_box_new();
-      GtkWidget *wsLabel = gtk_label_new(txt.c_str());
-
-      gtk_container_add(GTK_CONTAINER(evtBox), wsLabel);
-      gtk_box_pack_start(GTK_BOX(workspaceBox), evtBox, FALSE, FALSE, 0);
-
-      ChgWSArgs *args = g_new0(ChgWSArgs, 1);
-      args->wsInstance = wsInstance;
-      args->wsId = workspace.first;
-
-      g_signal_connect_data(evtBox, "button-press-event",
-                            G_CALLBACK(MainWindow::chgWorkspace), args,
-                            (GClosureNotify)g_free, (GConnectFlags)0);
-    }
-    gtk_widget_show_all(workspaceBox);
-  }
-}
-
-void MainWindow::chgWorkspace(GtkWidget *widget, GdkEvent *e,
-                              gpointer user_data) {
-  ChgWSArgs *args = static_cast<ChgWSArgs *>(user_data);
-
-  if (args->wsInstance->SwitchToWorkspace(args->wsInstance, args->wsId) != 0) {
-    std::cerr << "[Error] Failed to Switch Workspace" << std::endl;
-  }
 }
