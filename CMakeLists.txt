@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 project(hyprsic)
 
 set(CMAKE_CXX_STANDARD 11)
+set(CMKAKE_UNITY_BUILD ON)
 
 find_package(PkgConfig REQUIRED)
 
@@ -42,7 +43,8 @@ set(MODULES_SOURCES
     src/modules/sysinfo/stats.cpp
     src/modules/bluetooth/manager.cpp
     src/modules/bluetooth/module.cpp
-    src/modules/notifications/notification_manager.cpp
+    src/modules/notifications/manager.cpp
+    src/modules/notifications/module.cpp
 )
 
 set(DATABASE_SOURCES

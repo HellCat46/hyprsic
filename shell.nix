@@ -14,7 +14,8 @@ pkgs.mkShell {
     dbus
     gtk3
     gtk-layer-shell
-    cmake
+    meson
+    sqlite
   ];
 
   CMAKE_EXPORT_COMPILE_COMMANDS = "ON";

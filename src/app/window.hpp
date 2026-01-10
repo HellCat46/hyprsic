@@ -5,7 +5,7 @@
 #include <gtk/gtk.h>
 
 #include "../modules/media/playing_now.hpp"
-#include "../modules/notifications/notification_manager.hpp"
+#include "../modules/notifications/module.hpp"
 #include "../modules/sysinfo/battery.hpp"
 #include "../modules/sysinfo/memory.hpp"
 #include "../modules/sysinfo/stats.hpp"
@@ -37,8 +37,7 @@ class MainWindow {
   
   BluetoothModule btModule;
   HyprWSModule hyprModule;
-  
-  NotificationManager notifManager;
+  NotificationModule notifModule;
 
 public:
   MainWindow();

@@ -10,8 +10,7 @@
 
 #define TAG "MainWindow"
 
-MainWindow::MainWindow() : btModule(&ctx), hyprModule(&ctx), notifManager(&ctx) {
-  notifManager.RunService();
+MainWindow::MainWindow() : btModule(&ctx), hyprModule(&ctx), notifModule(&ctx) {
   load.Init(&ctx.logging);
   mem.Init(&ctx.logging);
   battery.Init(&ctx.logging);

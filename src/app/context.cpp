@@ -3,7 +3,7 @@
 #include "dbus/dbus.h"
 #include "iostream"
 
-AppContext::AppContext() : dbus(), dbManager(), logging(true) {}
+AppContext::AppContext() : dbus(), logging(true), dbManager(&logging){}
 
 DbusSystem::DbusSystem() {
   dbus_error_init(&sysErr);

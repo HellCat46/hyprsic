@@ -192,7 +192,7 @@ void BluetoothManager::monitorChanges() {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
       continue;
     }
-    logger->LogInfo(TAG, "Received Signal Message");
+    //logger->LogInfo(TAG, "Received Signal Message");
 
     DBusMessageIter rootIter;
     dbus_message_iter_init(msg, &rootIter);
@@ -274,7 +274,7 @@ void BluetoothManager::monitorChanges() {
       }
     } else if (dbus_message_is_signal(msg, "org.freedesktop.DBus.Properties",
                                       "PropertiesChanged")) {
-      logger->LogInfo(TAG, "Received PropertiesChanged Signal");
+      //logger->LogInfo(TAG, "Received PropertiesChanged Signal");
       const char *path = dbus_message_get_path(msg);
       if (std::strncmp(path, "/org/bluez", 10) != 0 || std::strlen(path) > 37)
         continue;
