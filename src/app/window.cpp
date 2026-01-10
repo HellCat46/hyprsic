@@ -85,6 +85,8 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
   gtk_box_pack_start(GTK_BOX(right_box), self->timeWid, FALSE, FALSE, 0);
 
   self->hyprModule.setupWorkspaces(main_box);
+  
+  self->notifModule.setup(right_box);
   self->btModule.setupBT(right_box);
 
   gtk_widget_show_all(self->window);
@@ -124,7 +126,8 @@ gboolean MainWindow::UpdateData(gpointer data) {
   gtk_label_set_label(GTK_LABEL(self->timeWid), oss.str().c_str());
 
   self->stat.UpdateData();
-
+ 
+  self->notifModule.updateNotificationWin();
   self->btModule.updateBTList();
 
   return true;

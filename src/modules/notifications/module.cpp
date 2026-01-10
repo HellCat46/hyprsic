@@ -12,12 +12,54 @@
 
 NotificationModule::NotificationModule(AppContext *ctx) : notifInstance(ctx) {
   logger = &ctx->logging;
+  dbManager = &ctx->dbManager;
   notifInstance.RunService(NotificationModule::showNotification,
                            &notifications);
 }
 
-void NotificationModule::setup(GtkWidget *box) {}
-void NotificationModule::updateBox() {}
+void NotificationModule::setup(GtkWidget *box) {
+  GtkWidget *notif = gtk_button_new_with_label("");
+  gtk_container_add(GTK_CONTAINER(box), notif);
+  g_signal_connect(notif, "enter",
+                   G_CALLBACK(NotificationModule::showNotificationWin), this);
+
+  popOverMenu = gtk_popover_new(notif);
+  gtk_popover_set_modal(GTK_POPOVER(popOverMenu), FALSE);
+  gtk_popover_set_position(GTK_POPOVER(popOverMenu), GTK_POS_TOP);
+
+  GtkWidget *main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+  gtk_container_add(GTK_CONTAINER(popOverMenu), main_box);
+  gtk_widget_set_margin_start(main_box, 10);
+  gtk_widget_set_margin_end(main_box, 10);
+  gtk_widget_set_margin_top(main_box, 10);
+  gtk_widget_set_margin_bottom(main_box, 10);
+
+  // Title Bar with Close Button
+  GtkWidget *notifTitleBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  gtk_container_add(GTK_CONTAINER(main_box), notifTitleBox);
+
+  GtkWidget *notifTitle = gtk_label_new(nullptr);
+  gtk_label_set_markup(GTK_LABEL(notifTitle), "<b>Notifications</b>");
+  gtk_box_pack_start(GTK_BOX(notifTitleBox), notifTitle, FALSE, FALSE, 0);
+
+  GtkWidget *notifCloseBox = gtk_button_new_with_label("✖");
+  gtk_box_pack_end(GTK_BOX(notifTitleBox), notifCloseBox, FALSE, FALSE, 0);
+  g_signal_connect(notifCloseBox, "clicked",
+                   G_CALLBACK(NotificationModule::hideNotificationWin), this);
+
+  // Scrollable Window for Notifications
+  GtkWidget *scrollWin = gtk_scrolled_window_new(nullptr, nullptr);
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrollWin),
+                                 GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+  gtk_widget_set_size_request(scrollWin, 400, 300);
+
+  gtk_box_pack_start(GTK_BOX(main_box), scrollWin, TRUE, TRUE, 0);
+
+  notifScrollWin = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+  gtk_container_add(GTK_CONTAINER(scrollWin), notifScrollWin);
+
+  gtk_widget_show_all(main_box);
+}
 
 void NotificationModule::showNotification(NotifFuncArgs *args) {
 
@@ -155,4 +197,57 @@ gboolean NotificationModule::autoCloseNotificationCb(gpointer user_data) {
   g_free(args);
 
   return G_SOURCE_REMOVE;
+}
+
+void NotificationModule::showNotificationWin(GtkWidget *widget,
+                                             gpointer user_data) {
+  NotificationModule *self = static_cast<NotificationModule *>(user_data);
+
+  self->updateNotificationWin();
+
+  gtk_popover_popup(GTK_POPOVER(self->popOverMenu));
+}
+
+void NotificationModule::updateNotificationWin() {
+
+  GList *children = gtk_container_get_children(GTK_CONTAINER(notifScrollWin));
+  for (GList *iter = children; iter != nullptr; iter = iter->next) {
+    gtk_widget_destroy(GTK_WIDGET(iter->data));
+  }
+  g_list_free(children);
+
+  auto notificationList = dbManager->fetchNotifications(100, 0);
+
+  for (const auto &notif : notificationList) {
+    GtkWidget *notifBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+    gtk_widget_set_margin_top(notifBox, 5);
+    gtk_widget_set_margin_bottom(notifBox, 5);
+    gtk_widget_set_margin_start(notifBox, 5);
+    gtk_widget_set_margin_end(notifBox, 5);
+
+    GtkWidget *titleLbl = gtk_label_new(nullptr);
+    gtk_label_set_markup(
+        GTK_LABEL(titleLbl),
+        ("<b>" + notif.app_name + "</b> - " + notif.summary).c_str());
+    gtk_label_set_line_wrap(GTK_LABEL(titleLbl), TRUE);
+    gtk_widget_set_halign(titleLbl, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(notifBox), titleLbl, FALSE, FALSE, 0);
+
+    GtkWidget *bodyLbl = gtk_label_new(notif.body.c_str());
+    gtk_label_set_line_wrap(GTK_LABEL(bodyLbl), TRUE);
+    gtk_widget_set_halign(bodyLbl, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(notifBox), bodyLbl, FALSE, FALSE, 0);
+
+    gtk_container_add(GTK_CONTAINER(notifScrollWin), notifBox);
+
+    gtk_widget_show_all(notifBox);
+  }
+}
+
+void NotificationModule::hideNotificationWin(GtkWidget *widget,
+                                             gpointer user_data) {
+  NotificationModule *self = static_cast<NotificationModule *>(user_data);
+
+  if (gtk_widget_get_visible(self->popOverMenu))
+    gtk_popover_popdown(GTK_POPOVER(self->popOverMenu));
 }
