@@ -12,7 +12,7 @@ void BluetoothModule::setupBT(GtkWidget *box) {
   btPopOverMenu = gtk_popover_new(bt_img);
   gtk_popover_set_modal(GTK_POPOVER(btPopOverMenu), FALSE);
   gtk_popover_set_position(GTK_POPOVER(btPopOverMenu), GTK_POS_TOP);
-
+  gtk_widget_set_margin_bottom(btPopOverMenu, 30);
   
   // Main Box inside Popover
   GtkWidget *main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);

@@ -26,6 +26,7 @@ void NotificationModule::setup(GtkWidget *box) {
   popOverMenu = gtk_popover_new(notif);
   gtk_popover_set_modal(GTK_POPOVER(popOverMenu), FALSE);
   gtk_popover_set_position(GTK_POPOVER(popOverMenu), GTK_POS_TOP);
+  gtk_widget_set_margin_bottom(popOverMenu, 30);
 
   GtkWidget *main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
   gtk_container_add(GTK_CONTAINER(popOverMenu), main_box);

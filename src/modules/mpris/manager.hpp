@@ -1,21 +1,34 @@
 #pragma once
 
 #include "../../app/context.hpp"
+#include <cstdint>
 #include <string>
-#include <utility>
 #include <vector>
+
+struct PlayerTrack {
+  std::string playerName;
+  std::string trackId;
+  std::string title;
+  uint64_t currPos, length;
+};
 
 class MprisManager {
   std::vector<std::string> players;
   AppContext *ctx;
 
 public:
-  std::pair<std::string, std::string> showPlayerTitle;
+  PlayerTrack playingTrack;
   MprisManager(AppContext *appCtx);
 
   int PlayPause();
   int PlayPauseDbusCall(const char *player);
 
-  int GetTitle();
-  int GetTitleDbusCall(const char *player, char **title);
+  int GetPlayerInfo();
+  int GetPlayerInfoDbusCall(const char *player, PlayerTrack *track);
+
+  int GetCurrentPositionDbusCall();
+
+  int SetPosition(uint64_t position);
+  int PreviousTrack();
+  int NextTrack();
 };

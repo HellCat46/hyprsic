@@ -13,6 +13,9 @@ public:
 
   DbusSystem();
   ~DbusSystem();
+  
+  void DictToInt64(DBusMessageIter *iter, uint64_t *outValue);
+  void DictToString(DBusMessageIter *iter, std::string *outValue);
 };
 
 class AppContext {
