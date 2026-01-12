@@ -38,7 +38,9 @@ set(MODULES_SOURCES
     src/modules/sysinfo/disk.cpp
     src/modules/sysinfo/memory.cpp
     src/modules/sysinfo/network.cpp
-    src/modules/media/playing_now.cpp
+    src/modules/pulseaudio/manager.cpp
+    src/modules/mpris/manager.cpp
+    src/modules/mpris/module.cpp
     src/modules/sysinfo/sys_load.cpp
     src/modules/sysinfo/stats.cpp
     src/modules/bluetooth/manager.cpp

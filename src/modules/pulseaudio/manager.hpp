@@ -8,7 +8,7 @@ struct PulseAudioData {
   std::string server, source, sink, out, client, in;
 };
 
-class PlayingNow {
+class PulseAudioManager {
 private:
   pa_context *pulseContext;
   LoggingManager *logger;

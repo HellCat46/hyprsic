@@ -4,14 +4,15 @@
 #include <gtk-layer-shell.h>
 #include <gtk/gtk.h>
 
-#include "../modules/media/playing_now.hpp"
+// #include "../modules/pulseaudio/manager.hpp"
+#include "../modules/bluetooth/module.hpp"
+#include "../modules/mpris/module.hpp"
 #include "../modules/notifications/module.hpp"
 #include "../modules/sysinfo/battery.hpp"
 #include "../modules/sysinfo/memory.hpp"
 #include "../modules/sysinfo/stats.hpp"
 #include "../modules/sysinfo/sys_load.hpp"
 #include "../modules/workspaces/hyprland/module.hpp"
-#include "../modules/bluetooth/module.hpp"
 
 class MainWindow {
   GtkApplication *app = nullptr;
@@ -33,11 +34,12 @@ class MainWindow {
 
   GtkWidget *timeWid;
 
-  PlayingNow playing;
-  
+  // PlayingNow playing;
+
   BluetoothModule btModule;
   HyprWSModule hyprModule;
   NotificationModule notifModule;
+  MprisModule mprisModule;
 
 public:
   MainWindow();

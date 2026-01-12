@@ -140,7 +140,7 @@ std::vector<NotificationRecord> DBManager::fetchNotifications(int limit,
     fetchStmt->reset();
   }
   
-  logger->LogInfo(TAG, "Fetched " + std::to_string(notifications.size()) +
-                                 " notifications from database.");
+  // logger->LogInfo(TAG, "Fetched " + std::to_string(notifications.size()) +
+  //                                " notifications from database.");
   return notifications;
 }

@@ -10,12 +10,12 @@
 
 #define TAG "MainWindow"
 
-MainWindow::MainWindow() : btModule(&ctx), hyprModule(&ctx), notifModule(&ctx) {
+MainWindow::MainWindow() : btModule(&ctx), hyprModule(&ctx), notifModule(&ctx), mprisModule(&ctx) {
   load.Init(&ctx.logging);
   mem.Init(&ctx.logging);
   battery.Init(&ctx.logging);
   stat.Init(&ctx.logging);
-  playing.Init(&ctx.logging);
+  //playing.Init(&ctx.logging);
 
   app =
       gtk_application_new("com.hyprsic.statusbar", G_APPLICATION_DEFAULT_FLAGS);
@@ -84,7 +84,8 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
   gtk_box_pack_start(GTK_BOX(right_box), self->batteryWid, FALSE, FALSE, 0);
   gtk_box_pack_start(GTK_BOX(right_box), self->timeWid, FALSE, FALSE, 0);
 
-  self->hyprModule.setupWorkspaces(main_box);
+  self->mprisModule.setup(main_box);
+  self->hyprModule.setup(main_box);
   
   self->notifModule.setup(right_box);
   self->btModule.setupBT(right_box);
@@ -126,6 +127,8 @@ gboolean MainWindow::UpdateData(gpointer data) {
   gtk_label_set_label(GTK_LABEL(self->timeWid), oss.str().c_str());
 
   self->stat.UpdateData();
+  
+  self->mprisModule.Update();
  
   self->notifModule.updateNotificationWin();
   self->btModule.updateBTList();

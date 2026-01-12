@@ -17,7 +17,7 @@ class HyprWSModule {
 public:
   HyprWSModule(AppContext *ctx);
 
-  void setupWorkspaces(GtkWidget *main_box);
+  void setup(GtkWidget *main_box);
   static void updateWorkspaces(HyprWorkspaces* hyprInstance, GtkWidget* SectionWid);
   static void chgWorkspace(GtkWidget *widget, GdkEvent *e, gpointer user_data);
 };

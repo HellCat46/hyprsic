@@ -10,7 +10,7 @@ HyprWSModule::HyprWSModule(AppContext *ctx) {
   logger = &ctx->logging;
 }
 
-void HyprWSModule::setupWorkspaces(GtkWidget *main_box) {
+void HyprWSModule::setup(GtkWidget *main_box) {
   SectionWid = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
   gtk_widget_set_margin_start(SectionWid, 15);
   gtk_box_pack_start(GTK_BOX(main_box), SectionWid, FALSE, FALSE, 5);

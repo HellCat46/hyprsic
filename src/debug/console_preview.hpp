@@ -1,6 +1,6 @@
 #pragma once
 #include "../logging/manager.hpp"
-#include "../modules/media/playing_now.hpp"
+//#include "../modules/media/playing_now.hpp"
 #include "../modules/sysinfo/battery.hpp"
 #include "../modules/sysinfo/disk.hpp"
 #include "../modules/sysinfo/memory.hpp"
@@ -18,7 +18,7 @@ class Display {
   Memory mem;
   Disk disk;
   BatteryInfo battery;
-  PlayingNow playing;
+ // PlayingNow playing;
   HyprWorkspaces hyprWS;
 
 public:

@@ -18,7 +18,7 @@ Display::Display() {
 
   battery.Init(&logger);
 
-  playing.Init(&logger);
+  //playing.Init(&logger);
 
   hyprWS.Init(&logger);
 }
@@ -55,9 +55,9 @@ std::string Display::DisplayBar() {
     str += "Active WS: " + wsEntry->second.name + "\t";
   }
 
-  if (playing.data.out.length() != 0) {
-    str += playing.data.out + " (" + playing.data.client + ") " + "\t";
-  }
+  // if (playing.data.out.length() != 0) {
+  //   str += playing.data.out + " (" + playing.data.client + ") " + "\t";
+  // }
 
   str += "\n";
   stat.rx = trx;

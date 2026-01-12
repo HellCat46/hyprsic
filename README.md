@@ -1,8 +1,22 @@
 # Hyprsic (Work In Progress)
-A Status Bar for Hyprland inspired by Simplicity of i3Bar.
+A Status Bar for Hyprland inspired by Simplicity of i3Bar (Not Anymore i suppose).
 
 ## Features
-
+- [x] System Information Display
+- [x] Hyprland IPC Integration
+- [x] PulseAudio Integration
+- [x] Bluetooth Frontend
+- [ ] Tooltip Support
+- [ ] Multi-monitor Support
+- [ ] System Tray Integration
+- [ ] Playback Showcase & Controls
+- [ ] Input and Output Device Management
+- [ ] Config to control which modules load & their Order in the Bar UI
+- [ ] Notification Manager Integration
+- [ ] Clipboard Manager Integration (Text, Image, Videos, Other Files, etc)
+- [ ] ScreenSaver Integration
+- [ ] Power Management Integration (Battery, Brightness, etc)
+- [ ] GPU Stats Module
 
 ## Build
 ### For Nix Systems

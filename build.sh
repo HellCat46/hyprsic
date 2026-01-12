@@ -16,7 +16,7 @@ fi
 
 
 
-cmake -G Ninja -B build || exit
+cmake -G Ninja -S . -B build || exit
 cmake --build build || exit
 
 printf "\n\n\033[0;32mSuccessfully Built the project. Running the Executable\033[0m\n\n"

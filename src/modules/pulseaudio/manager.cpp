@@ -1,10 +1,10 @@
-#include "playing_now.hpp"
+#include "manager.hpp"
 #include <pulse/subscribe.h>
 #include <pulse/thread-mainloop.h>
 
 #define TAG "PlayingNow"
 
-int PlayingNow::Init(LoggingManager *logMgr) {
+int PulseAudioManager::Init(LoggingManager *logMgr) {
   logger = logMgr;
 
   pa_threaded_mainloop *mainLoop = pa_threaded_mainloop_new();
@@ -36,8 +36,8 @@ int PlayingNow::Init(LoggingManager *logMgr) {
   return 0;
 }
 
-void PlayingNow::contextStateHandler(pa_context *pulseCtx, void *data) {
-  PlayingNow *self = static_cast<PlayingNow *>(data);
+void PulseAudioManager::contextStateHandler(pa_context *pulseCtx, void *data) {
+  PulseAudioManager *self = static_cast<PulseAudioManager *>(data);
 
   switch (pa_context_get_state(pulseCtx)) {
   case PA_CONTEXT_READY:
@@ -66,18 +66,19 @@ void PlayingNow::contextStateHandler(pa_context *pulseCtx, void *data) {
   }
 }
 
-void PlayingNow::serverInfoCallBack(pa_context *pulseCtx,
-                                    const pa_server_info *info, void *data) {
-  class PlayingNow *playing = (PlayingNow *)data;
+void PulseAudioManager::serverInfoCallBack(pa_context *pulseCtx,
+                                           const pa_server_info *info,
+                                           void *data) {
+  PulseAudioManager *playing = (PulseAudioManager *)data;
 
   playing->data.server = info->server_name;
   playing->data.source = info->default_source_name;
   playing->data.sink = info->default_sink_name;
 }
 
-void PlayingNow::handleStateChanges(pa_context *pulseCtx,
-                                    const pa_subscription_event_type eventType,
-                                    unsigned int idx, void *data) {
+void PulseAudioManager::handleStateChanges(
+    pa_context *pulseCtx, const pa_subscription_event_type eventType,
+    unsigned int idx, void *data) {
   unsigned int facility = eventType & PA_SUBSCRIPTION_EVENT_FACILITY_MASK;
 
   switch (facility) {
@@ -99,34 +100,34 @@ void PlayingNow::handleStateChanges(pa_context *pulseCtx,
   }
 }
 
-void PlayingNow::outputInfoCallBack(pa_context *pulseCtx,
-                                    const pa_sink_input_info *info, int eol,
-                                    void *data) {
+void PulseAudioManager::outputInfoCallBack(pa_context *pulseCtx,
+                                           const pa_sink_input_info *info,
+                                           int eol, void *data) {
   if (info == nullptr)
     return;
   pa_context_get_client_info(pulseCtx, info->client, clientInfoCallBack, data);
 
-  PlayingNow *playing = (PlayingNow *)data;
+  PulseAudioManager *playing = (PulseAudioManager *)data;
   playing->data.out = info->name;
 }
 
-void PlayingNow::clientInfoCallBack(pa_context *pulseCtx,
-                                    const pa_client_info *info, int eol,
-                                    void *data) {
+void PulseAudioManager::clientInfoCallBack(pa_context *pulseCtx,
+                                           const pa_client_info *info, int eol,
+                                           void *data) {
   if (info == nullptr)
     return;
 
-  PlayingNow *playing = (PlayingNow *)data;
+  PulseAudioManager *playing = (PulseAudioManager *)data;
   playing->data.client = info->name;
 }
 
-void PlayingNow::inputInfoCallBack(pa_context *pulseCtx,
-                                   const pa_source_output_info *info, int eol,
-                                   void *data) {
+void PulseAudioManager::inputInfoCallBack(pa_context *pulseCtx,
+                                          const pa_source_output_info *info,
+                                          int eol, void *data) {
   if (info == nullptr)
     return;
 
-  PlayingNow *self = static_cast<PlayingNow *>(data);
+  PulseAudioManager *self = static_cast<PulseAudioManager *>(data);
   std::string msg = "Input Name: ";
   msg += info->name;
   self->logger->LogInfo(TAG, msg);
