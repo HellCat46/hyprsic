@@ -38,7 +38,7 @@ MprisManager::MprisManager(AppContext *appCtx) {
       dbus_message_iter_get_basic(&subIter, &value);
 
       if (std::strncmp(value, "org.mpris.MediaPlayer2", 22) == 0) {
-        ctx->logging.LogInfo(TAG, "Found DBus Name: " + std::string(value));
+        //ctx->logging.LogInfo(TAG, "Found DBus Name: " + std::string(value));
 
         if (std::strncmp(value + 22, "playerctld", 10) == 0)
           continue;
