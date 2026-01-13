@@ -12,20 +12,17 @@ class NotificationModule {
   LoggingManager *logger;
   DBManager* dbManager;
 
-  GtkWidget *popOverMenu;
-  GtkWidget *notifScrollWin;
-
+  GtkWidget *menuWin;
+  GtkWidget *scrollWinBox;
 public:
   NotificationModule(AppContext *ctx);
 
   // Notification List Functions
   void setup(GtkWidget *box);
+  void update();
 
-  static void showNotificationWin(GtkWidget *widget, gpointer user_data);
-  static void hideNotificationWin(GtkWidget *widget, gpointer user_data);
-  void updateNotificationWin();
+  static void chgVisibiltyWin(GtkWidget *widget, gpointer user_data);
   
-
   // Notification PopUp Functions
   static void showNotification(NotifFuncArgs *args);
   static gboolean autoCloseNotificationCb(gpointer user_data);

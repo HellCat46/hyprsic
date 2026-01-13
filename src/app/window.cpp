@@ -130,7 +130,7 @@ gboolean MainWindow::UpdateData(gpointer data) {
   
   self->mprisModule.Update();
  
-  self->notifModule.updateNotificationWin();
+  self->notifModule.update();
   self->btModule.updateBTList();
 
   return true;
