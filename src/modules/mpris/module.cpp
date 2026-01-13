@@ -15,8 +15,6 @@ MprisModule::MprisModule(AppContext *ctx) : mprisInstance(ctx) {
 }
 
 void MprisModule::setup(GtkWidget *mainBox) {
-  GtkWidget *middleBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
-  gtk_box_pack_end(GTK_BOX(mainBox), middleBox, FALSE, FALSE, 0);
 
   mainLabel = gtk_label_new(nullptr);
   GtkWidget *labelAction = gtk_event_box_new();
@@ -24,7 +22,8 @@ void MprisModule::setup(GtkWidget *mainBox) {
                    G_CALLBACK(MprisModule::chgVisibilityMenu), this);
 
   gtk_container_add(GTK_CONTAINER(labelAction), mainLabel);
-  gtk_box_pack_start(GTK_BOX(middleBox), labelAction, FALSE, FALSE, 0);
+  gtk_grid_attach(GTK_GRID(mainBox), labelAction, 2, 0, 1, 1);
+  gtk_widget_set_hexpand(labelAction, TRUE);
 
   // Popover Menu
   menuWindow = gtk_window_new(GTK_WINDOW_TOPLEVEL);

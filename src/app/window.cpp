@@ -43,14 +43,17 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
                        TRUE);
   gtk_layer_set_exclusive_zone(GTK_WINDOW(self->window), 35);
 
-  GtkWidget *main_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+  GtkWidget *main_box = gtk_grid_new();
+  gtk_grid_set_column_homogeneous(GTK_GRID(main_box), TRUE);
   gtk_container_add(GTK_CONTAINER(self->window), main_box);
   std::string txt = "";
 
-
   // Right Box to Show System Stats
-  GtkWidget *right_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
-  gtk_box_pack_end(GTK_BOX(main_box), right_box, FALSE, FALSE, 5);
+  GtkWidget *right_box = gtk_grid_new();
+
+  gtk_grid_attach(GTK_GRID(main_box), right_box, 3, 0, 2, 1);
+  gtk_widget_set_hexpand(right_box, TRUE);
+  gtk_grid_set_column_spacing(GTK_GRID(right_box), 2);
 
   txt = "⬇" + self->stat.GetNetRx() + "⬆" + self->stat.GetNetTx();
   self->netWid = gtk_label_new(txt.c_str());
@@ -77,13 +80,21 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
   oss << std::put_time(&tm, "%H:%M:%S");
   self->timeWid = gtk_label_new(oss.str().c_str());
 
-  gtk_box_pack_start(GTK_BOX(right_box), self->netWid, FALSE, FALSE, 0);
-  gtk_box_pack_start(GTK_BOX(right_box), self->diskWid, FALSE, FALSE, 0);
-  gtk_box_pack_start(GTK_BOX(right_box), self->loadWid, FALSE, FALSE, 0);
-  gtk_box_pack_start(GTK_BOX(right_box), self->memWid, FALSE, FALSE, 0);
-  gtk_box_pack_start(GTK_BOX(right_box), self->batteryWid, FALSE, FALSE, 0);
-  gtk_box_pack_start(GTK_BOX(right_box), self->timeWid, FALSE, FALSE, 0);
-
+  gtk_grid_attach(GTK_GRID(right_box), self->netWid, 0, 0, 1, 1);
+  gtk_widget_set_hexpand(self->netWid, TRUE);
+  gtk_grid_attach(GTK_GRID(right_box), self->diskWid, 1, 0, 1, 1);
+  gtk_widget_set_hexpand(self->diskWid, TRUE);
+  gtk_grid_attach(GTK_GRID(right_box), self->loadWid, 2, 0, 1, 1);
+  gtk_widget_set_hexpand(self->loadWid, TRUE);
+  gtk_grid_attach(GTK_GRID(right_box), self->memWid, 3, 0, 1, 1);
+  gtk_widget_set_hexpand(self->memWid, TRUE);
+  gtk_grid_attach(GTK_GRID(right_box), self->batteryWid, 4, 0, 1, 1);
+  gtk_widget_set_hexpand(self->batteryWid, TRUE);
+  gtk_grid_attach(GTK_GRID(right_box), self->timeWid, 5, 0, 1, 1);
+  gtk_widget_set_hexpand(self->timeWid, TRUE);
+  
+  
+  
   self->mprisModule.setup(main_box);
   self->hyprModule.setup(main_box);
   

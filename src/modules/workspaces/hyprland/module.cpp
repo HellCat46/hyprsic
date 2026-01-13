@@ -13,7 +13,8 @@ HyprWSModule::HyprWSModule(AppContext *ctx) {
 void HyprWSModule::setup(GtkWidget *main_box) {
   SectionWid = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
   gtk_widget_set_margin_start(SectionWid, 15);
-  gtk_box_pack_start(GTK_BOX(main_box), SectionWid, FALSE, FALSE, 5);
+  gtk_grid_attach(GTK_GRID(main_box), SectionWid, 0, 0, 2, 1);
+  gtk_widget_set_hexpand(SectionWid, TRUE);
 
   updateWorkspaces(&hyprInstance, SectionWid);
 
@@ -22,7 +23,6 @@ void HyprWSModule::setup(GtkWidget *main_box) {
 
 void HyprWSModule::updateWorkspaces(HyprWorkspaces *hyprInstance,
                                     GtkWidget *SectionWid) {
-
 
   if (!hyprInstance->GetWorkspaces()) {
     auto updateLogic = [SectionWid, hyprInstance]() {
@@ -59,22 +59,23 @@ void HyprWSModule::updateWorkspaces(HyprWorkspaces *hyprInstance,
                               (GClosureNotify)g_free, (GConnectFlags)0);
       }
       gtk_widget_show_all(SectionWid);
-      
+
       return G_SOURCE_REMOVE;
     };
-    
-    auto* callback = new std::function<gboolean()>(std::move(updateLogic));
-    
-    g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, 
-        [](gpointer data) -> gboolean{
-            auto* func = static_cast<std::function<gboolean()>*>(data);
-            
-            return (*func)();
-        }, callback, 
+
+    auto *callback = new std::function<gboolean()>(std::move(updateLogic));
+
+    g_idle_add_full(
+        G_PRIORITY_DEFAULT_IDLE,
+        [](gpointer data) -> gboolean {
+          auto *func = static_cast<std::function<gboolean()> *>(data);
+
+          return (*func)();
+        },
+        callback,
         [](gpointer data) {
-            delete static_cast<std::function<gboolean()>*>(data);
-        }
-        );
+          delete static_cast<std::function<gboolean()> *>(data);
+        });
   }
 }
 

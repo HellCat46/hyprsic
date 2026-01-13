@@ -65,7 +65,7 @@ void BluetoothModule::setupBT(GtkWidget *box) {
   g_signal_connect(bt_img, "clicked",
                    G_CALLBACK(BluetoothModule::switchVisibilityBTMenu), this);
 
-  gtk_box_pack_start(GTK_BOX(box), bt_img, FALSE, FALSE, 0);
+  gtk_grid_attach(GTK_GRID(box), bt_img, 7, 0, 1, 1);
 }
 
 void BluetoothModule::switchVisibilityBTMenu(GtkWidget *widget,
