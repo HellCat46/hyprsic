@@ -13,7 +13,7 @@ class BluetoothModule {
   LoggingManager *logger;
   GtkWidget *btPowerBtn;
   GtkWidget *btScanBtn;
-  GtkWidget *btPopOverMenu;
+  GtkWidget *btMenuWin;
   GtkWidget *btDevList;
 
 public:
@@ -21,8 +21,8 @@ public:
   // UI Prep Functions
   void setupBT(GtkWidget *box);
   void updateBTList();
-  static void showBTMenu(GtkWidget *widget, gpointer user_data);
-  static void hideBTMenu(GtkWidget *widget, gpointer user_data);
+  
+  static void switchVisibilityBTMenu(GtkWidget *widget, gpointer user_data);
   static void handleDiscovery(GtkWidget *widget, gpointer user_data);
   static void handlePower(GtkWidget *widget, gpointer user_data);
   static void handleDeviceConnect(GtkWidget *widget, gpointer user_data);

@@ -1,43 +1,46 @@
 #include "module.hpp"
+#include "dbus/dbus.h"
+#include "gtk-layer-shell.h"
 #include "gtk/gtk.h"
 #include <cstddef>
 
 #define TAG "BluetoothModule"
 
-BluetoothModule::BluetoothModule(AppContext *ctx) : btManager(ctx, &ctx->logging), logger(&ctx->logging) {}
+BluetoothModule::BluetoothModule(AppContext *ctx)
+    : btManager(ctx, &ctx->logging), logger(&ctx->logging) {}
 
 void BluetoothModule::setupBT(GtkWidget *box) {
   GtkWidget *bt_img = gtk_button_new_with_label("");
 
-  btPopOverMenu = gtk_popover_new(bt_img);
-  gtk_popover_set_modal(GTK_POPOVER(btPopOverMenu), FALSE);
-  gtk_popover_set_position(GTK_POPOVER(btPopOverMenu), GTK_POS_TOP);
-  gtk_widget_set_margin_bottom(btPopOverMenu, 30);
-  
-  // Main Box inside Popover
-  GtkWidget *main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-  gtk_container_add(GTK_CONTAINER(btPopOverMenu), main_box);
+  btMenuWin = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+  gtk_layer_init_for_window(GTK_WINDOW(btMenuWin));
 
-  
+  gtk_layer_set_layer(GTK_WINDOW(btMenuWin), GTK_LAYER_SHELL_LAYER_TOP);
+  gtk_layer_set_anchor(GTK_WINDOW(btMenuWin), GTK_LAYER_SHELL_EDGE_BOTTOM,
+                       TRUE);
+  gtk_layer_set_anchor(GTK_WINDOW(btMenuWin), GTK_LAYER_SHELL_EDGE_RIGHT, TRUE);
+  // gtk_widget_set_margin_bottom(btMenuWin, 30);
+
+  // Main Box inside Window
+  GtkWidget *main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  gtk_container_add(GTK_CONTAINER(btMenuWin), main_box);
+
   // Navigation Box with Close Button
   GtkWidget *nav_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
   gtk_box_pack_start(GTK_BOX(main_box), nav_box, FALSE, FALSE, 0);
   gtk_widget_set_margin_bottom(nav_box, 10);
-  
-  
+
   // Items in Nav Bar
   GtkWidget *title = gtk_label_new(NULL);
   gtk_label_set_markup(GTK_LABEL(title), "<b>Bluetooth Manager</b>");
   gtk_label_set_xalign(GTK_LABEL(title), 0);
   gtk_box_pack_start(GTK_BOX(nav_box), title, FALSE, TRUE, 0);
-  
-  GtkWidget *closeBtn = gtk_button_new_with_label("✖");
-  gtk_box_pack_end(GTK_BOX(nav_box), closeBtn, FALSE, FALSE, 0);
+
   btScanBtn =
       gtk_button_new_with_label(btManager.discovering ? "Stop" : "Scan");
   gtk_box_pack_end(GTK_BOX(nav_box), btScanBtn, FALSE, FALSE, 0);
   g_signal_connect(btScanBtn, "clicked", G_CALLBACK(handleDiscovery), this);
-  
+
   // Top Box with Power and Scan Buttons
   GtkWidget *top_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
   gtk_box_pack_start(GTK_BOX(main_box), top_box, FALSE, FALSE, 0);
@@ -46,36 +49,36 @@ void BluetoothModule::setupBT(GtkWidget *box) {
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btPowerBtn), btManager.power);
   gtk_box_pack_start(GTK_BOX(top_box), btPowerBtn, FALSE, FALSE, 0);
   g_signal_connect(btPowerBtn, "clicked", G_CALLBACK(handlePower), this);
-  
-  
 
-
-  
   btDevList = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
   gtk_box_pack_start(GTK_BOX(main_box), btDevList, FALSE, FALSE, 0);
 
   gtk_widget_show_all(main_box);
 
-  gtk_widget_set_size_request(btPopOverMenu, 400, 200);
+  gtk_widget_set_size_request(btMenuWin, 400, 200);
   gtk_widget_set_margin_top(btDevList, 20);
   gtk_widget_set_margin_top(main_box, 5);
   gtk_widget_set_margin_bottom(main_box, 5);
   gtk_widget_set_margin_start(main_box, 10);
   gtk_widget_set_margin_end(main_box, 10);
 
-  g_signal_connect(bt_img, "enter", G_CALLBACK(showBTMenu), this);
-  g_signal_connect(closeBtn, "clicked", G_CALLBACK(hideBTMenu), this);
+  g_signal_connect(bt_img, "clicked",
+                   G_CALLBACK(BluetoothModule::switchVisibilityBTMenu), this);
 
   gtk_box_pack_start(GTK_BOX(box), bt_img, FALSE, FALSE, 0);
 }
 
-void BluetoothModule::showBTMenu(GtkWidget *widget, gpointer user_data) {
+void BluetoothModule::switchVisibilityBTMenu(GtkWidget *widget,
+                                             gpointer user_data) {
   BluetoothModule *self = static_cast<BluetoothModule *>(user_data);
 
-  self->updateBTList();
-
-  gtk_popover_popup(GTK_POPOVER(self->btPopOverMenu));
+  if (!gtk_widget_get_visible(self->btMenuWin)) {
+    self->updateBTList();
+    gtk_widget_show(self->btMenuWin);
+  } else
+    gtk_widget_hide(self->btMenuWin);
 }
+
 
 void BluetoothModule::updateBTList() {
 
@@ -175,13 +178,6 @@ void BluetoothModule::updateBTList() {
   }
 
   gtk_widget_show_all(btDevList);
-}
-
-void BluetoothModule::hideBTMenu(GtkWidget *widget, gpointer user_data) {
-  BluetoothModule *self = static_cast<BluetoothModule *>(user_data);
-
-  if (gtk_widget_get_visible(self->btPopOverMenu))
-    gtk_popover_popdown(GTK_POPOVER(self->btPopOverMenu));
 }
 
 void BluetoothModule::handleDiscovery(GtkWidget *widget, gpointer user_data) {

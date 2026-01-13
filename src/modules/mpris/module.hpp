@@ -10,10 +10,15 @@ class MprisModule {
   LoggingManager *logger;
 
   GtkWidget *mainLabel;
-  GtkWidget *popOverMenu;
+  GtkWidget *menuWindow;
   GtkWidget *progTitle;
   GtkWidget *progLength;
-  GtkWidget *progScale;
+  
+  GtkWidget* progBarBox;
+  GtkWidget* progScaleMin;
+  GtkWidget* progScale;
+  GtkWidget* progScaleMax;
+  
   GtkAdjustment *progScaleAdj;
 
 public:
@@ -22,9 +27,7 @@ public:
   void setup(GtkWidget *mainBox);
   void Update();
 
-  static void showPopOverMenu(GtkWidget *widget, GdkEvent *e,
-                              gpointer user_data);
-  static void hidePopOverMenu(GtkWidget *widget, GdkEvent *e,
+  static void chgVisibilityMenu(GtkWidget *widget, GdkEvent *e,
                               gpointer user_data);
 
   // Gtk Scale Signal Callbacks
@@ -38,4 +41,6 @@ public:
                               gpointer user_data);
   static void handleNextTrack(GtkWidget *widget, gpointer user_data);
   static void handlePrevTrack(GtkWidget *widget, gpointer user_data);
+  
+  static std::string timeToStr(uint64_t totalSeconds);
 };
