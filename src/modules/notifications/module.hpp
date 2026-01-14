@@ -22,6 +22,7 @@ public:
   void update();
 
   static void chgVisibiltyWin(GtkWidget *widget, gpointer user_data);
+  static void deleteNotificationCb(GtkWidget *widget, gpointer user_data);
   
   // Notification PopUp Functions
   static void showNotification(NotifFuncArgs *args);

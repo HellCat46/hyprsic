@@ -12,13 +12,15 @@
 NotificationManager::NotificationManager(AppContext *ctx) : ctx(ctx) {}
 
 void NotificationManager::RunService(
-    std::function<void(NotifFuncArgs *)> showNotification, std::unordered_map<std::string, GtkWidget*> *notifications) {
+    std::function<void(NotifFuncArgs *)> showNotification,
+    std::unordered_map<std::string, GtkWidget *> *notifications) {
   notifThread = std::thread(&NotificationManager::captureNotification, this,
                             showNotification, notifications);
 }
 
 void NotificationManager::captureNotification(
-    std::function<void(NotifFuncArgs *)> showNotification, std::unordered_map<std::string, GtkWidget*> *notifications) {
+    std::function<void(NotifFuncArgs *)> showNotification,
+    std::unordered_map<std::string, GtkWidget *> *notifications) {
   int ret = dbus_bus_request_name(
       ctx->dbus.ssnConn, "org.freedesktop.Notifications",
       DBUS_NAME_FLAG_REPLACE_EXISTING, &(ctx->dbus.ssnErr));
@@ -83,7 +85,6 @@ void NotificationManager::captureNotification(
         args.notifications = notifications;
         args.logger = &ctx->logging;
         args.dbManager = &ctx->dbManager;
-        
 
         showNotification(&args);
       }
@@ -336,8 +337,6 @@ GdkPixbuf *NotificationManager::parseImageData(DBusMessageIter *hintsIter) {
       int arrLen;
       unsigned char *pixelData;
       dbus_message_iter_get_fixed_array(&arrayIter, &pixelData, &arrLen);
-      
-
 
       GdkPixbuf *pixbuf = gdk_pixbuf_new_from_data(
           pixelData, GDK_COLORSPACE_RGB, alpha, bits_per_sample, width, height,
