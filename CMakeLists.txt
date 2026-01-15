@@ -47,6 +47,8 @@ set(MODULES_SOURCES
     src/modules/bluetooth/module.cpp
     src/modules/notifications/manager.cpp
     src/modules/notifications/module.cpp
+    src/modules/screensaver/manager.cpp
+    src/modules/screensaver/module.cpp
 )
 
 set(DATABASE_SOURCES

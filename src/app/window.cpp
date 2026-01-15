@@ -10,7 +10,7 @@
 
 #define TAG "MainWindow"
 
-MainWindow::MainWindow() : btModule(&ctx), hyprModule(&ctx), notifModule(&ctx), mprisModule(&ctx) {
+MainWindow::MainWindow() : btModule(&ctx), hyprModule(&ctx), notifModule(&ctx), mprisModule(&ctx), screenSaverModule(&ctx) {
   load.Init(&ctx.logging);
   mem.Init(&ctx.logging);
   battery.Init(&ctx.logging);
@@ -100,6 +100,7 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
   
   self->notifModule.setup(right_box);
   self->btModule.setupBT(right_box);
+  self->screenSaverModule.setup(right_box);
 
   gtk_widget_show_all(self->window);
 }

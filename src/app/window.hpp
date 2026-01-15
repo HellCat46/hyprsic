@@ -13,6 +13,7 @@
 #include "../modules/sysinfo/stats.hpp"
 #include "../modules/sysinfo/sys_load.hpp"
 #include "../modules/workspaces/hyprland/module.hpp"
+#include "../modules/screensaver/module.hpp"
 
 class MainWindow {
   GtkApplication *app = nullptr;
@@ -40,6 +41,7 @@ class MainWindow {
   HyprWSModule hyprModule;
   NotificationModule notifModule;
   MprisModule mprisModule;
+  ScreenSaverModule screenSaverModule;
 
 public:
   MainWindow();
