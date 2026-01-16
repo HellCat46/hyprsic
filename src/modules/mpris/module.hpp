@@ -6,7 +6,7 @@
 #include "manager.hpp"
 
 class MprisModule {
-  MprisManager mprisInstance;
+  MprisManager* mprisInstance;
   LoggingManager *logger;
 
   GtkWidget *mainLabel;
@@ -22,7 +22,7 @@ class MprisModule {
   GtkAdjustment *progScaleAdj;
 
 public:
-  MprisModule(AppContext *ctx);
+  MprisModule(AppContext *ctx, MprisManager* mprisMgr);
 
   void setup(GtkWidget *mainBox);
   void Update();

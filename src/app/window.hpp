@@ -3,6 +3,7 @@
 #include "glib.h"
 #include <gtk-layer-shell.h>
 #include <gtk/gtk.h>
+#include <vector>
 
 // #include "../modules/pulseaudio/manager.hpp"
 #include "../modules/bluetooth/module.hpp"
@@ -15,32 +16,35 @@
 #include "../modules/workspaces/hyprland/module.hpp"
 #include "../modules/screensaver/module.hpp"
 
+struct Window {
+    GtkWidget *window = nullptr;
+  
+    GtkWidget *netWid;
+    GtkWidget *diskWid;
+    GtkWidget *loadWid;
+    GtkWidget *memWid;
+    GtkWidget *batteryWid;
+    GtkWidget *timeWid;
+    
+    MprisModule* mprisModule;
+    HyprWSModule* hyprModule;
+};
+
 class MainWindow {
   GtkApplication *app = nullptr;
-  GtkWidget *window = nullptr;
+  std::vector<Window> mainWindows;
   AppContext ctx;
 
+
   Stats stat;
-  GtkWidget *netWid;
-  GtkWidget *diskWid;
-
-  SysLoad load;
-  GtkWidget *loadWid;
-
   Memory mem;
-  GtkWidget *memWid;
-
+  SysLoad load;
   BatteryInfo battery;
-  GtkWidget *batteryWid;
-
-  GtkWidget *timeWid;
-
   // PlayingNow playing;
 
   BluetoothModule btModule;
-  HyprWSModule hyprModule;
   NotificationModule notifModule;
-  MprisModule mprisModule;
+  MprisManager mprisManager;
   ScreenSaverModule screenSaverModule;
 
 public:

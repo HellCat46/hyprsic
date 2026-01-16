@@ -4,13 +4,15 @@
 #include "glibconfig.h"
 #include "gtk-layer-shell.h"
 #include "gtk/gtk.h"
+#include "manager.hpp"
 #include <cerrno>
 #include <cstdint>
 #include <string>
 
 #define TAG "MprisModule"
 
-MprisModule::MprisModule(AppContext *ctx) : mprisInstance(ctx) {
+MprisModule::MprisModule(AppContext *ctx, MprisManager *mprisMgr) {
+  mprisInstance = mprisMgr;
   logger = &ctx->logging;
 }
 
@@ -67,7 +69,7 @@ void MprisModule::setup(GtkWidget *mainBox) {
   gtk_container_add(GTK_CONTAINER(progEventListener), progTitle);
   gtk_box_pack_start(GTK_BOX(titleBox), progEventListener, FALSE, FALSE, 0);
   g_signal_connect(progEventListener, "button-press-event",
-                   G_CALLBACK(MprisModule::handlePlayPause), &mprisInstance);
+                   G_CALLBACK(MprisModule::handlePlayPause), mprisInstance);
 
   // Next Button
   GtkWidget *titleNext = gtk_button_new_with_label(">");
@@ -86,7 +88,7 @@ void MprisModule::setup(GtkWidget *mainBox) {
   progScale = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, progScaleAdj);
   gtk_box_pack_start(GTK_BOX(progBarBox), progScale, TRUE, TRUE, 0);
   g_signal_connect(progScale, "change-value",
-                   G_CALLBACK(MprisModule::handleScaleChange), &mprisInstance);
+                   G_CALLBACK(MprisModule::handleScaleChange), mprisInstance);
   g_signal_connect(progScale, "format-value",
                    G_CALLBACK(MprisModule::handleFormatValue), nullptr);
 
@@ -96,16 +98,16 @@ void MprisModule::setup(GtkWidget *mainBox) {
 }
 
 void MprisModule::Update() {
-  if (mprisInstance.GetPlayerInfo())
+  if (mprisInstance->GetPlayerInfo())
     return;
 
   // Current Issue: Improper UTF-8 handling (Japanese characters make the markup
   // fail);
   std::string title = "<span foreground='green'><b>";
-  if (mprisInstance.playingTrack.title.length() > 50) {
-    title += mprisInstance.playingTrack.title.substr(0, 47).append("...");
+  if (mprisInstance->playingTrack.title.length() > 50) {
+    title += mprisInstance->playingTrack.title.substr(0, 47).append("...");
   } else {
-    title += mprisInstance.playingTrack.title;
+    title += mprisInstance->playingTrack.title;
   }
   title += "</b></span>";
 
@@ -118,13 +120,13 @@ void MprisModule::Update() {
   gtk_label_set_markup(GTK_LABEL(progTitle), title.c_str());
 
   // If Length is 64 Bit Int Max Value, The Track is Probably a Stream
-  if (mprisInstance.playingTrack.length != 9223372036854775807) {
+  if (mprisInstance->playingTrack.length != 9223372036854775807) {
     gtk_label_set_label(
         GTK_LABEL(progScaleMax),
-        MprisModule::timeToStr(mprisInstance.playingTrack.length).c_str());
+        MprisModule::timeToStr(mprisInstance->playingTrack.length).c_str());
 
-    gtk_adjustment_set_upper(progScaleAdj, mprisInstance.playingTrack.length);
-    gtk_adjustment_set_value(progScaleAdj, mprisInstance.playingTrack.currPos);
+    gtk_adjustment_set_upper(progScaleAdj, mprisInstance->playingTrack.length);
+    gtk_adjustment_set_value(progScaleAdj, mprisInstance->playingTrack.currPos);
     gtk_adjustment_set_page_increment(progScaleAdj, 5);
     gtk_adjustment_set_page_size(progScaleAdj, 10);
     gtk_adjustment_set_step_increment(progScaleAdj, 5);
