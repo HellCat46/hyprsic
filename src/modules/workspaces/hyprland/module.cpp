@@ -5,8 +5,8 @@
 #include <functional>
 #include <iostream>
 
-HyprWSModule::HyprWSModule(AppContext *ctx) {
-  hyprInstance.Init(&ctx->logging);
+HyprWSModule::HyprWSModule(AppContext *ctx, HyprWSManager *hyprInstance) {
+    this->hyprInstance = hyprInstance;
   logger = &ctx->logging;
 }
 
@@ -16,12 +16,12 @@ void HyprWSModule::setup(GtkWidget *main_box) {
   gtk_grid_attach(GTK_GRID(main_box), SectionWid, 0, 0, 2, 1);
   gtk_widget_set_hexpand(SectionWid, TRUE);
 
-  updateWorkspaces(&hyprInstance, SectionWid);
+  updateWorkspaces(hyprInstance, SectionWid);
 
-  hyprInstance.liveEventListener(HyprWSModule::updateWorkspaces, SectionWid);
+  hyprInstance->subscribe(HyprWSModule::updateWorkspaces, SectionWid);
 }
 
-void HyprWSModule::updateWorkspaces(HyprWorkspaces *hyprInstance,
+void HyprWSModule::updateWorkspaces(HyprWSManager *hyprInstance,
                                     GtkWidget *SectionWid) {
 
   if (!hyprInstance->GetWorkspaces()) {

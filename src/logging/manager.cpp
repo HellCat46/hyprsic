@@ -24,41 +24,51 @@ LoggingManager::LoggingManager(bool writeConsole) {
   }
   logPath += "hyprsic.log";
 
-  outputStream = new std::ofstream(logPath, std::ios::app);
+  outputStream.open(logPath, std::ios::app);
 }
 
 LoggingManager::~LoggingManager() {
   if (outputStream) {
-    outputStream->close();
+    outputStream.close();
   }
 }
 
-void LoggingManager::LogInfo(const char *tag, const std::string &message) {
-  *outputStream << "[INFO] [" << GetCurrentTime() << "] [" << tag << "] "
-                << message << std::endl;
+void LoggingManager::LogInfo(const char *TAG, const std::string &message) {
+  outputStream << "[INFO] [" << GetCurrentTime() << "] [" << TAG << "] "
+               << message << std::endl;
 
   if (writeConsole) {
-    std::cout << "[INFO] [" << GetCurrentTime() << "] [" << tag << "] "
+    std::cout << "[INFO] [" << GetCurrentTime() << "] [" << TAG << "] "
               << message << std::endl;
   }
 }
 
-void LoggingManager::LogWarning(const char *tag, const std::string &message) {
-  *outputStream << "[WARNING] [" << GetCurrentTime() << "] [" << tag << "] "
-                << message << std::endl;
+void LoggingManager::LogWarning(const char *TAG, const std::string &message) {
+  outputStream << "[WARNING] [" << GetCurrentTime() << "] [" << TAG << "] "
+               << message << std::endl;
 
   if (writeConsole) {
-    std::cout << "[WARNING] [" << GetCurrentTime() << "] [" << tag << "] "
+    std::cout << "[WARNING] [" << GetCurrentTime() << "] [" << TAG << "] "
               << message << std::endl;
   }
 }
 
-void LoggingManager::LogError(const char *tag, const std::string &message) {
-  *outputStream << "[ERROR] [" << GetCurrentTime() << "] [" << tag << "] "
-                << message << std::endl;
+void LoggingManager::LogError(const char *TAG, const std::string &message) {
+  outputStream << "[ERROR] [" << GetCurrentTime() << "] [" << TAG << "] "
+               << message << std::endl;
 
   if (writeConsole) {
-    std::cerr << "[ERROR] [" << GetCurrentTime() << "] [" << tag << "] "
+    std::cerr << "[ERROR] [" << GetCurrentTime() << "] [" << TAG << "] "
+              << message << std::endl;
+  }
+}
+
+void LoggingManager::LogDebug(const char *TAG, const std::string &message) {
+  outputStream << "[DEBUG] [" << GetCurrentTime() << "] [" << TAG << "] "
+               << message << std::endl;
+
+  if (writeConsole) {
+    std::cout << "[DEBUG] [" << GetCurrentTime() << "] [" << TAG << "] "
               << message << std::endl;
   }
 }

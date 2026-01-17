@@ -3,7 +3,6 @@
 #include "gio/gio.h"
 #include "glib-object.h"
 #include "glib.h"
-#include "glibconfig.h"
 #include "gtk-layer-shell.h"
 #include "gtk/gtk.h"
 #include <ctime>
@@ -12,17 +11,27 @@
 
 #define TAG "MainWindow"
 
+Window::Window(AppContext *ctx, MprisManager *mprisMgr,
+               ScreenSaverManager *scrnsavrMgr,
+               NotificationManager *notifInstance, BluetoothManager *btMgr,
+               HyprWSManager *hyprMgr)
+    : mprisModule(ctx, mprisMgr), hyprModule(ctx, hyprMgr),
+      scrnsavrModule(ctx, scrnsavrMgr), btModule(ctx, btMgr),
+      notifModule(ctx, notifInstance) {}
+
 MainWindow::MainWindow()
-    : btModule(&ctx), notifModule(&ctx), mprisManager(&ctx),
-      screenSaverModule(&ctx) {
+    : notifManager(&ctx), btManager(&ctx), mprisManager(&ctx),
+      scrnsavrManager(&ctx), hyprInstance(&ctx.logging) {
   load.Init(&ctx.logging);
   mem.Init(&ctx.logging);
   battery.Init(&ctx.logging);
   stat.Init(&ctx.logging);
   // playing.Init(&ctx.logging);
 
-  app =
-      gtk_application_new("com.hyprsic.statusbar", G_APPLICATION_DEFAULT_FLAGS);
+  hyprInstance.liveEventListener();
+  notifManager.RunService(NotificationModule::showNotification);
+
+  app = gtk_application_new("com.hellcat.hyprsic", G_APPLICATION_DEFAULT_FLAGS);
   g_signal_connect(app, "activate", G_CALLBACK(activate), this);
   g_timeout_add(5000, UpdateData, this);
 }
@@ -38,7 +47,9 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
   int mCount = gdk_display_get_n_monitors(display);
 
   for (int i = 0; i < mCount; i++) {
-    Window winInstance;
+    Window winInstance(&self->ctx, &self->mprisManager, &self->scrnsavrManager,
+                       &self->notifManager, &self->btManager,
+                       &self->hyprInstance);
     GdkMonitor *monitor = gdk_display_get_monitor(display, i);
 
     winInstance.window = gtk_application_window_new(app);
@@ -107,20 +118,17 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
     gtk_grid_attach(GTK_GRID(right_box), winInstance.timeWid, 5, 0, 1, 1);
     gtk_widget_set_hexpand(winInstance.timeWid, TRUE);
 
-    winInstance.mprisModule = new MprisModule(&self->ctx, &self->mprisManager);
-    winInstance.mprisModule->setup(main_box);
-    
-    winInstance.hyprModule = new HyprWSModule(&self->ctx);  
-    winInstance.hyprModule->setup(main_box);
+    winInstance.mprisModule.setup(main_box);
+    winInstance.hyprModule.setup(main_box);
+
+    // self->notifModule.setup(right_box);
+
+    // self->btModule.setupBT(right_box);
+    // self->screenSaverModule.setup(right_box);
 
     self->mainWindows.push_back(winInstance);
-
     gtk_widget_show_all(winInstance.window);
   }
-
-  // self->notifModule.setup(right_box);
-  // self->btModule.setupBT(right_box);
-  // self->screenSaverModule.setup(right_box);
 
   // gtk_widget_show_all(self->window);
 }
@@ -128,45 +136,48 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
 gboolean MainWindow::UpdateData(gpointer data) {
   MainWindow *self = static_cast<MainWindow *>(data);
   std::string txt = "";
+  
 
-  for (auto winInstance : self->mainWindows) {
-    self->stat.UpdateData();
+  // self->btManager.getDeviceList();
+  for (int idx = 0; idx < self->mainWindows.size(); idx++) {
 
     // Update Network Usage
     txt = "⬇" + self->stat.GetNetRx() + "⬆" + self->stat.GetNetTx();
-    gtk_label_set_label(GTK_LABEL(winInstance.netWid), txt.c_str());
+    gtk_label_set_label(GTK_LABEL(self->mainWindows[idx].netWid), txt.c_str());
 
     // Update Disk Usage
     txt = " " + self->stat.GetDiskAvail() + "/" + self->stat.GetDiskTotal();
-    gtk_label_set_label(GTK_LABEL(winInstance.diskWid), txt.c_str());
+    gtk_label_set_label(GTK_LABEL(self->mainWindows[idx].diskWid), txt.c_str());
 
     // Update System Load
     txt = std::to_string(self->load.GetLoad(5));
     txt = " " + txt.substr(0, txt.find('.') + 3);
-    gtk_label_set_label(GTK_LABEL(winInstance.loadWid), txt.c_str());
+    gtk_label_set_label(GTK_LABEL(self->mainWindows[idx].loadWid), txt.c_str());
 
     // Update memory
     txt = " " + Stats::ParseBytes(self->mem.GetUsedRAM() * 1000, 2) + "/" +
           Stats::ParseBytes(self->mem.GetTotRAM() * 1000, 2);
-    gtk_label_set_label(GTK_LABEL(winInstance.memWid), txt.c_str());
+    gtk_label_set_label(GTK_LABEL(self->mainWindows[idx].memWid), txt.c_str());
 
     // Update battery
     txt = " " + std::to_string(self->battery.getTotPercent()) + "%";
-    gtk_label_set_label(GTK_LABEL(winInstance.batteryWid), txt.c_str());
+    gtk_label_set_label(GTK_LABEL(self->mainWindows[idx].batteryWid),
+                        txt.c_str());
 
     // Update time
     auto t = std::time(nullptr);
     auto tm = *std::localtime(&t);
     std::ostringstream oss;
     oss << std::put_time(&tm, "%H:%M:%S");
-    gtk_label_set_label(GTK_LABEL(winInstance.timeWid), oss.str().c_str());
+    gtk_label_set_label(GTK_LABEL(self->mainWindows[idx].timeWid),
+                        oss.str().c_str());
 
-    winInstance.mprisModule->Update();
+    self->mainWindows[idx].mprisModule.Update();
     // self->notifModule.update();
-    // self->btModule.updateBTList();
+    //self->mainWindows[idx].btModule.updateBTList();
   }
-
   
+  self->stat.UpdateData();
 
   return true;
 }

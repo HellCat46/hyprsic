@@ -3,7 +3,7 @@
 
 #define TAG "Display"
 
-Display::Display() {
+Display::Display(): hyprWS(&logger) {
   // Initiating The Network and It's Stats
   net.Init(&logger);
   stat.Init(&logger);
@@ -20,7 +20,6 @@ Display::Display() {
 
   //playing.Init(&logger);
 
-  hyprWS.Init(&logger);
 }
 std::string Display::DisplayBar() {
   std::string str;

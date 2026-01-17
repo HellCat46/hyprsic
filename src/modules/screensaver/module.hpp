@@ -10,7 +10,7 @@ class ScreenSaverModule {
   GtkWidget *btnWid;
 
 public:
-  ScreenSaverModule(AppContext *ctx);
+  ScreenSaverModule(AppContext *ctx, ScreenSaverManager *scrnsavrInstance);
   void setup(GtkWidget *box);
 
   static void switchScreenSaverCb(GtkWidget *widget, gpointer user_data);

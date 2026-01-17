@@ -5,19 +5,19 @@
 #include "manager.hpp"
 
 struct ChgWSArgs {
-  HyprWorkspaces *wsInstance;
+  HyprWSManager *wsInstance;
   unsigned int wsId;
 };
 
 class HyprWSModule {
-  HyprWorkspaces hyprInstance;
+  HyprWSManager* hyprInstance;
   GtkWidget *SectionWid;
   LoggingManager *logger;
 
 public:
-  HyprWSModule(AppContext *ctx);
+  HyprWSModule(AppContext *ctx, HyprWSManager* hyprInstance);
 
   void setup(GtkWidget *main_box);
-  static void updateWorkspaces(HyprWorkspaces* hyprInstance, GtkWidget* SectionWid);
+  static void updateWorkspaces(HyprWSManager* hyprInstance, GtkWidget* SectionWid);
   static void chgWorkspace(GtkWidget *widget, GdkEvent *e, gpointer user_data);
 };

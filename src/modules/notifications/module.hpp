@@ -3,19 +3,16 @@
 #include "glib.h"
 #include "gtk/gtk.h"
 #include "manager.hpp"
-#include <string>
-#include <unordered_map>
 
 class NotificationModule {
-  std::unordered_map<std::string, GtkWidget *> notifications;
-  NotificationManager notifInstance;
+  NotificationManager* notifInstance;
   LoggingManager *logger;
   DBManager* dbManager;
 
   GtkWidget *menuWin;
   GtkWidget *scrollWinBox;
 public:
-  NotificationModule(AppContext *ctx);
+  NotificationModule(AppContext *ctx, NotificationManager *notifInstance);
 
   // Notification List Functions
   void setup(GtkWidget *box);

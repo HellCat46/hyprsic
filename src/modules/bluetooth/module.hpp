@@ -9,7 +9,7 @@ struct FuncArgs {
 };
 
 class BluetoothModule {
-  BluetoothManager btManager;
+  BluetoothManager* btManager;
   LoggingManager *logger;
   GtkWidget *btPowerBtn;
   GtkWidget *btScanBtn;
@@ -17,7 +17,7 @@ class BluetoothModule {
   GtkWidget *btDevList;
 
 public:
-  BluetoothModule(AppContext *ctx);
+  BluetoothModule(AppContext *ctx, BluetoothManager* manager);
   // UI Prep Functions
   void setupBT(GtkWidget *box);
   void updateBTList();

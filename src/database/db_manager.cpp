@@ -1,5 +1,8 @@
 #include "db_manager.hpp"
+#include "SQLiteCpp/Database.h"
+#include "SQLiteCpp/Statement.h"
 #include "glib.h"
+#include <memory>
 #include <string>
 
 #define TAG "DBManager"
@@ -23,8 +26,8 @@ DBManager::DBManager(LoggingManager *logMgr)
   }
 
   dbPath += "hyprsic.db3";
-  localDB = new SQLite::Database(dbPath,
-                                 SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
+  localDB = std::unique_ptr<SQLite::Database>(new SQLite::Database(dbPath,
+                                 SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE));
 
   // Create Notifications Table
   std::string tableCreationQuery = R"(
@@ -67,19 +70,28 @@ DBManager::DBManager(LoggingManager *logMgr)
   localDB->exec(triggerCreationQuery);
 
   // Prepare SQL Statements
-  insertStmt = new SQLite::Statement(
+  insertStmt = std::unique_ptr<SQLite::Statement>(new SQLite::Statement(
       *localDB, "INSERT INTO notifications (id, app_name, summary, body) "
-                "VALUES (?, ?, ?, ?);");
-  fetchStmt = new SQLite::Statement(
-      *localDB, "SELECT id, app_name, summary, body, timestamp "
-                "FROM notifications "
-                "ORDER BY timestamp DESC "
-                "LIMIT ? OFFSET ?;");
-  deleteStmt = new SQLite::Statement(*localDB,
-                                     "DELETE FROM notifications WHERE id = ?;");
+                "VALUES (?, ?, ?, ?);"));
+  deleteStmt = std::unique_ptr<SQLite::Statement>(new SQLite::Statement(*localDB,
+                                     "DELETE FROM notifications WHERE id = ?;"));
+
+  SQLite::Statement countStmt(*localDB,
+                              "SELECT id, app_name, summary, body, timestamp "
+                              "FROM notifications ORDER BY timestamp DESC;");
+  while (countStmt.executeStep()) {
+    NotificationRecord notif;
+    notif.id = countStmt.getColumn(0).getString();
+    notif.app_name = countStmt.getColumn(1).getString();
+    notif.summary = countStmt.getColumn(2).getString();
+    notif.body = countStmt.getColumn(3).getString();
+    notif.timestamp = countStmt.getColumn(4).getString();
+
+    notificationCache[notif.id] = notif;
+  }
 }
 
-int DBManager::insertNotification(const NotificationRecord* notif) {
+int DBManager::insertNotification(const NotificationRecord *notif) {
   try {
     insertStmt->bind(1, notif->id);
     insertStmt->bind(2, notif->app_name);
@@ -88,10 +100,12 @@ int DBManager::insertNotification(const NotificationRecord* notif) {
 
     insertStmt->exec();
     insertStmt->reset();
+
+    notificationCache[notif->id] = *notif;
     return 0;
   } catch (const std::exception &e) {
-    std::string errMsg =
-        "Failed to insert notification ID: " + notif->id + " Error: " + e.what();
+    std::string errMsg = "Failed to insert notification ID: " + notif->id +
+                         " Error: " + e.what();
     logger->LogError(TAG, errMsg);
     insertStmt->reset();
 
@@ -104,6 +118,8 @@ int DBManager::removeNotification(const std::string &id) {
     deleteStmt->bind(1, id);
     deleteStmt->exec();
     deleteStmt->reset();
+
+    notificationCache.erase(id);
     return 0;
   } catch (const std::exception &e) {
     std::string errMsg =
@@ -113,34 +129,4 @@ int DBManager::removeNotification(const std::string &id) {
 
     return -1;
   }
-}
-
-std::vector<NotificationRecord> DBManager::fetchNotifications(int limit,
-                                                              int offset) {
-  std::vector<NotificationRecord> notifications;
-  try {
-    fetchStmt->bind(1, limit);
-    fetchStmt->bind(2, offset);
-
-    while (fetchStmt->executeStep()) {
-      NotificationRecord notif;
-      notif.id = fetchStmt->getColumn(0).getString();
-      notif.app_name = fetchStmt->getColumn(1).getString();
-      notif.summary = fetchStmt->getColumn(2).getString();
-      notif.body = fetchStmt->getColumn(3).getString();
-      notif.timestamp = fetchStmt->getColumn(4).getString();
-
-      notifications.push_back(notif);
-    }
-    fetchStmt->reset();
-  } catch (const std::exception &e) {
-    std::string erMsg = "Failed to fetch notifications: ";
-    erMsg += e.what();
-    logger->LogError(TAG, erMsg);
-    fetchStmt->reset();
-  }
-  
-  // logger->LogInfo(TAG, "Fetched " + std::to_string(notifications.size()) +
-  //                                " notifications from database.");
-  return notifications;
 }

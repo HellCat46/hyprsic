@@ -7,14 +7,17 @@
 #include "sys/un.h"
 #include "thread"
 #include "unistd.h"
+#include <string>
 
 #define TAG "HyprWorkspaces"
 
-int HyprWorkspaces::Init(LoggingManager *logMgr) {
+HyprWSManager::HyprWSManager(LoggingManager *logMgr) {
   logger = logMgr;
+  failed = false;
 
   if (getPath()) {
-    return -1;
+    failed = true;
+    return;
   }
 
   sockaddr_un addr;
@@ -30,17 +33,18 @@ int HyprWorkspaces::Init(LoggingManager *logMgr) {
   if (connect(evtSockfd, (sockaddr *)&addr, sizeof(addr)) == -1) {
     logger->LogError(
         TAG, "Unable to Establish Connection with Hyprland Socket UNIX Socket");
-    return -2;
+    failed = true;
+    return;
   }
 
   GetWorkspaces();
 
-  return 0;
+  return;
 }
 
-HyprWorkspaces::~HyprWorkspaces() { close(evtSockfd); }
+HyprWSManager::~HyprWSManager() { close(evtSockfd); }
 
-int HyprWorkspaces::getPath() {
+int HyprWSManager::getPath() {
   char *runtimeDir = std::getenv("XDG_RUNTIME_DIR");
   if (runtimeDir == nullptr) {
     logger->LogError(TAG, "XDG_RUNTIME_DIR is not set");
@@ -57,12 +61,9 @@ int HyprWorkspaces::getPath() {
   return 0;
 }
 
-void HyprWorkspaces::liveEventListener(
-    std::function<void(HyprWorkspaces *wsInstance, GtkWidget *workspaceBox)>
-        updateFunc,
-    GtkWidget *workspaceBox) {
+void HyprWSManager::liveEventListener() {
 
-  eventListenerThread = std::thread([this, updateFunc, workspaceBox]() {
+  eventListenerThread = std::thread([this]() {
     char buffer[1024];
 
     struct pollfd pollConfig[] = {{evtSockfd, POLLIN, POLLRDBAND}};
@@ -85,9 +86,7 @@ void HyprWorkspaces::liveEventListener(
           int wsId = parseWorkspaceId(ptr + 19);
           chngMade = true;
 
-          std::string msg = "Workspace Created: ";
-          msg += std::to_string(wsId);
-          logger->LogInfo(TAG, msg);
+          logger->LogInfo(TAG, "Workspace Created: " + std::to_string(wsId));
 
         } else if (std::strncmp(buffer, "workspace", 9) == 0) {
           char *ptr = std::strstr(buffer, "workspacev2>>");
@@ -95,10 +94,16 @@ void HyprWorkspaces::liveEventListener(
           chngMade = true;
 
           activeWorkspaceId = wsId;
-          std::string msg = "Active Workspace Changed: ";
-          msg += std::to_string(wsId);
-          logger->LogInfo(TAG, msg);
-        } else {
+          // logger->LogInfo(TAG,
+          //                 "Active Workspace Changed: " +
+          //                 std::to_string(wsId));
+        } else if(!std::strncmp(buffer, "focusedmon", 10)){
+          char *ptr = std::strstr(buffer, "focusedmonv2>>");
+          int wsId = parseWorkspaceId(ptr + 14);
+          chngMade = true;
+
+          activeWorkspaceId = wsId;
+        }else {
 
           if (std::strstr(buffer, "destroyworkspace") != nullptr) {
             char *ptr = std::strstr(buffer, "destroyworkspacev2>>");
@@ -106,20 +111,21 @@ void HyprWorkspaces::liveEventListener(
             chngMade = true;
 
             workspaces.erase(wsId);
-            std::string msg = "Workspace Deleted: ";
-            msg += std::to_string(wsId);
-            logger->LogInfo(TAG, msg);
+            logger->LogInfo(TAG, "Workspace Deleted: " + std::to_string(wsId));
           }
         }
 
-        if (chngMade)
-          updateFunc(this, workspaceBox);
+        if (chngMade) {
+          for (auto &listener : listeners) {
+            listener.first(this, listener.second);
+          }
+        }
       }
     }
   });
 }
 
-int HyprWorkspaces::parseWorkspaceId(char *stPoint) {
+int HyprWSManager::parseWorkspaceId(char *stPoint) {
   int id = 0;
 
   for (int idx = 0;
@@ -132,8 +138,8 @@ int HyprWorkspaces::parseWorkspaceId(char *stPoint) {
   return id;
 }
 
-Json::Value HyprWorkspaces::executeQuery(const std::string &msg,
-                                         std::string &err) {
+Json::Value HyprWSManager::executeQuery(const std::string &msg,
+                                        std::string &err) {
   int workSockfd;
   char buffer[8192];
 
@@ -178,7 +184,7 @@ Json::Value HyprWorkspaces::executeQuery(const std::string &msg,
   return root;
 }
 
-int HyprWorkspaces::SwitchToWorkspace(HyprWorkspaces *wsInstance, int wsId) {
+int HyprWSManager::SwitchToWorkspace(HyprWSManager *wsInstance, int wsId) {
   if (wsInstance->workspaces.find(wsId) == wsInstance->workspaces.end()) {
     wsInstance->logger->LogError(TAG, "Workspace Not Found");
     return 1;
@@ -195,7 +201,7 @@ int HyprWorkspaces::SwitchToWorkspace(HyprWorkspaces *wsInstance, int wsId) {
   return 0;
 }
 
-int HyprWorkspaces::GetWorkspaces() {
+int HyprWSManager::GetWorkspaces() {
   std::string err;
   Json::Value workspacesJson = executeQuery("j/workspaces", err);
   if (workspacesJson == -1) {
@@ -239,4 +245,11 @@ int HyprWorkspaces::GetWorkspaces() {
   }
   activeWorkspaceId = activeWsJson["id"].asUInt();
   return 0;
+}
+
+void HyprWSManager::subscribe(
+    std::function<void(HyprWSManager *wsInstance, GtkWidget *workspaceBox)>
+        updateFunc,
+    GtkWidget *workspaceBox) {
+  listeners.push_back({updateFunc, workspaceBox});
 }

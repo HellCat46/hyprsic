@@ -10,11 +10,11 @@
 
 #define TAG "NotificationModule"
 
-NotificationModule::NotificationModule(AppContext *ctx) : notifInstance(ctx) {
+NotificationModule::NotificationModule(AppContext *ctx,
+                                       NotificationManager *notifInstance) {
+  notifInstance = notifInstance;
   logger = &ctx->logging;
   dbManager = &ctx->dbManager;
-  notifInstance.RunService(NotificationModule::showNotification,
-                           &notifications);
 }
 
 void NotificationModule::setup(GtkWidget *box) {
@@ -223,9 +223,8 @@ void NotificationModule::update() {
   }
   g_list_free(children);
 
-  auto notificationList = dbManager->fetchNotifications(100, 0);
 
-  for (const auto &notif : notificationList) {
+  for (const auto &[notifId, notif] : dbManager->notificationCache) {
     GtkWidget *notifBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
     gtk_widget_set_margin_top(notifBox, 5);
     gtk_widget_set_margin_bottom(notifBox, 5);
@@ -243,7 +242,7 @@ void NotificationModule::update() {
                          ("<b>" + notif.app_name + "</b> - ").c_str());
     gtk_widget_set_halign(appName, GTK_ALIGN_START);
     gtk_box_pack_start(GTK_BOX(topContent), appName, FALSE, FALSE, 0);
-    
+
     GtkWidget *timestampLbl = gtk_label_new(nullptr);
     gtk_label_set_markup(GTK_LABEL(timestampLbl),
                          ("<i>" + notif.timestamp + "</i>").c_str());
@@ -251,11 +250,12 @@ void NotificationModule::update() {
     gtk_box_pack_start(GTK_BOX(topContent), timestampLbl, FALSE, FALSE, 0);
 
     GtkWidget *titleLbl = gtk_label_new(nullptr);
-    gtk_label_set_markup(GTK_LABEL(titleLbl),
-                         ("<b>Summary:</b> "+ (notif.summary.size() > 25
-                              ? notif.summary.substr(0, 22) + "..."
-                              : notif.summary))
-                             .c_str());
+    gtk_label_set_markup(
+        GTK_LABEL(titleLbl),
+        ("<b>Summary:</b> " + (notif.summary.size() > 25
+                                   ? notif.summary.substr(0, 22) + "..."
+                                   : notif.summary))
+            .c_str());
     gtk_label_set_line_wrap(GTK_LABEL(titleLbl), TRUE);
     gtk_widget_set_halign(titleLbl, GTK_ALIGN_START);
     gtk_box_pack_start(GTK_BOX(contentBox), titleLbl, FALSE, FALSE, 0);
@@ -269,7 +269,7 @@ void NotificationModule::update() {
     GtkWidget *removeBtn = gtk_button_new_with_label("✖");
     gtk_box_pack_end(GTK_BOX(notifBox), removeBtn, FALSE, FALSE, 0);
     NotifFuncArgs *close_args = g_new0(NotifFuncArgs, 1);
-    close_args->notifId = g_strdup(notif.id.c_str());
+    close_args->notifId = g_strdup(notifId.c_str());
     close_args->dbManager = dbManager;
     g_signal_connect_data(removeBtn, "clicked",
                           G_CALLBACK(NotificationModule::deleteNotificationCb),

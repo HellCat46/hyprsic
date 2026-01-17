@@ -2,12 +2,15 @@
 #include "dbus/dbus.h"
 #include "gtk-layer-shell.h"
 #include "gtk/gtk.h"
+#include "manager.hpp"
 #include <cstddef>
 
 #define TAG "BluetoothModule"
 
-BluetoothModule::BluetoothModule(AppContext *ctx)
-    : btManager(ctx, &ctx->logging), logger(&ctx->logging) {}
+BluetoothModule::BluetoothModule(AppContext *ctx, BluetoothManager *manager)
+    : logger(&ctx->logging) {
+  btManager = manager;
+}
 
 void BluetoothModule::setupBT(GtkWidget *box) {
   GtkWidget *bt_img = gtk_button_new_with_label("");
@@ -37,7 +40,7 @@ void BluetoothModule::setupBT(GtkWidget *box) {
   gtk_box_pack_start(GTK_BOX(nav_box), title, FALSE, TRUE, 0);
 
   btScanBtn =
-      gtk_button_new_with_label(btManager.discovering ? "Stop" : "Scan");
+      gtk_button_new_with_label(btManager->discovering ? "Stop" : "Scan");
   gtk_box_pack_end(GTK_BOX(nav_box), btScanBtn, FALSE, FALSE, 0);
   g_signal_connect(btScanBtn, "clicked", G_CALLBACK(handleDiscovery), this);
 
@@ -46,7 +49,7 @@ void BluetoothModule::setupBT(GtkWidget *box) {
   gtk_box_pack_start(GTK_BOX(main_box), top_box, FALSE, FALSE, 0);
 
   btPowerBtn = gtk_check_button_new_with_label("Power");
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btPowerBtn), btManager.power);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btPowerBtn), btManager->power);
   gtk_box_pack_start(GTK_BOX(top_box), btPowerBtn, FALSE, FALSE, 0);
   g_signal_connect(btPowerBtn, "clicked", G_CALLBACK(handlePower), this);
 
@@ -79,7 +82,6 @@ void BluetoothModule::switchVisibilityBTMenu(GtkWidget *widget,
     gtk_widget_hide(self->btMenuWin);
 }
 
-
 void BluetoothModule::updateBTList() {
 
   GList *children = gtk_container_get_children(GTK_CONTAINER(btDevList));
@@ -88,16 +90,13 @@ void BluetoothModule::updateBTList() {
   }
   g_list_free(children);
 
-  btManager.getDeviceList();
-  // btManager.printDevicesInfo();
-
   // Known Devices Section
-  if (btManager.devices.size() > 0) {
+  if (btManager->devices.size() > 0) {
     GtkWidget *knownDevtitle = gtk_label_new("Known Devices: ");
     gtk_box_pack_start(GTK_BOX(btDevList), knownDevtitle, FALSE, FALSE, 0);
     gtk_widget_show(knownDevtitle);
 
-    for (auto [_, device] : btManager.devices) {
+    for (auto [_, device] : btManager->devices) {
       if (!device.paired)
         continue; // Improve it later on. Combine both Devices Loops
       GtkWidget *devSection = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
@@ -134,7 +133,7 @@ void BluetoothModule::updateBTList() {
       FuncArgs *args = g_new0(FuncArgs, 1);
       args->devIfacePath = g_strdup(device.path.c_str());
       args->state = !device.connected;
-      args->btManager = &btManager;
+      args->btManager = btManager;
       g_signal_connect(devConnBtn, "clicked",
                        G_CALLBACK(BluetoothModule::handleDeviceConnect), args);
 
@@ -144,12 +143,12 @@ void BluetoothModule::updateBTList() {
   }
 
   // Available Devices Section
-  if (btManager.devices.size() > 0) {
+  if (btManager->devices.size() > 0) {
     GtkWidget *availDevtitle = gtk_label_new("Available Devices: ");
     gtk_box_pack_start(GTK_BOX(btDevList), availDevtitle, FALSE, FALSE, 0);
     gtk_widget_show(availDevtitle);
 
-    for (auto [_, device] : btManager.devices) {
+    for (auto [_, device] : btManager->devices) {
       if (device.paired)
         continue; // Improve it later on. Combine both Devices Loops
 
@@ -167,7 +166,7 @@ void BluetoothModule::updateBTList() {
       FuncArgs *args = g_new0(FuncArgs, 1);
       args->devIfacePath = g_strdup(device.path.c_str());
       args->state = !device.connected;
-      args->btManager = &btManager;
+      args->btManager = btManager;
 
       g_signal_connect(devConnBtn, "clicked",
                        G_CALLBACK(BluetoothModule::handleDeviceConnect), args);
@@ -183,36 +182,36 @@ void BluetoothModule::updateBTList() {
 void BluetoothModule::handleDiscovery(GtkWidget *widget, gpointer user_data) {
   BluetoothModule *self = static_cast<BluetoothModule *>(user_data);
 
-  if (self->btManager.discovering) {
+  if (self->btManager->discovering) {
     self->logger->LogInfo(TAG, "Stopping Bluetooth Discovery.");
 
-    if (self->btManager.switchDiscovery(false) == 0)
+    if (self->btManager->switchDiscovery(false) == 0)
       self->logger->LogError(TAG, "Bluetooth Discovery Stopped.");
   } else {
     self->logger->LogInfo(TAG, "Starting Bluetooth Discovery.");
 
-    if (self->btManager.switchDiscovery(true) == 0) {
+    if (self->btManager->switchDiscovery(true) == 0) {
       self->logger->LogInfo(TAG, "Bluetooth Discovery Started.");
       self->updateBTList();
     }
   }
 
   gtk_button_set_label(GTK_BUTTON(self->btScanBtn),
-                       self->btManager.discovering ? "Stop" : "Scan");
+                       self->btManager->discovering ? "Stop" : "Scan");
 }
 
 void BluetoothModule::handlePower(GtkWidget *widget, gpointer user_data) {
   BluetoothModule *self = static_cast<BluetoothModule *>(user_data);
 
   gboolean active = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-  if (!self->btManager.switchPower(active)) {
+  if (!self->btManager->switchPower(active)) {
     std::string msg = "Bluetooth Power Switched ";
     msg += (active ? "ON" : "OFF");
     self->logger->LogInfo(TAG, msg);
   }
 
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget),
-                               self->btManager.power);
+                               self->btManager->power);
 }
 
 void BluetoothModule::handleDeviceConnect(GtkWidget *widget,

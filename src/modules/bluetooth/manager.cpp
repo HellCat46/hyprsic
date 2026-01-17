@@ -3,16 +3,13 @@
 #include "cstring"
 #include "dbus/dbus-protocol.h"
 #include "dbus/dbus.h"
-#include "iostream"
 #include "thread"
 #include "unordered_map"
 
 #define TAG "BluetoothManager"
 
-BluetoothManager::BluetoothManager(AppContext *context,
-                                   LoggingManager *logMgr) {
-  ctx = context;
-  logger = logMgr;
+BluetoothManager::BluetoothManager(AppContext *ctx) {
+  ctx = ctx;
   discovering = false;
   power = true;
 
@@ -20,37 +17,41 @@ BluetoothManager::BluetoothManager(AppContext *context,
       "org.bluez", "/", "org.freedesktop.DBus.ObjectManager",
       "GetManagedObjects");
   if (!devListMsg) {
-    logger->LogError(TAG, "Failed to create a message.");
+    ctx->logging.LogError(TAG, "Failed to create a message.");
     return;
   }
+}
 
-  int res = getPropertyVal("Powered");
-  if (res >= 0) {
-    std::string msg = "Initial Bluetooth Power State: ";
-    msg += (res ? "ON" : "OFF");
-    logger->LogInfo(TAG, msg);
-    power = res;
-  } else {
-    logger->LogWarning(TAG, "Unable to get initial Bluetooth Power State. "
-                            "Setting to ON by default.");
-    power = true;
-  }
-
-  res = getPropertyVal("Discovering");
-  if (res >= 0) {
-    std::string msg = "Initial Bluetooth Discovery State: ";
-    msg += (res ? "ON" : "OFF");
-    logger->LogInfo(TAG, msg);
-    discovering = res;
-  } else {
-    logger->LogWarning(TAG, "Unable to get initial Bluetooth Discovery State. "
-                            "Setting to OFF by default.");
-    discovering = false;
-  }
-
-  getDeviceList();
-
-  signalThread = std::thread(&BluetoothManager::monitorChanges, this);
+int BluetoothManager::setup() {
+    
+    int res = getPropertyVal("Powered");
+    if (res >= 0) {
+      std::string msg = "Initial Bluetooth Power State: ";
+      msg += (res ? "ON" : "OFF");
+      ctx->logging.LogInfo(TAG, msg);
+      power = res;
+    } else {
+      ctx->logging.LogWarning(TAG, "Unable to get initial Bluetooth Power State. "
+                              "Setting to ON by default.");
+      power = true;
+    }
+  
+    res = getPropertyVal("Discovering");
+    if (res >= 0) {
+      std::string msg = "Initial Bluetooth Discovery State: ";
+      msg += (res ? "ON" : "OFF");
+      ctx->logging.LogInfo(TAG, msg);
+      discovering = res;
+    } else {
+      ctx->logging.LogWarning(TAG, "Unable to get initial Bluetooth Discovery State. "
+                              "Setting to OFF by default.");
+      discovering = false;
+    }
+  
+    getDeviceList();
+  
+    signalThread = std::thread(&BluetoothManager::monitorChanges, this);
+  return 0;
 }
 
 int BluetoothManager::switchPower(bool on) {
@@ -59,7 +60,7 @@ int BluetoothManager::switchPower(bool on) {
   if (!msg) {
     std::string errMsg = "Failed to create a message. ";
     errMsg += ctx->dbus.sysErr.message;
-    logger->LogError(TAG, errMsg);
+    ctx->logging.LogError(TAG, errMsg);
     return 1;
   }
 
@@ -82,7 +83,7 @@ int BluetoothManager::switchPower(bool on) {
   if (!reply && dbus_error_is_set(&(ctx->dbus.sysErr))) {
     std::string errMsg = "Failed to get a reply. ";
     errMsg += ctx->dbus.sysErr.message;
-    logger->LogError(TAG, errMsg);
+    ctx->logging.LogError(TAG, errMsg);
     dbus_error_free(&ctx->dbus.sysErr);
     return 1;
   }
@@ -90,7 +91,7 @@ int BluetoothManager::switchPower(bool on) {
   std::string logMsg = "Turned ";
   logMsg += (on ? "ON" : "OFF");
   logMsg += " Bluetooth Power.";
-  logger->LogInfo(TAG, logMsg);
+  ctx->logging.LogInfo(TAG, logMsg);
 
   dbus_message_unref(msg);
   dbus_message_ref(reply);
@@ -104,7 +105,7 @@ int BluetoothManager::switchDiscovery(bool on) {
       on ? "StartDiscovery" : "StopDiscovery");
 
   if (!msg) {
-    logger->LogError(TAG, "Failed to create a message.");
+    ctx->logging.LogError(TAG, "Failed to create a message.");
     return 1;
   }
 
@@ -113,7 +114,7 @@ int BluetoothManager::switchDiscovery(bool on) {
   if (!reply && dbus_error_is_set(&(ctx->dbus.sysErr))) {
     std::string errMsg = "Failed to get a reply. ";
     errMsg += ctx->dbus.sysErr.message;
-    logger->LogError(TAG, errMsg);
+    ctx->logging.LogError(TAG, errMsg);
     dbus_error_free(&ctx->dbus.sysErr);
     return 1;
   }
@@ -124,14 +125,14 @@ int BluetoothManager::switchDiscovery(bool on) {
   std::string logMsg = "Turning ";
   logMsg += (on ? "ON" : "OFF");
   logMsg += " Bluetooth Discovery.";
-  logger->LogInfo(TAG, logMsg);
+  ctx->logging.LogInfo(TAG, logMsg);
   this->discovering = on;
 
   return 0;
 }
 
 void BluetoothManager::monitorChanges() {
-  logger->LogInfo(TAG, "Adding filter to Bluez Signals");
+  ctx->logging.LogInfo(TAG, "Adding filter to Bluez Signals");
 
   // Adding Filters to Signals before starting listening to them
   dbus_bus_add_match(
@@ -143,7 +144,7 @@ void BluetoothManager::monitorChanges() {
     std::string errMsg =
         "Failed to add filter for Signal Member InterfaceAdded: ";
     errMsg += ctx->dbus.sysErr.message;
-    logger->LogError(TAG, errMsg);
+    ctx->logging.LogError(TAG, errMsg);
     dbus_error_free(&ctx->dbus.sysErr);
     return;
   }
@@ -157,7 +158,7 @@ void BluetoothManager::monitorChanges() {
     std::string errMsg =
         "Failed to add filter for Signal Member InterfaceRemoved: ";
     errMsg += ctx->dbus.sysErr.message;
-    logger->LogError(TAG, errMsg);
+    ctx->logging.LogError(TAG, errMsg);
     dbus_error_free(&ctx->dbus.sysErr);
     return;
   }
@@ -171,18 +172,18 @@ void BluetoothManager::monitorChanges() {
     std::string errMsg =
         "Failed to add filter for Signal Member PropertiesChanged: ";
     errMsg += ctx->dbus.sysErr.message;
-    logger->LogError(TAG, errMsg);
+    ctx->logging.LogError(TAG, errMsg);
     dbus_error_free(&ctx->dbus.sysErr);
     return;
   }
-  logger->LogInfo(TAG, "Successfully Added Filters to Bluez Dbus Signals. "
+  ctx->logging.LogInfo(TAG, "Successfully Added Filters to Bluez Dbus Signals. "
                        "Started listening to events now.");
 
   DBusMessage *msg;
   while (true) {
     // Blocks the thread until new message received
     if (!dbus_connection_read_write(ctx->dbus.sysConn, 0)) {
-      logger->LogError(TAG,
+      ctx->logging.LogError(TAG,
                        "Connection Closed while Waiting for Signal Messages");
       return;
     }
@@ -192,17 +193,17 @@ void BluetoothManager::monitorChanges() {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
       continue;
     }
-    //logger->LogInfo(TAG, "Received Signal Message");
+    // ctx->logging.LogInfo(TAG, "Received Signal Message");
 
     DBusMessageIter rootIter;
     dbus_message_iter_init(msg, &rootIter);
 
     if (dbus_message_is_signal(msg, "org.freedesktop.DBus.ObjectManager",
                                "InterfacesAdded")) {
-      logger->LogInfo(TAG, "Received InterfacesAdded Signal");
+      ctx->logging.LogInfo(TAG, "Received InterfacesAdded Signal");
 
       if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_OBJECT_PATH) {
-        logger->LogError(TAG, "Unable to parse InterfacesAdded Reply. Unknown "
+        ctx->logging.LogError(TAG, "Unable to parse InterfacesAdded Reply. Unknown "
                               "Format (The First Entry is not Object Path.)");
         continue;
       }
@@ -216,7 +217,7 @@ void BluetoothManager::monitorChanges() {
       dbus_message_iter_next(&rootIter);
       dbus_message_iter_recurse(&rootIter, &entIter);
       if (dbus_message_iter_get_arg_type(&entIter) != DBUS_TYPE_DICT_ENTRY) {
-        logger->LogError(TAG,
+        ctx->logging.LogError(TAG,
                          "Unable to parse InterfacesAdded Reply. Unknown "
                          "Format (The Second Entry is not an Dict Entry.)");
         continue;
@@ -235,7 +236,7 @@ void BluetoothManager::monitorChanges() {
       }
 
       if (dbus_message_iter_get_arg_type(&entIter) != DBUS_TYPE_DICT_ENTRY) {
-        logger->LogError(
+        ctx->logging.LogError(
             TAG, "Unable to find Device1 Entry in InterfacesAdded Reply.");
         continue;
       }
@@ -250,12 +251,12 @@ void BluetoothManager::monitorChanges() {
       devices.insert({path, dev});
       std::string logMsg = "Added Device to Device List. Total Devices: ";
       logMsg += std::to_string(devices.size());
-      logger->LogInfo(TAG, logMsg);
+      ctx->logging.LogInfo(TAG, logMsg);
     } else if (dbus_message_is_signal(msg, "org.freedesktop.DBus.ObjectManager",
                                       "InterfacesRemoved")) {
-      logger->LogInfo(TAG, "Received InterfacesRemoved Signal");
+      ctx->logging.LogInfo(TAG, "Received InterfacesRemoved Signal");
       if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_OBJECT_PATH) {
-        logger->LogError(TAG,
+        ctx->logging.LogError(TAG,
                          "Unable to parse InterfacesRemoved Reply. Unknown "
                          "Format (The First Entry is not Object Path.)");
         continue;
@@ -267,21 +268,21 @@ void BluetoothManager::monitorChanges() {
         devices.erase(path);
         std::string logMsg = "Removed Device from Device List. Total Devices: ";
         logMsg += std::to_string(devices.size());
-        logger->LogInfo(TAG, logMsg);
+        ctx->logging.LogInfo(TAG, logMsg);
       } else {
-        logger->LogWarning(TAG,
+        ctx->logging.LogWarning(TAG,
                            "Unable to find Device in Device List. Skipping.");
       }
     } else if (dbus_message_is_signal(msg, "org.freedesktop.DBus.Properties",
                                       "PropertiesChanged")) {
-      //logger->LogInfo(TAG, "Received PropertiesChanged Signal");
+      // ctx->logging.LogInfo(TAG, "Received PropertiesChanged Signal");
       const char *path = dbus_message_get_path(msg);
       if (std::strncmp(path, "/org/bluez", 10) != 0 || std::strlen(path) > 37)
         continue;
 
       std::string logMsg = "PropertiesChanged Signal Path: ";
       logMsg += path;
-      logger->LogInfo(TAG, logMsg);
+      ctx->logging.LogInfo(TAG, logMsg);
 
       char addr[18];
       for (int i = 0; i < 17; i++) {
@@ -296,13 +297,13 @@ void BluetoothManager::monitorChanges() {
       if (dev == devices.end()) {
         std::string errMsg = "Unable to find Device in Device List. Skipping. ";
         errMsg += addr;
-        logger->LogError(TAG, errMsg);
+        ctx->logging.LogError(TAG, errMsg);
         continue;
       }
 
       DBusMessageIter entIter;
       if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_STRING) {
-        logger->LogError(TAG,
+        ctx->logging.LogError(TAG,
                          "Unable to parse PropertiesChanged Reply. Unknown "
                          "Format (The First Entry is not String.)");
         continue;
@@ -322,13 +323,13 @@ void BluetoothManager::monitorChanges() {
         if (dbus_message_iter_get_arg_type(&entIter) == DBUS_TYPE_DICT_ENTRY) {
           break;
         }
-        logger->LogInfo(
+        ctx->logging.LogInfo(
             TAG, std::to_string(dbus_message_iter_get_arg_type(&entIter)));
 
         dbus_message_iter_next(&rootIter);
       }
       if (dbus_message_iter_get_arg_type(&entIter) != DBUS_TYPE_DICT_ENTRY) {
-        logger->LogError(TAG,
+        ctx->logging.LogError(TAG,
                          "Unable to parse PropertiesChanged Reply. Unknown "
                          "Format (No Dict Entry for Property Found.)");
         continue;
@@ -340,11 +341,11 @@ void BluetoothManager::monitorChanges() {
 
       std::string updateMsg = "Updated Device Properties. Total Devices: ";
       updateMsg += std::to_string(devices.size());
-      logger->LogInfo(TAG, updateMsg);
+      ctx->logging.LogInfo(TAG, updateMsg);
 
       getDeviceList();
     } else {
-      logger->LogInfo(TAG, "Received Unknown Signal");
+      ctx->logging.LogInfo(TAG, "Received Unknown Signal");
     }
 
     dbus_message_unref(msg);
@@ -360,7 +361,7 @@ int BluetoothManager::getDeviceList() {
   if (!reply && dbus_error_is_set(&(ctx->dbus.sysErr))) {
     std::string errMsg = "Failed to get a reply. ";
     errMsg += ctx->dbus.sysErr.message;
-    logger->LogError(TAG, errMsg);
+    ctx->logging.LogError(TAG, errMsg);
     dbus_error_free(&ctx->dbus.sysErr);
     return 1;
   }
@@ -369,7 +370,7 @@ int BluetoothManager::getDeviceList() {
   dbus_message_iter_init(reply, &rootIter);
 
   if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_ARRAY) {
-    logger->LogError(TAG, "No Device Connected");
+    ctx->logging.LogError(TAG, "No Device Connected");
     return -1;
   }
 
@@ -445,7 +446,7 @@ int BluetoothManager::getPropertyVal(const char *prop) {
   DBusMessage *msg = dbus_message_new_method_call(
       "org.bluez", "/org/bluez/hci0", "org.freedesktop.DBus.Properties", "Get");
   if (!msg) {
-    logger->LogError(TAG, "Failed to create a message.");
+    ctx->logging.LogError(TAG, "Failed to create a message.");
     return -1;
   }
 
@@ -461,7 +462,7 @@ int BluetoothManager::getPropertyVal(const char *prop) {
   if (!reply && dbus_error_is_set(&(ctx->dbus.sysErr))) {
     std::string errMsg = "Failed to get a reply. ";
     errMsg += ctx->dbus.sysErr.message;
-    logger->LogError(TAG, errMsg);
+    ctx->logging.LogError(TAG, errMsg);
     dbus_error_free(&ctx->dbus.sysErr);
     return -1;
   }
@@ -470,12 +471,12 @@ int BluetoothManager::getPropertyVal(const char *prop) {
   DBusMessageIter rootIter, variant;
 
   if (!dbus_message_iter_init(reply, &rootIter)) {
-    logger->LogError(TAG, "Reply has no arguments!");
+    ctx->logging.LogError(TAG, "Reply has no arguments!");
     return -1;
   }
 
   if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_VARIANT) {
-    logger->LogError(TAG, "Argument is not a variant!");
+    ctx->logging.LogError(TAG, "Argument is not a variant!");
     return -1;
   }
 
@@ -486,7 +487,7 @@ int BluetoothManager::getPropertyVal(const char *prop) {
     dbus_message_iter_get_basic(&variant, &value);
     return value;
   } else {
-    logger->LogError(TAG, "Argument is not a boolean!");
+    ctx->logging.LogError(TAG, "Argument is not a boolean!");
     return -1;
   }
 
@@ -497,13 +498,13 @@ int BluetoothManager::connectDevice(bool state, const char *devPath) {
   std::string logMsg = state ? "Connecting" : "Disconnecting";
   logMsg += " to Device: ";
   logMsg += devPath;
-  logger->LogInfo(TAG, logMsg);
+  ctx->logging.LogInfo(TAG, logMsg);
 
   DBusMessage *msg =
       dbus_message_new_method_call("org.bluez", devPath, "org.bluez.Device1",
                                    state ? "Connect" : "Disconnect");
   if (!msg) {
-    logger->LogError(TAG, "Failed to create a message.");
+    ctx->logging.LogError(TAG, "Failed to create a message.");
     return 1;
   }
 
@@ -512,7 +513,7 @@ int BluetoothManager::connectDevice(bool state, const char *devPath) {
   if (!reply && dbus_error_is_set(&(ctx->dbus.sysErr))) {
     std::string errMsg = "Failed to get a reply. ";
     errMsg += ctx->dbus.sysErr.message;
-    logger->LogError(TAG, errMsg);
+    ctx->logging.LogError(TAG, errMsg);
     dbus_error_free(&ctx->dbus.sysErr);
     return 1;
   }
@@ -523,7 +524,7 @@ int BluetoothManager::connectDevice(bool state, const char *devPath) {
   std::string successMsg = state ? "Connected" : "Disconnected";
   successMsg += " to Device: ";
   successMsg += devPath;
-  logger->LogInfo(TAG, successMsg);
+  ctx->logging.LogInfo(TAG, successMsg);
 
   return 0;
 }
@@ -589,25 +590,4 @@ void BluetoothManager::setDeviceProps(Device &dev, DBusMessageIter &propsIter) {
     dbus_message_iter_get_basic(&values[1], &value);
     dev.deviceType = value;
   }
-}
-
-bool BluetoothManager::printDevicesInfo() {
-  if (devices.size() == 0)
-    return false;
-
-  for (auto [_, device] : devices) {
-    std::cout << "Device: " << std::endl;
-
-    std::cout << "\t" << device.name << std::endl;
-    std::cout << "\t" << device.addr << std::endl;
-    std::cout << "\t" << device.path << std::endl;
-    std::cout << "\t" << device.rssi << std::endl;
-    std::cout << "\t" << device.paired << std::endl;
-    std::cout << "\t" << device.trusted << std::endl;
-    std::cout << "\t" << device.deviceType << std::endl;
-    std::cout << "\t" << device.connected << std::endl;
-    std::cout << "\t" << device.mediaConnected << std::endl;
-    std::cout << "\t" << device.batteryPer << std::endl;
-  }
-  return true;
 }

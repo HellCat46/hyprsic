@@ -12,15 +12,13 @@
 NotificationManager::NotificationManager(AppContext *ctx) : ctx(ctx) {}
 
 void NotificationManager::RunService(
-    std::function<void(NotifFuncArgs *)> showNotification,
-    std::unordered_map<std::string, GtkWidget *> *notifications) {
+    std::function<void(NotifFuncArgs *)> showNotification) {
   notifThread = std::thread(&NotificationManager::captureNotification, this,
-                            showNotification, notifications);
+                            showNotification);
 }
 
 void NotificationManager::captureNotification(
-    std::function<void(NotifFuncArgs *)> showNotification,
-    std::unordered_map<std::string, GtkWidget *> *notifications) {
+    std::function<void(NotifFuncArgs *)> showNotification) {
   int ret = dbus_bus_request_name(
       ctx->dbus.ssnConn, "org.freedesktop.Notifications",
       DBUS_NAME_FLAG_REPLACE_EXISTING, &(ctx->dbus.ssnErr));
@@ -82,7 +80,7 @@ void NotificationManager::captureNotification(
       if (notification.app_name.size() > 0) {
         NotifFuncArgs args;
         args.notif = &notification;
-        args.notifications = notifications;
+        args.notifications = &notifications;
         args.logger = &ctx->logging;
         args.dbManager = &ctx->dbManager;
 

@@ -24,7 +24,6 @@ class BluetoothManager {
   private:
     AppContext* ctx;
     DBusMessage* devListMsg;
-    LoggingManager* logger;
   	std::thread signalThread;
 
     void monitorChanges();
@@ -35,7 +34,6 @@ class BluetoothManager {
     std::unordered_map<std::string, Device> devices;
     
     int getDeviceList();
-    bool printDevicesInfo();
     
     // Device Operations
     int connectDevice(bool state, const char* devPath);
@@ -45,7 +43,8 @@ class BluetoothManager {
     int switchDiscovery(bool on);
     int switchPower(bool on);
 
-    BluetoothManager(AppContext* context, LoggingManager* logMgr);
+    BluetoothManager(AppContext* ctx);
+    int setup();
 };
 
 

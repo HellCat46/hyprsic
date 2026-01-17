@@ -3,7 +3,9 @@
 
 #define TAG "ScreenSaverModule"
 
-ScreenSaverModule::ScreenSaverModule(AppContext *ctx) {
+ScreenSaverModule::ScreenSaverModule(AppContext *ctx,
+                                     ScreenSaverManager *scrnsavrInstance) {
+  screenSaverMgr = scrnsavrInstance;
   screenSaverMgr = new ScreenSaverManager(ctx);
   logger = &ctx->logging;
 }

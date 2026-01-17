@@ -1,27 +1,26 @@
 #pragma once
+#include "../logging/manager.hpp"
 #include "SQLiteCpp/Database.h"
 #include "SQLiteCpp/Statement.h"
-#include "../logging/manager.hpp"
-#include <vector>
+#include <memory>
 
 struct NotificationRecord {
-    std::string id;
-    std::string app_name;
-    std::string summary;
-    std::string body;
-    std::string timestamp;
+  std::string id;
+  std::string app_name;
+  std::string summary;
+  std::string body;
+  std::string timestamp;
 };
 
-class DBManager {  
-    LoggingManager* logger;
-    SQLite::Database* localDB;
-    SQLite::Statement* insertStmt;
-    SQLite::Statement* fetchStmt;
-    SQLite::Statement* deleteStmt;
+class DBManager {
+  std::unique_ptr<LoggingManager> logger;
+  std::unique_ptr<SQLite::Database> localDB;
+  std::unique_ptr<SQLite::Statement> insertStmt;
+  std::unique_ptr<SQLite::Statement> deleteStmt;
 
-    public:
-        DBManager(LoggingManager* logMgr);
-        int insertNotification(const NotificationRecord* notif);
-        std::vector<NotificationRecord> fetchNotifications(int limit, int offset);
-        int removeNotification(const std::string& id);
+public:
+  std::map<std::string, NotificationRecord> notificationCache;
+  DBManager(LoggingManager *logMgr);
+  int insertNotification(const NotificationRecord *notif);
+  int removeNotification(const std::string &id);
 };

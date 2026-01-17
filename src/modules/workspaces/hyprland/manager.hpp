@@ -7,6 +7,7 @@
 #include <functional>
 #include <json/reader.h>
 #include <thread>
+#include <vector>
 #include "../../../logging/manager.hpp"
 
 struct Workspace {
@@ -15,12 +16,15 @@ struct Workspace {
   bool fullScreen;
 };
 
-class HyprWorkspaces {
+class HyprWSManager {
   std::string sockPath;
   int evtSockfd;
   std::thread eventListenerThread;
   Json::CharReaderBuilder jsonReader;
   LoggingManager *logger;
+  bool failed;
+  
+  std::vector<std::pair<std::function<void(HyprWSManager *wsInstance, GtkWidget *workspaceBox)>, GtkWidget*>> listeners;
 
   int getPath();
 
@@ -30,10 +34,13 @@ class HyprWorkspaces {
 public:
   int activeWorkspaceId;
   std::map<unsigned int, Workspace> workspaces;
+  
+  HyprWSManager(LoggingManager *logMgr);
+  ~HyprWSManager();
+  
+  void subscribe(std::function<void(HyprWSManager* wsInstance, GtkWidget* workspaceBox)> updateFunc, GtkWidget* workspaceBox);
+  void liveEventListener();
   int GetWorkspaces();
-  int Init(LoggingManager *logMgr);
-  void liveEventListener(std::function<void(HyprWorkspaces* wsInstance, GtkWidget* workspaceBox)> updateFunc, GtkWidget* workspaceBox);
-  static int SwitchToWorkspace(HyprWorkspaces* wsInstance, int wsId);
+  static int SwitchToWorkspace(HyprWSManager* wsInstance, int wsId);
 
-  ~HyprWorkspaces();
 };

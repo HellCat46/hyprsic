@@ -19,7 +19,7 @@ class Display {
   Disk disk;
   BatteryInfo battery;
  // PlayingNow playing;
-  HyprWorkspaces hyprWS;
+  HyprWSManager hyprWS;
 
 public:
   Display();

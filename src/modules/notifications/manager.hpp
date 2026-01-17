@@ -28,11 +28,11 @@ struct NotifFuncArgs {
 
 class NotificationManager {
   AppContext *ctx;
+  std::unordered_map<std::string, GtkWidget *> notifications;
   std::thread notifThread;
 
   void captureNotification(
-      std::function<void(NotifFuncArgs *)> showNotification,
-      std::unordered_map<std::string, GtkWidget *> *notifications);
+      std::function<void(NotifFuncArgs *)> showNotification);
 
   // Notification Daemon Responses to Messages
   Notification handleNotifyCall(DBusMessage *msg);
@@ -44,6 +44,5 @@ class NotificationManager {
 
 public:
   NotificationManager(AppContext *ctx);
-  void RunService(std::function<void(NotifFuncArgs *)> showNotification,
-                  std::unordered_map<std::string, GtkWidget *> *notifications);
+  void RunService(std::function<void(NotifFuncArgs *)> showNotification);
 };
