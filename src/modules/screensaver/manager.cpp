@@ -4,7 +4,7 @@
 
 #define TAG "ScreenSaverManager"
 
-ScreenSaverManager::ScreenSaverManager(AppContext *ctx) { this->ctx = ctx; }
+ScreenSaverManager::ScreenSaverManager(AppContext *ctx) : ctx(ctx){}
 
 int ScreenSaverManager::activateScreenSaver() {
 

@@ -7,8 +7,8 @@
 
 #define TAG "DBManager"
 
-DBManager::DBManager(LoggingManager *logMgr)
-    : localDB(nullptr), logger(logMgr) {
+DBManager::DBManager(LoggingManager *logMgr) : localDB(nullptr) {
+  logger = logMgr;
   const char *xdgPath = std::getenv("XDG_DATA_HOME");
 
   std::string dbPath;
@@ -26,8 +26,8 @@ DBManager::DBManager(LoggingManager *logMgr)
   }
 
   dbPath += "hyprsic.db3";
-  localDB = std::unique_ptr<SQLite::Database>(new SQLite::Database(dbPath,
-                                 SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE));
+  localDB = std::unique_ptr<SQLite::Database>(new SQLite::Database(
+      dbPath, SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE));
 
   // Create Notifications Table
   std::string tableCreationQuery = R"(
@@ -73,8 +73,8 @@ DBManager::DBManager(LoggingManager *logMgr)
   insertStmt = std::unique_ptr<SQLite::Statement>(new SQLite::Statement(
       *localDB, "INSERT INTO notifications (id, app_name, summary, body) "
                 "VALUES (?, ?, ?, ?);"));
-  deleteStmt = std::unique_ptr<SQLite::Statement>(new SQLite::Statement(*localDB,
-                                     "DELETE FROM notifications WHERE id = ?;"));
+  deleteStmt = std::unique_ptr<SQLite::Statement>(new SQLite::Statement(
+      *localDB, "DELETE FROM notifications WHERE id = ?;"));
 
   SQLite::Statement countStmt(*localDB,
                               "SELECT id, app_name, summary, body, timestamp "
@@ -89,6 +89,9 @@ DBManager::DBManager(LoggingManager *logMgr)
 
     notificationCache[notif.id] = notif;
   }
+
+  // logger->LogDebug(TAG, "Notifications Loaded: " +
+  //                           std::to_string(notificationCache.size()));
 }
 
 int DBManager::insertNotification(const NotificationRecord *notif) {
@@ -104,9 +107,8 @@ int DBManager::insertNotification(const NotificationRecord *notif) {
     notificationCache[notif->id] = *notif;
     return 0;
   } catch (const std::exception &e) {
-    std::string errMsg = "Failed to insert notification ID: " + notif->id +
-                         " Error: " + e.what();
-    logger->LogError(TAG, errMsg);
+    logger->LogError(TAG, "Failed to insert notification ID: " + notif->id +
+                              " Error: " + e.what());
     insertStmt->reset();
 
     return -1;
@@ -122,9 +124,8 @@ int DBManager::removeNotification(const std::string &id) {
     notificationCache.erase(id);
     return 0;
   } catch (const std::exception &e) {
-    std::string errMsg =
-        "Failed to delete notification ID: " + id + " Error: " + e.what();
-    logger->LogError(TAG, errMsg);
+    logger->LogError(TAG, "Failed to delete notification ID: " + id +
+                              " Error: " + e.what());
     deleteStmt->reset();
 
     return -1;

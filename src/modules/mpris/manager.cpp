@@ -6,9 +6,8 @@
 
 #define TAG "MprisManager"
 
-MprisManager::MprisManager(AppContext *appCtx) {
-  ctx = appCtx;
-
+MprisManager::MprisManager(AppContext *appCtx) : ctx(appCtx){
+    
   DBusMessage *msg = dbus_message_new_method_call(
       "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus",
       "ListNames");

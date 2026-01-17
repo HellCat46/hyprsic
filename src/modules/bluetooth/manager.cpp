@@ -8,8 +8,7 @@
 
 #define TAG "BluetoothManager"
 
-BluetoothManager::BluetoothManager(AppContext *ctx) {
-  ctx = ctx;
+BluetoothManager::BluetoothManager(AppContext *ctx) : ctx(ctx) {
   discovering = false;
   power = true;
 
@@ -23,34 +22,34 @@ BluetoothManager::BluetoothManager(AppContext *ctx) {
 }
 
 int BluetoothManager::setup() {
-    
-    int res = getPropertyVal("Powered");
-    if (res >= 0) {
-      std::string msg = "Initial Bluetooth Power State: ";
-      msg += (res ? "ON" : "OFF");
-      ctx->logging.LogInfo(TAG, msg);
-      power = res;
-    } else {
-      ctx->logging.LogWarning(TAG, "Unable to get initial Bluetooth Power State. "
-                              "Setting to ON by default.");
-      power = true;
-    }
-  
-    res = getPropertyVal("Discovering");
-    if (res >= 0) {
-      std::string msg = "Initial Bluetooth Discovery State: ";
-      msg += (res ? "ON" : "OFF");
-      ctx->logging.LogInfo(TAG, msg);
-      discovering = res;
-    } else {
-      ctx->logging.LogWarning(TAG, "Unable to get initial Bluetooth Discovery State. "
-                              "Setting to OFF by default.");
-      discovering = false;
-    }
-  
-    getDeviceList();
-  
-    signalThread = std::thread(&BluetoothManager::monitorChanges, this);
+  int res = getPropertyVal("Powered");
+  if (res >= 0) {
+    std::string msg = "Initial Bluetooth Power State: ";
+    msg += (res ? "ON" : "OFF");
+    ctx->logging.LogInfo(TAG, msg);
+    power = res;
+  } else {
+    ctx->logging.LogWarning(TAG, "Unable to get initial Bluetooth Power State. "
+                                 "Setting to ON by default.");
+    power = true;
+  }
+
+  res = getPropertyVal("Discovering");
+  if (res >= 0) {
+    std::string msg = "Initial Bluetooth Discovery State: ";
+    msg += (res ? "ON" : "OFF");
+    ctx->logging.LogInfo(TAG, msg);
+    discovering = res;
+  } else {
+    ctx->logging.LogWarning(TAG,
+                            "Unable to get initial Bluetooth Discovery State. "
+                            "Setting to OFF by default.");
+    discovering = false;
+  }
+
+  getDeviceList();
+
+  signalThread = std::thread(&BluetoothManager::monitorChanges, this);
   return 0;
 }
 
@@ -177,14 +176,14 @@ void BluetoothManager::monitorChanges() {
     return;
   }
   ctx->logging.LogInfo(TAG, "Successfully Added Filters to Bluez Dbus Signals. "
-                       "Started listening to events now.");
+                            "Started listening to events now.");
 
   DBusMessage *msg;
   while (true) {
     // Blocks the thread until new message received
     if (!dbus_connection_read_write(ctx->dbus.sysConn, 0)) {
-      ctx->logging.LogError(TAG,
-                       "Connection Closed while Waiting for Signal Messages");
+      ctx->logging.LogError(
+          TAG, "Connection Closed while Waiting for Signal Messages");
       return;
     }
 
@@ -203,7 +202,8 @@ void BluetoothManager::monitorChanges() {
       ctx->logging.LogInfo(TAG, "Received InterfacesAdded Signal");
 
       if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_OBJECT_PATH) {
-        ctx->logging.LogError(TAG, "Unable to parse InterfacesAdded Reply. Unknown "
+        ctx->logging.LogError(TAG,
+                              "Unable to parse InterfacesAdded Reply. Unknown "
                               "Format (The First Entry is not Object Path.)");
         continue;
       }
@@ -217,9 +217,9 @@ void BluetoothManager::monitorChanges() {
       dbus_message_iter_next(&rootIter);
       dbus_message_iter_recurse(&rootIter, &entIter);
       if (dbus_message_iter_get_arg_type(&entIter) != DBUS_TYPE_DICT_ENTRY) {
-        ctx->logging.LogError(TAG,
-                         "Unable to parse InterfacesAdded Reply. Unknown "
-                         "Format (The Second Entry is not an Dict Entry.)");
+        ctx->logging.LogError(
+            TAG, "Unable to parse InterfacesAdded Reply. Unknown "
+                 "Format (The Second Entry is not an Dict Entry.)");
         continue;
       }
 
@@ -256,9 +256,9 @@ void BluetoothManager::monitorChanges() {
                                       "InterfacesRemoved")) {
       ctx->logging.LogInfo(TAG, "Received InterfacesRemoved Signal");
       if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_OBJECT_PATH) {
-        ctx->logging.LogError(TAG,
-                         "Unable to parse InterfacesRemoved Reply. Unknown "
-                         "Format (The First Entry is not Object Path.)");
+        ctx->logging.LogError(
+            TAG, "Unable to parse InterfacesRemoved Reply. Unknown "
+                 "Format (The First Entry is not Object Path.)");
         continue;
       }
 
@@ -270,8 +270,8 @@ void BluetoothManager::monitorChanges() {
         logMsg += std::to_string(devices.size());
         ctx->logging.LogInfo(TAG, logMsg);
       } else {
-        ctx->logging.LogWarning(TAG,
-                           "Unable to find Device in Device List. Skipping.");
+        ctx->logging.LogWarning(
+            TAG, "Unable to find Device in Device List. Skipping.");
       }
     } else if (dbus_message_is_signal(msg, "org.freedesktop.DBus.Properties",
                                       "PropertiesChanged")) {
@@ -303,9 +303,9 @@ void BluetoothManager::monitorChanges() {
 
       DBusMessageIter entIter;
       if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_STRING) {
-        ctx->logging.LogError(TAG,
-                         "Unable to parse PropertiesChanged Reply. Unknown "
-                         "Format (The First Entry is not String.)");
+        ctx->logging.LogError(
+            TAG, "Unable to parse PropertiesChanged Reply. Unknown "
+                 "Format (The First Entry is not String.)");
         continue;
       }
 
@@ -329,9 +329,9 @@ void BluetoothManager::monitorChanges() {
         dbus_message_iter_next(&rootIter);
       }
       if (dbus_message_iter_get_arg_type(&entIter) != DBUS_TYPE_DICT_ENTRY) {
-        ctx->logging.LogError(TAG,
-                         "Unable to parse PropertiesChanged Reply. Unknown "
-                         "Format (No Dict Entry for Property Found.)");
+        ctx->logging.LogError(
+            TAG, "Unable to parse PropertiesChanged Reply. Unknown "
+                 "Format (No Dict Entry for Property Found.)");
         continue;
       }
 

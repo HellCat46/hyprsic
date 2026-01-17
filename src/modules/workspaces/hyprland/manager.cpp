@@ -11,8 +11,7 @@
 
 #define TAG "HyprWorkspaces"
 
-HyprWSManager::HyprWSManager(LoggingManager *logMgr) {
-  logger = logMgr;
+HyprWSManager::HyprWSManager(LoggingManager *logMgr) : logger(logMgr) {
   failed = false;
 
   if (getPath()) {

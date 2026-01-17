@@ -4,6 +4,7 @@
 #include "glib.h"
 #include <gtk-layer-shell.h>
 #include <gtk/gtk.h>
+#include <memory>
 #include <vector>
 
 // #include "../modules/pulseaudio/manager.hpp"
@@ -40,7 +41,7 @@ struct Window {
 
 class MainWindow {
   GtkApplication *app = nullptr;
-  std::vector<Window> mainWindows;
+  std::vector<std::unique_ptr<Window>> mainWindows;
   AppContext ctx;
 
   Stats stat;

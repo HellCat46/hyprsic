@@ -13,7 +13,7 @@ struct NotificationRecord {
 };
 
 class DBManager {
-  std::unique_ptr<LoggingManager> logger;
+  LoggingManager* logger;
   std::unique_ptr<SQLite::Database> localDB;
   std::unique_ptr<SQLite::Statement> insertStmt;
   std::unique_ptr<SQLite::Statement> deleteStmt;

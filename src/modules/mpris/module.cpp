@@ -94,10 +94,10 @@ void MprisModule::setup(GtkWidget *mainBox) {
 
   gtk_widget_show_all(progBox);
 
-  Update();
+  update();
 }
 
-void MprisModule::Update() {
+void MprisModule::update() {
   if (mprisInstance->GetPlayerInfo())
     return;
 
@@ -146,12 +146,10 @@ void MprisModule::handlePlayPause(GtkWidget *widget, GdkEvent *e,
 void MprisModule::chgVisibilityMenu(GtkWidget *widget, GdkEvent *e,
                                     gpointer user_data) {
   MprisModule *self = static_cast<MprisModule *>(user_data);
-
-  self->Update();
-
+  
   if (!gtk_widget_is_visible(self->menuWindow)) {
     gtk_widget_show(self->menuWindow);
-    self->Update();
+    self->update();
   } else {
     gtk_widget_hide(self->menuWindow);
   }
