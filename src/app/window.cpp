@@ -22,7 +22,7 @@ Window::Window(AppContext *ctx, MprisManager *mprisMgr,
 
 MainWindow::MainWindow()
     : notifManager(&ctx), btManager(&ctx), mprisManager(&ctx),
-      scrnsavrManager(&ctx), hyprInstance(&ctx.logging) {
+      scrnsavrManager(&ctx), hyprInstance(&ctx.logging), snManager(&ctx) {
   load.Init(&ctx.logging);
   mem.Init(&ctx.logging);
   battery.Init(&ctx.logging);

@@ -17,6 +17,7 @@
 #include "../modules/sysinfo/stats.hpp"
 #include "../modules/sysinfo/sys_load.hpp"
 #include "../modules/workspaces/hyprland/module.hpp"
+#include "../modules/statusnotifier/manager.hpp"
 
 struct Window {
   GtkWidget *window = nullptr;
@@ -55,6 +56,7 @@ class MainWindow {
   MprisManager mprisManager;
   ScreenSaverManager scrnsavrManager;
   HyprWSManager hyprInstance;
+  StatusNotifierManager snManager;
 
 public:
   MainWindow();

@@ -7,12 +7,13 @@ A Status Bar for Hyprland inspired by Simplicity of i3Bar (Not Anymore i suppose
 - [x] PulseAudio Integration
 - [x] Bluetooth Frontend
 - [ ] Tooltip Support
-- [ ] Multi-monitor Support
+- [x] Multi-monitor Support
 - [ ] System Tray Integration
 - [x] Playback Showcase & Controls
 - [ ] Input and Output Device Management
 - [ ] Config to control which modules load & their Order in the Bar UI
 - [x] Notification Manager Integration
+- [ ] Encrypt Notification Contents (Using libsodium)
 - [ ] Clipboard Manager Integration (Text, Image, Videos, Other Files, etc)
 - [x] ScreenSaver Integration
 - [ ] Power Management Integration (Battery, Brightness, etc)

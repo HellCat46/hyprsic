@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(hyprsic)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMKAKE_UNITY_BUILD ON)
 
 find_package(PkgConfig REQUIRED)
@@ -31,7 +31,7 @@ if(ENABLE_NVIDIA_NVML)
 endif()
 
 
-set(MODULES_SOURCES 
+set(MODULES_SOURCES
     src/modules/workspaces/hyprland/manager.cpp
     src/modules/workspaces/hyprland/module.cpp
     src/modules/sysinfo/battery.cpp
@@ -49,6 +49,7 @@ set(MODULES_SOURCES
     src/modules/notifications/module.cpp
     src/modules/screensaver/manager.cpp
     src/modules/screensaver/module.cpp
+    src/modules/statusnotifier/manager.cpp
 )
 
 set(DATABASE_SOURCES
@@ -61,6 +62,7 @@ set(LOGGING_SOURCES
 
 set(UTIL_SOURCES
     src/utils/dbus_utils.cpp
+    src/utils/helper_func.cpp
 )
 
 set(DEBUG_SOURCES
@@ -78,7 +80,7 @@ include_directories(
         ${DBUS_INCLUDE_DIRS}
         ${LIBPULSE_INCLUDE_DIRS}
         ${CMAKE_CURRENT_BINARY_DIR}
-        ${GTK_INCLUDE_DIRS} 
+        ${GTK_INCLUDE_DIRS}
         ${GTK_LAYER_SHELL_INCLUDE_DIRS}
 )
 
@@ -106,6 +108,6 @@ target_link_libraries(hyprsic
         ${JSONCPP_LIBRARIES}
         ${DBUS_LIBRARIES}
         ${LIBPULSE_LIBRARIES}
-        ${GTK_LIBRARIES} 
+        ${GTK_LIBRARIES}
         ${GTK_LAYER_SHELL_LIBRARIES}
 )
