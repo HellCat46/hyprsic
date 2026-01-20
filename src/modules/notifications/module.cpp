@@ -18,9 +18,13 @@ NotificationModule::NotificationModule(AppContext *ctx,
 }
 
 void NotificationModule::setup(GtkWidget *box) {
-  GtkWidget *notif = gtk_button_new_with_label("");
-  gtk_container_add(GTK_CONTAINER(box), notif);
-  g_signal_connect(notif, "clicked",
+  GtkWidget *notifEBox = gtk_event_box_new();
+  GtkWidget *notif = gtk_label_new("");
+  gtk_container_add(GTK_CONTAINER(notifEBox), notif);
+  gtk_grid_attach(GTK_GRID(box), notifEBox, 6, 0, 1, 1);
+  gtk_widget_set_margin_start(notifEBox, 10);
+
+  g_signal_connect(notifEBox, "button-press-event",
                    G_CALLBACK(NotificationModule::chgVisibiltyWin), this);
 
   menuWin = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -194,7 +198,7 @@ gboolean NotificationModule::autoCloseNotificationCb(gpointer user_data) {
   return G_SOURCE_REMOVE;
 }
 
-void NotificationModule::chgVisibiltyWin(GtkWidget *widget,
+void NotificationModule::chgVisibiltyWin(GtkWidget *widget, GdkEvent *e,
                                          gpointer user_data) {
   NotificationModule *self = static_cast<NotificationModule *>(user_data);
 
@@ -222,7 +226,6 @@ void NotificationModule::update() {
     gtk_widget_destroy(GTK_WIDGET(iter->data));
   }
   g_list_free(children);
-
 
   for (const auto &[notifId, notif] : dbManager->notificationCache) {
     GtkWidget *notifBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);

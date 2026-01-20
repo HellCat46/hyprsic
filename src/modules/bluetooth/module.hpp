@@ -22,7 +22,7 @@ public:
   void setupBT(GtkWidget *box);
   void updateBTList();
   
-  static void switchVisibilityBTMenu(GtkWidget *widget, gpointer user_data);
+  static void switchVisibilityBTMenu(GtkWidget *widget, GdkEvent *e, gpointer user_data);
   static void handleDiscovery(GtkWidget *widget, gpointer user_data);
   static void handlePower(GtkWidget *widget, gpointer user_data);
   static void handleDeviceConnect(GtkWidget *widget, gpointer user_data);

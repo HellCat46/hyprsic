@@ -18,7 +18,7 @@ public:
   void setup(GtkWidget *box);
   void update();
 
-  static void chgVisibiltyWin(GtkWidget *widget, gpointer user_data);
+  static void chgVisibiltyWin(GtkWidget *widget, GdkEvent *e, gpointer user_data);
   static void deleteNotificationCb(GtkWidget *widget, gpointer user_data);
   
   // Notification PopUp Functions

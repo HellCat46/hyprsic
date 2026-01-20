@@ -13,7 +13,10 @@ BluetoothModule::BluetoothModule(AppContext *ctx, BluetoothManager *manager)
 }
 
 void BluetoothModule::setupBT(GtkWidget *box) {
-  GtkWidget *bt_img = gtk_button_new_with_label("");
+  GtkWidget *btScanEBox = gtk_event_box_new();
+  GtkWidget *bt_img = gtk_label_new("");
+  gtk_container_add(GTK_CONTAINER(btScanEBox), bt_img);
+  gtk_widget_set_margin_start(btScanEBox, 10);
 
   btMenuWin = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   gtk_layer_init_for_window(GTK_WINDOW(btMenuWin));
@@ -65,13 +68,13 @@ void BluetoothModule::setupBT(GtkWidget *box) {
   gtk_widget_set_margin_start(main_box, 10);
   gtk_widget_set_margin_end(main_box, 10);
 
-  g_signal_connect(bt_img, "clicked",
+  g_signal_connect(btScanEBox, "button-press-event",
                    G_CALLBACK(BluetoothModule::switchVisibilityBTMenu), this);
 
-  gtk_grid_attach(GTK_GRID(box), bt_img, 7, 0, 1, 1);
+  gtk_grid_attach(GTK_GRID(box), btScanEBox, 7, 0, 1, 1);
 }
 
-void BluetoothModule::switchVisibilityBTMenu(GtkWidget *widget,
+void BluetoothModule::switchVisibilityBTMenu(GtkWidget *widget, GdkEvent *e,
                                              gpointer user_data) {
   BluetoothModule *self = static_cast<BluetoothModule *>(user_data);
 

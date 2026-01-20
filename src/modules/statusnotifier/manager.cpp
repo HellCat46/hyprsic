@@ -61,6 +61,11 @@ void StatusNotifierManager::captureStatusNotifier() {
       "type='method_call',interface='org.kde.StatusNotifierWatcher',"
       "member='RegisterStatusNotifierHost',path='/StatusNotifierWatcher'",
       &(ctx->dbus.ssnErr));
+  dbus_bus_add_match(ctx->dbus.ssnConn,
+                     "type='signal', sender='org.freedesktop.DBus', "
+                     "interface='org.freedesktop.DBus', "
+                     "member='NameOwnerChanged',path='/org/freedesktop/DBus'",
+                     &ctx->dbus.ssnErr);
   if (dbus_error_is_set(&(ctx->dbus.ssnErr))) {
     std::string errMsg = "Failed to add filter for Notifications: ";
     errMsg += ctx->dbus.ssnErr.message;
@@ -95,36 +100,41 @@ void StatusNotifierManager::captureStatusNotifier() {
                                 "org.freedesktop.DBus.Introspectable") &&
         HelperFunc::saferStrCmp(member, "Introspect") &&
         HelperFunc::saferStrCmp(path, "/StatusNotifierWatcher")) {
+
       handleIntrospectCall(msg);
     } else if (HelperFunc::saferStrCmp(interface,
                                        "org.freedesktop.DBus.Properties") &&
-               HelperFunc::saferStrCmp(member, "GetAll") &&
                HelperFunc::saferStrCmp(path, "/StatusNotifierWatcher")) {
-      handleGetAllPropertiesCall(msg);
-    } else if (HelperFunc::saferStrCmp(interface,
-                                       "org.freedesktop.DBus.Properties") &&
-               HelperFunc::saferStrCmp(member, "Get") &&
-               HelperFunc::saferStrCmp(path, "/StatusNotifierWatcher")) {
-      handleGetPropertyCall(msg);
-    } else if (HelperFunc::saferStrCmp(interface,
-                                       "org.kde.StatusNotifierWatcher") &&
-               HelperFunc::saferStrCmp(member, "RegisterStatusNotifierItem") &&
-               HelperFunc::saferStrCmp(path, "/StatusNotifierWatcher")) {
-      handleRegisterStatusNotifierItem(msg);
+
+      if (HelperFunc::saferStrCmp(member, "GetAll"))
+        handleGetAllPropertiesCall(msg);
+      else if (HelperFunc::saferStrCmp(member, "Get"))
+        handleGetPropertyCall(msg);
+
     } else if (HelperFunc::saferStrCmp(interface,
                                        "org.kde.StatusNotifierWatcher") &&
-               HelperFunc::saferStrCmp(member, "RegisterStatusNotifierHost") &&
                HelperFunc::saferStrCmp(path, "/StatusNotifierWatcher")) {
-      handleRegisterStatusNotifierHost(msg);
+
+      if (HelperFunc::saferStrCmp(member, "RegisterStatusNotifierItem"))
+        handleRegisterStatusNotifierItem(msg);
+      else if (HelperFunc::saferStrCmp(member, "RegisterStatusNotifierHost"))
+        handleRegisterStatusNotifierHost(msg);
+      
+    } else if (HelperFunc::saferStrCmp(interface, "org.freedesktop.DBus") &&
+               HelperFunc::saferStrCmp(member, "NameOwnerChanged") &&
+               HelperFunc::saferStrCmp(path, "/org/freedesktop/DBus")) {
+
+      handleNameOwnerChangedSignal(msg);
     }
 
     dbus_message_unref(msg);
   }
 }
 
-/* Respond to Introspect calls
-   To provide info about the Status Notifier Watcher interface
-   supported Methods, Signals and Properties
+/* 
+ * Respond to Introspect calls
+ * To provide info about the Status Notifier Watcher interface
+ * supported Methods, Signals and Properties
 */
 void StatusNotifierManager::handleIntrospectCall(DBusMessage *msg) {
   const char *data = SNWXML.c_str();
@@ -224,7 +234,6 @@ void StatusNotifierManager::handleRegisterStatusNotifierItem(DBusMessage *msg) {
   char *itemService;
   dbus_message_iter_get_basic(&iter, &itemService);
   std::string itemServiceStr = std::string(itemService);
-  
 
   // Send Method Return Reply
   DBusMessage *reply = dbus_message_new_method_return(msg);
@@ -312,17 +321,14 @@ void StatusNotifierManager::handleRegisterStatusNotifierItem(DBusMessage *msg) {
   StatusApp appInfo;
   getItemInfo(itemServiceStr, appInfo);
   getMenuActions(itemServiceStr, appInfo);
-  
+
   registeredItems.insert({itemServiceStr, appInfo});
-  
-  ctx->logging.LogDebug(TAG,
-                        "Registered Status Notifier Item: " + std::to_string(registeredItems.size()));
-  for (const auto &item : registeredItems) {
-    ctx->logging.LogDebug(TAG, " - Item Service: " + item.first);
-  }
-  
+
+  ctx->logging.LogDebug(TAG, "Registered Status Notifier Item. New Count: " +
+                                 std::to_string(registeredItems.size()));
 }
 
+// Collect Basic Info from the Status Notifier Item
 void StatusNotifierManager::getItemInfo(const std::string &itemService,
                                         StatusApp &outApp) {
   DBusMessage *msg =
@@ -400,6 +406,7 @@ void StatusNotifierManager::getItemInfo(const std::string &itemService,
   dbus_message_unref(msg);
 }
 
+// Collect Menu Actions from the Status Notifier Item to show in Context Menu
 void StatusNotifierManager::getMenuActions(const std::string &itemService,
                                            StatusApp &outApp) {
   if (outApp.menu_path.size() == 0) {
@@ -413,7 +420,6 @@ void StatusNotifierManager::getMenuActions(const std::string &itemService,
   if (iface[0] == '.')
     iface = iface.substr(1); // Remove leading dot
 
-  ctx->logging.LogDebug(TAG, "Getting Menu Actions from Interface: " + iface);
   DBusMessage *msg = dbus_message_new_method_call(itemService.c_str(),
                                                   outApp.menu_path.c_str(),
                                                   iface.c_str(), "GetLayout");
@@ -471,9 +477,6 @@ void StatusNotifierManager::getMenuActions(const std::string &itemService,
   DBusMessageIter arrayIter;
   dbus_message_iter_recurse(&structIter, &arrayIter);
 
-  ctx->logging.LogDebug(
-      TAG, "Parsing Menu Actions..." +
-               std::to_string(dbus_message_iter_get_arg_type(&arrayIter)));
   while (dbus_message_iter_get_arg_type(&arrayIter) != DBUS_TYPE_INVALID) {
     DBusMessageIter menuIter, itemIter;
     dbus_message_iter_recurse(&arrayIter, &menuIter);
@@ -532,4 +535,25 @@ void StatusNotifierManager::getMenuActions(const std::string &itemService,
   }
 
   dbus_message_unref(msg);
+}
+
+void StatusNotifierManager::handleNameOwnerChangedSignal(DBusMessage *msg) {
+  DBusMessageIter args;
+  dbus_message_iter_init(msg, &args);
+
+  const char *name, *oldOwner, *newOwner;
+  dbus_message_iter_get_basic(&args, &name);
+  dbus_message_iter_next(&args);
+  dbus_message_iter_get_basic(&args, &oldOwner);
+  dbus_message_iter_next(&args);
+  dbus_message_iter_get_basic(&args, &newOwner);
+
+  std::string nameStr = std::string(name);
+  if (registeredItems.find(nameStr) != registeredItems.end() &&
+      std::strlen(newOwner) == 0) {
+    registeredItems.erase(nameStr);
+    ctx->logging.LogDebug(TAG,
+                          "Unregistered Status Notifier Item. New Count: " +
+                              std::to_string(registeredItems.size()));
+  }
 }
