@@ -3,9 +3,12 @@
 #include "../../app/context.hpp"
 #include "dbus/dbus.h"
 #include "gdk-pixbuf/gdk-pixbuf.h"
+#include "gtk/gtk.h"
+#include <functional>
 #include <map>
 #include <string>
 #include <thread>
+#include <vector>
 
 struct MenuActionItem {
   int index;
@@ -17,17 +20,31 @@ struct MenuActionItem {
 
 struct StatusApp {
   std::string menu_path, status;
-  GdkPixbuf* pixmap;
-  std::map<int, std::string> menuActions;
+  GdkPixbuf *pixmap;
+  std::map<int, MenuActionItem> menuActions;
+};
+
+
+struct SNIApp {
+    GtkWidget* icon;
+    GtkWidget* popOver;
+    GtkWidget* parentBox;
+};
+
+struct RemoveCallback {
+  std::function<void(std::string servicePath, std::map<std::string, SNIApp>* sniApps, GtkWidget* sniBox)> callback;
+  GtkWidget* widget;
+  std::map<std::string, SNIApp>* sniApps;
 };
 
 class StatusNotifierManager {
   AppContext *ctx;
   std::string SNWXML;
   std::thread ssnThread;
-  std::map<std::string, StatusApp> registeredItems;
 
 public:
+  std::vector<RemoveCallback> removeCallbacks;
+  std::map<std::string, StatusApp> registeredItems;
   StatusNotifierManager(AppContext *appCtx);
 
   void captureStatusNotifier();
@@ -37,7 +54,7 @@ public:
   void handleGetAllPropertiesCall(DBusMessage *msg);
   void handleGetPropertyCall(DBusMessage *msg);
   void handleNameOwnerChangedSignal(DBusMessage *msg);
-  
+
   // Functions to get Additional Info about Registered Items
   void getItemInfo(const std::string &itemService, StatusApp &outApp);
   void getMenuActions(const std::string &itemService, StatusApp &outApp);

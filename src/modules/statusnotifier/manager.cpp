@@ -119,7 +119,7 @@ void StatusNotifierManager::captureStatusNotifier() {
         handleRegisterStatusNotifierItem(msg);
       else if (HelperFunc::saferStrCmp(member, "RegisterStatusNotifierHost"))
         handleRegisterStatusNotifierHost(msg);
-      
+
     } else if (HelperFunc::saferStrCmp(interface, "org.freedesktop.DBus") &&
                HelperFunc::saferStrCmp(member, "NameOwnerChanged") &&
                HelperFunc::saferStrCmp(path, "/org/freedesktop/DBus")) {
@@ -131,11 +131,11 @@ void StatusNotifierManager::captureStatusNotifier() {
   }
 }
 
-/* 
+/*
  * Respond to Introspect calls
  * To provide info about the Status Notifier Watcher interface
  * supported Methods, Signals and Properties
-*/
+ */
 void StatusNotifierManager::handleIntrospectCall(DBusMessage *msg) {
   const char *data = SNWXML.c_str();
 
@@ -369,9 +369,10 @@ void StatusNotifierManager::getItemInfo(const std::string &itemService,
     dbus_message_iter_next(&dictEntryIter);
     dbus_message_iter_recurse(&dictEntryIter, &variantIter);
 
-    if (HelperFunc::saferStrCmp(propName, "IconPixMap")) {
-      DBusMessageIter pixmapDataIter;
-      dbus_message_iter_recurse(&variantIter, &pixmapDataIter);
+    if (HelperFunc::saferStrCmp(propName, "IconPixmap")) {
+      DBusMessageIter structIter, pixmapDataIter;
+      dbus_message_iter_recurse(&variantIter, &structIter);
+      dbus_message_iter_recurse(&structIter, &pixmapDataIter);
 
       int width, height;
       dbus_message_iter_get_basic(&pixmapDataIter, &width);
@@ -489,7 +490,7 @@ void StatusNotifierManager::getMenuActions(const std::string &itemService,
     DBusMessageIter dictIter;
     dbus_message_iter_recurse(&itemIter, &dictIter);
 
-    MenuActionItem menuItem;
+    MenuActionItem menuItem{0, "", true, true, false};
     while (dbus_message_iter_get_arg_type(&dictIter) != DBUS_TYPE_INVALID) {
       DBusMessageIter propIter;
       dbus_message_iter_recurse(&dictIter, &propIter);
@@ -530,7 +531,7 @@ void StatusNotifierManager::getMenuActions(const std::string &itemService,
       dbus_message_iter_next(&dictIter);
     }
 
-    outApp.menuActions.insert({index, menuItem.label});
+    outApp.menuActions.insert({index, menuItem});
     dbus_message_iter_next(&arrayIter);
   }
 

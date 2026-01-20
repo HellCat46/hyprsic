@@ -15,10 +15,10 @@
 Window::Window(AppContext *ctx, MprisManager *mprisMgr,
                ScreenSaverManager *scrnsavrMgr,
                NotificationManager *notifInstance, BluetoothManager *btMgr,
-               HyprWSManager *hyprMgr)
+               HyprWSManager *hyprMgr, StatusNotifierManager *snManager)
     : mprisModule(ctx, mprisMgr), hyprModule(ctx, hyprMgr),
       scrnsavrModule(ctx, scrnsavrMgr), btModule(ctx, btMgr),
-      notifModule(ctx, notifInstance) {}
+      notifModule(ctx, notifInstance), snModule(ctx, snManager) {}
 
 MainWindow::MainWindow()
     : notifManager(&ctx), btManager(&ctx), mprisManager(&ctx),
@@ -52,7 +52,7 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
   for (int i = 0; i < mCount; i++) {
     std::unique_ptr<Window> winInstance = std::unique_ptr<Window>(new Window(&self->ctx, &self->mprisManager, &self->scrnsavrManager,
                        &self->notifManager, &self->btManager,
-                       &self->hyprInstance));
+                       &self->hyprInstance, &self->snManager));
     GdkMonitor *monitor = gdk_display_get_monitor(display, i);
 
     winInstance->window = gtk_application_window_new(app);
@@ -128,6 +128,7 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
 
     winInstance->btModule.setupBT(right_box);
     winInstance->scrnsavrModule.setup(right_box);
+    winInstance->snModule.setup(right_box);
 
     
     gtk_widget_show_all(winInstance->window);
@@ -176,6 +177,7 @@ gboolean MainWindow::UpdateData(gpointer data) {
     window->mprisModule.update();
     window->notifModule.update();
     window->btModule.updateBTList();
+    window->snModule.update();
   }
 
   self->stat.UpdateData();

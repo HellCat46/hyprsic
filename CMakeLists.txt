@@ -50,6 +50,7 @@ set(MODULES_SOURCES
     src/modules/screensaver/manager.cpp
     src/modules/screensaver/module.cpp
     src/modules/statusnotifier/manager.cpp
+    src/modules/statusnotifier/module.cpp
 )
 
 set(DATABASE_SOURCES

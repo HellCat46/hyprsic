@@ -18,6 +18,7 @@
 #include "../modules/sysinfo/sys_load.hpp"
 #include "../modules/workspaces/hyprland/module.hpp"
 #include "../modules/statusnotifier/manager.hpp"
+#include "../modules/statusnotifier/module.hpp"
 
 struct Window {
   GtkWidget *window = nullptr;
@@ -34,10 +35,11 @@ struct Window {
   ScreenSaverModule scrnsavrModule;
   BluetoothModule btModule;
   NotificationModule notifModule;
+  StatusNotifierModule snModule;
 
   Window(AppContext *ctx, MprisManager *mprisMgr,
          ScreenSaverManager *scrnsavrMgr, NotificationManager *notifInstance,
-         BluetoothManager *btMgr, HyprWSManager *hyprMgr);
+         BluetoothManager *btMgr, HyprWSManager *hyprMgr, StatusNotifierManager *snManager);
 };
 
 class MainWindow {
