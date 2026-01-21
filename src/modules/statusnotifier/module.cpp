@@ -46,6 +46,8 @@ void StatusNotifierModule::update() {
     args->logger = logger;
     args->sniApp = app;
 
+    // g_signal_connect(app.popOver, "focus-out-event",
+    // G_CALLBACK(StatusNotifierModule::handleContextMenuOpen), args);
     g_signal_connect(app.icon, "button-press-event",
                      G_CALLBACK(StatusNotifierModule::handleContextMenuOpen),
                      args);
@@ -90,20 +92,54 @@ void StatusNotifierModule::handleContextMenuOpen(GtkWidget *widget,
   gtk_widget_set_margin_bottom(args->sniApp.parentBox, 10);
   gtk_widget_set_margin_top(args->sniApp.parentBox, 10);
 
-  gtk_container_add(GTK_CONTAINER(args->sniApp.popOver), args->sniApp.parentBox);
+  gtk_container_add(GTK_CONTAINER(args->sniApp.popOver),
+                    args->sniApp.parentBox);
 
   for (const auto &[index, menuItem] : item->second.menuActions) {
 
     if (menuItem.isSeparator) {
       GtkWidget *separator = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
-      gtk_box_pack_start(GTK_BOX(args->sniApp.parentBox), separator, FALSE, FALSE, 0);
+      gtk_box_pack_start(GTK_BOX(args->sniApp.parentBox), separator, FALSE,
+                         FALSE, 0);
     } else if (menuItem.visible) {
+      GtkWidget *menuEvtBox = gtk_event_box_new();
       GtkWidget *menuBtn = gtk_label_new(menuItem.label.c_str());
+
+      gtk_container_add(GTK_CONTAINER(menuEvtBox), menuBtn);
       gtk_widget_set_sensitive(menuBtn, menuItem.enabled);
-      gtk_box_pack_start(GTK_BOX(args->sniApp.parentBox), menuBtn, FALSE, FALSE, 0);
+
+      gtk_box_pack_start(GTK_BOX(args->sniApp.parentBox), menuEvtBox, FALSE,
+                         FALSE, 0);
+      
+        EvtBtnPressArgs *btnArgs = g_new0(EvtBtnPressArgs, 1);
+        btnArgs->snManager = args->snManager;
+        btnArgs->itemId = args->itemId;
+        btnArgs->logger = args->logger;
+        btnArgs->sniApp = args->sniApp;
+        btnArgs->evtIdx = index;
+        g_signal_connect_data(
+            menuEvtBox, "button-press-event",
+            G_CALLBACK(StatusNotifierModule::handleEvtButtonPress), btnArgs,
+            (GClosureNotify)g_free, (GConnectFlags)0);
     }
   }
   gtk_widget_show_all(args->sniApp.parentBox);
 
   gtk_popover_popup(GTK_POPOVER(args->sniApp.popOver));
+}
+
+void StatusNotifierModule::handleEvtButtonPress(GtkWidget *widget,
+                                                 GdkEventButton *event,
+                                                 gpointer user_data) {
+  if (event->type != GDK_BUTTON_PRESS || event->button != 1)
+    return;
+  
+  
+  EvtBtnPressArgs *args = (EvtBtnPressArgs *)user_data;
+  auto item = args->snManager->registeredItems.find(args->itemId);
+  if (item == args->snManager->registeredItems.end())
+    return;
+
+  args->snManager->executeMenuAction(args->itemId, item->second.menu_path,
+      event->time, args->evtIdx);
 }

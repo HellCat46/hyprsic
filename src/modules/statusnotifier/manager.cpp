@@ -10,6 +10,7 @@
 #include <ostream>
 #include <sstream>
 #include <string>
+#include <sys/types.h>
 
 #define TAG "StatusNotifierManager"
 
@@ -553,8 +554,66 @@ void StatusNotifierManager::handleNameOwnerChangedSignal(DBusMessage *msg) {
   if (registeredItems.find(nameStr) != registeredItems.end() &&
       std::strlen(newOwner) == 0) {
     registeredItems.erase(nameStr);
+    
+    for(auto& callback : removeCallbacks) {
+        callback.callback(nameStr, callback.sniApps, callback.widget);
+    }
     ctx->logging.LogDebug(TAG,
                           "Unregistered Status Notifier Item. New Count: " +
                               std::to_string(registeredItems.size()));
   }
+}
+
+void StatusNotifierManager::executeMenuAction(const std::string &itemService,
+                                              const std::string &menuPath,
+                                              u_int32_t timestamp,
+                                              int actionIndex) {
+  std::string iface = menuPath;
+  std::replace(iface.begin(), iface.end(), '/', '.');
+  if (iface[0] == '.')
+    iface = iface.substr(1); // Remove leading dot
+
+  DBusMessage *msg = dbus_message_new_method_call(
+      itemService.c_str(), menuPath.c_str(), iface.c_str(), "EventGroup");
+  if (!msg) {
+    ctx->logging.LogError(TAG,
+                          "Failed to create a message to execute Menu Action.");
+    return;
+  }
+
+  DBusMessageIter args, arrayArgs, structArgs;
+  dbus_message_iter_init_append(msg, &args);
+  dbus_message_iter_open_container(&args, DBUS_TYPE_ARRAY, "(isvu)", &arrayArgs);
+  dbus_message_iter_open_container(&arrayArgs, DBUS_TYPE_STRUCT, nullptr,
+                                   &structArgs);
+  dbus_uint32_t actionId = actionIndex;
+  dbus_message_iter_append_basic(&structArgs, DBUS_TYPE_INT32, &actionId);
+  const char *evtName = "clicked";
+  dbus_message_iter_append_basic(&structArgs, DBUS_TYPE_STRING, &evtName);
+
+  DBusMessageIter evtDataVariantIter;
+  dbus_int16_t evtData = 0;
+  dbus_message_iter_open_container(&structArgs, DBUS_TYPE_VARIANT, "n",
+                                   &evtDataVariantIter);
+  dbus_message_iter_append_basic(&evtDataVariantIter, DBUS_TYPE_INT16,
+                                 &evtData);
+  dbus_message_iter_close_container(&structArgs, &evtDataVariantIter);
+
+  dbus_message_iter_append_basic(&structArgs, DBUS_TYPE_UINT32, &timestamp);
+  dbus_message_iter_close_container(&arrayArgs, &structArgs);
+  dbus_message_iter_close_container(&args, &arrayArgs);
+
+  DBusMessage *reply = dbus_connection_send_with_reply_and_block(
+      ctx->dbus.ssnConn, msg, -1, &(ctx->dbus.ssnErr));
+  if (!reply && dbus_error_is_set(&(ctx->dbus.ssnErr))) {
+    std::string errMsg = "Failed to get a reply for Execute Menu Action. ";
+    errMsg += ctx->dbus.ssnErr.message;
+    ctx->logging.LogError(TAG, errMsg);
+    dbus_error_free(&ctx->dbus.ssnErr);
+    dbus_message_unref(msg);
+    return;
+  }
+
+  dbus_message_unref(msg);
+  dbus_message_unref(reply);
 }

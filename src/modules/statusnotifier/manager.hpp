@@ -7,6 +7,7 @@
 #include <functional>
 #include <map>
 #include <string>
+#include <sys/types.h>
 #include <thread>
 #include <vector>
 
@@ -58,6 +59,9 @@ public:
   // Functions to get Additional Info about Registered Items
   void getItemInfo(const std::string &itemService, StatusApp &outApp);
   void getMenuActions(const std::string &itemService, StatusApp &outApp);
+  
+  // Functions to perform the action
+  void executeMenuAction(const std::string &itemService, const std::string &menuPath, u_int32_t timestamp, int actionIndex);
 
   // DBus Message Handler for Status Notifier Watcher Interface
   void handleRegisterStatusNotifierHost(DBusMessage *msg);

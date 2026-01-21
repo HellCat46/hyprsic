@@ -2,6 +2,7 @@
 
 #include "gtk/gtk.h"
 #include "manager.hpp"
+#include <cstdint>
 #include <string>
 
 
@@ -10,6 +11,14 @@ struct MenuActionArgs {
   StatusNotifierManager *snManager;
   std::string itemId;
   SNIApp sniApp;
+};
+
+struct EvtBtnPressArgs {
+    LoggingManager *logger;
+  StatusNotifierManager *snManager;
+  std::string itemId;
+  SNIApp sniApp;
+  uint32_t evtIdx;
 };
 
 class StatusNotifierModule {
@@ -27,4 +36,5 @@ class StatusNotifierModule {
     static void remove(std::string servicePath, std::map<std::string, SNIApp>* sniApps, GtkWidget* sniBox);
     
     static void handleContextMenuOpen(GtkWidget *widget, GdkEventButton *event, gpointer user_data);
+    static void handleEvtButtonPress(GtkWidget *widget, GdkEventButton *event, gpointer user_data);
 };
