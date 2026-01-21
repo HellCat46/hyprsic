@@ -8,7 +8,6 @@
 #include <map>
 #include <string>
 #include <sys/types.h>
-#include <thread>
 #include <vector>
 
 struct MenuActionItem {
@@ -41,14 +40,14 @@ struct RemoveCallback {
 class StatusNotifierManager {
   AppContext *ctx;
   std::string SNWXML;
-  std::thread ssnThread;
 
 public:
   std::vector<RemoveCallback> removeCallbacks;
   std::map<std::string, StatusApp> registeredItems;
   StatusNotifierManager(AppContext *appCtx);
 
-  void captureStatusNotifier();
+  void setupDBus();
+  void handleDbusMessage(DBusMessage *msg);
 
   // DBus Introspectable and Properties Handler
   void handleIntrospectCall(DBusMessage *msg);

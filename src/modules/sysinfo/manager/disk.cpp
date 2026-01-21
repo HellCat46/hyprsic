@@ -3,16 +3,14 @@
 
 #define TAG "Disk"
 
-int Disk::Init(std::string path, LoggingManager *logMgr) {
-  logger = logMgr;
+Disk::Disk(std::string path, LoggingManager *logMgr) : logger(logMgr) {
   
   if (statvfs(path.c_str(), &data) < 0) {
     logger->LogError(TAG, "Failed to Get Info about the Path.");
-    return 1;
+    return;
   }
 
   mountpoint = path;
-  return 0;
 }
 
 int Disk::GetDiskInfo(unsigned long& avail, unsigned long& tot) {

@@ -1,7 +1,9 @@
 #pragma once
+#include "../../../logging/manager.hpp"
 #include "cstring"
 #include "fstream"
-#include "../../../logging/manager.hpp"
+#include <memory>
+#include <vector>
 
 class NetInterface {
 private:
@@ -13,25 +15,21 @@ private:
 public:
   std::string err;
   bool up;
-  NetInterface();
-  int Init(std::string ifaceName, LoggingManager *logMgr);
-
+  
+  NetInterface(std::string ifaceName, LoggingManager *logMgr);
   unsigned long GetTotRxBytes();
   unsigned long GetTotTxBytes();
-
   ~NetInterface();
 };
 
 class Network {
 private:
-  NetInterface *activeIfaces;
+  std::vector<std::unique_ptr<NetInterface>> activeIfaces;
   int ifaceSize = 0;
   LoggingManager *logger;
 
 public:
+  Network(LoggingManager *logMgr);
   double GetTotRx();
-
   double GetTotTx();
-  int Init(LoggingManager *logMgr);
-  ~Network();
 };

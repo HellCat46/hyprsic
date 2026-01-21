@@ -10,7 +10,7 @@ private:
   LoggingManager *logger;
 
 public:
-  int Init(LoggingManager *logMgr);
+  SysLoad(LoggingManager *logMgr);
   float GetLoad(int dur);
   ~SysLoad();
 };

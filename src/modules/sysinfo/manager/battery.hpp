@@ -1,6 +1,8 @@
 #pragma once
 #include "../../../logging/manager.hpp"
 #include "fstream"
+#include <memory>
+#include <vector>
 
 class Battery {
   std::ifstream capacity;
@@ -10,20 +12,19 @@ class Battery {
 
 public:
   bool failed;
-  int Init(std::string basePath, LoggingManager *logMgr);
+  Battery(std::string basePath, LoggingManager *logMgr);
   short getBatteryPercent();
   std::string getStatus();
   ~Battery();
 };
 
 class BatteryInfo {
-  Battery *batteries;
+  std::vector<std::unique_ptr<Battery>> batteries;
   int battCount;
   LoggingManager *logger;
 
 public:
-  int Init(LoggingManager *logMgr);
+  BatteryInfo(LoggingManager *logMgr);
   short getTotPercent();
   int getBatteryCount();
-  ~BatteryInfo();
 };

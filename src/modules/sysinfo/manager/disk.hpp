@@ -11,7 +11,6 @@ private:
   LoggingManager *logger;
 
 public:
-  int Init(std::string path, LoggingManager *logMgr);
-
+  Disk(std::string path, LoggingManager *logMgr);
   int GetDiskInfo(unsigned long &avail, unsigned long &tot);
 };

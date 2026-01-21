@@ -3,17 +3,18 @@
 #include "dirent.h"
 #include "fstream"
 #include "vector"
+#include <string>
 
 #define TAG "Battery"
 
-int Battery::Init(std::string basePath, LoggingManager *logMgr) {
+Battery::Battery(std::string basePath, LoggingManager *logMgr) {
   logger = logMgr;
-  
+
   std::string msg = "Initiating Info Object for Battery ";
   msg += basePath.substr(basePath.rfind("/") + 1, basePath.size());
   msg += ".";
   logger->LogInfo(TAG, msg);
-  
+
   capacity.open(basePath + "/capacity", std::ios::in);
   status.open(basePath + "/status", std::ios::in);
 
@@ -21,7 +22,6 @@ int Battery::Init(std::string basePath, LoggingManager *logMgr) {
     logger->LogError(TAG, "Failed to Open Files Required for Battery Stats");
 
     failed = 1;
-    return 1;
   }
 
   std::ifstream manufacturer, model;
@@ -45,7 +45,6 @@ int Battery::Init(std::string basePath, LoggingManager *logMgr) {
   }
 
   failed = 0;
-  return 0;
 }
 
 short Battery::getBatteryPercent() {
@@ -77,9 +76,8 @@ Battery::~Battery() {
   status.close();
 }
 
-int BatteryInfo::Init(LoggingManager *logMgr) {
-  logger = logMgr;
-  
+BatteryInfo::BatteryInfo(LoggingManager *logMgr) : logger(logMgr) {
+
   DIR *dir;
   std::string basePath = "/sys/class/power_supply/";
   char folderStr[] = "BAT";
@@ -87,25 +85,18 @@ int BatteryInfo::Init(LoggingManager *logMgr) {
   dir = opendir(basePath.c_str());
 
   if (dir == nullptr) {
-    return 1;
+    return;
   }
 
   std::vector<std::string> battPaths;
   for (dirent *ent = readdir(dir); ent != nullptr; ent = readdir(dir)) {
     if (std::strncmp(folderStr, ent->d_name, 3) == 0) {
       battPaths.push_back(ent->d_name);
+      batteries.push_back(std::make_unique<Battery>(basePath + ent->d_name, logger));
     }
   }
 
   battCount = battPaths.size();
-  batteries = new Battery[battCount];
-
-  int idx = 0;
-  for (auto batt : battPaths) {
-    batteries[idx++].Init(basePath + batt, logger);
-  }
-
-  return 0;
 }
 
 short BatteryInfo::getTotPercent() {
@@ -113,14 +104,12 @@ short BatteryInfo::getTotPercent() {
   char ch;
 
   for (int idx = 0; idx < battCount; idx++) {
-    if (batteries[idx].failed)
+    if (batteries[idx]->failed)
       continue;
-    avg = ((avg * (idx)) + batteries[idx].getBatteryPercent()) / (idx + 1);
+    avg = ((avg * (idx)) + batteries[idx]->getBatteryPercent()) / (idx + 1);
   }
 
   return avg;
 }
 
 int BatteryInfo::getBatteryCount() { return battCount; }
-
-BatteryInfo::~BatteryInfo() { delete[] batteries; }

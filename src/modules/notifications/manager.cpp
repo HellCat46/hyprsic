@@ -1,24 +1,17 @@
 #include "manager.hpp"
+#include "../../utils/helper_func.hpp"
 #include "dbus/dbus-protocol.h"
 #include "dbus/dbus-shared.h"
 #include "dbus/dbus.h"
 #include "gdk-pixbuf/gdk-pixbuf.h"
 #include "glib.h"
-#include "thread"
 #include <cstring>
 
 #define TAG "NotificationManager"
 
 NotificationManager::NotificationManager(AppContext *ctx) : ctx(ctx) {}
 
-void NotificationManager::RunService(
-    std::function<void(NotifFuncArgs *)> showNotification) {
-  notifThread = std::thread(&NotificationManager::captureNotification, this,
-                            showNotification);
-}
-
-void NotificationManager::captureNotification(
-    std::function<void(NotifFuncArgs *)> showNotification) {
+void NotificationManager::setupDBus() {
   int ret = dbus_bus_request_name(
       ctx->dbus.ssnConn, "org.freedesktop.Notifications",
       DBUS_NAME_FLAG_REPLACE_EXISTING, &(ctx->dbus.ssnErr));
@@ -36,8 +29,6 @@ void NotificationManager::captureNotification(
                           "Another Notification Service is already running.");
     return;
   }
-
-  ctx->logging.LogInfo(TAG, "Starting Notification Capture Service");
 
   dbus_bus_add_match(
       ctx->dbus.ssnConn,
@@ -57,52 +48,40 @@ void NotificationManager::captureNotification(
     return;
   }
 
-  DBusMessage *msg;
-  while (1) {
-    if (!dbus_connection_read_write_dispatch(ctx->dbus.ssnConn, 100)) {
-      ctx->logging.LogError(
-          TAG, "Connection Closed while Waiting for Notification Messages");
-      return;
+  ctx->logging.LogInfo(TAG, "Started Notification Capture Service");
+}
+
+void NotificationManager::handleDbusMessage(
+    DBusMessage *msg, std::function<void(NotifFuncArgs *)> showNotification) {
+  const char *member = dbus_message_get_member(msg);
+  int type = dbus_message_get_type(msg);
+
+  if (type != DBUS_MESSAGE_TYPE_METHOD_CALL)
+    return;
+
+  // Method Call Handlers
+  if (HelperFunc::saferStrCmp(member, "Notify")) {
+
+    Notification notification = handleNotifyCall(msg);
+    if (notification.app_name.size() > 0) {
+      NotifFuncArgs args;
+      args.notif = &notification;
+      args.notifications = &notifications;
+      args.logger = &ctx->logging;
+      args.dbManager = &ctx->dbManager;
+
+      showNotification(&args);
     }
+  } else if (HelperFunc::saferStrCmp(member, "CloseNotification")) {
 
-    msg = dbus_connection_pop_message(ctx->dbus.ssnConn);
-    if (!msg) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
-      continue;
-    }
+    handleCloseNotificationCall(msg);
+  } else if (HelperFunc::saferStrCmp(member, "GetCapabilities")) {
 
-    // Method Call Handlers
-    if (dbus_message_is_method_call(msg, "org.freedesktop.Notifications",
-                                    "Notify")) {
+    handleGetCapabilitiesCall(msg);
+  } else if (HelperFunc::saferStrCmp(member, "GetServerInformation")) {
 
-      ctx->logging.LogInfo(TAG, "Received Notify Call");
-      Notification notification = handleNotifyCall(msg);
-      if (notification.app_name.size() > 0) {
-        NotifFuncArgs args;
-        args.notif = &notification;
-        args.notifications = &notifications;
-        args.logger = &ctx->logging;
-        args.dbManager = &ctx->dbManager;
-
-        showNotification(&args);
-      }
-    } else if (dbus_message_is_method_call(msg, "org.freedesktop.Notifications",
-                                           "CloseNotification")) {
-
-      ctx->logging.LogInfo(TAG, "Received CloseNotification Call");
-      handleCloseNotificationCall(msg);
-    } else if (dbus_message_is_method_call(msg, "org.freedesktop.Notifications",
-                                           "GetCapabilities")) {
-
-      ctx->logging.LogInfo(TAG, "Received GetCapabilities Call");
-      handleGetCapabilitiesCall(msg);
-    } else if (dbus_message_is_method_call(msg, "org.freedesktop.Notifications",
-                                           "GetServerInformation")) {
-
-      ctx->logging.LogInfo(TAG, "Received GetServerInformation Call");
-      handleGetServerInformationCall(msg);
-    }
-    dbus_message_unref(msg);
+    ctx->logging.LogInfo(TAG, "Received GetServerInformation Call");
+    handleGetServerInformationCall(msg);
   }
 }
 

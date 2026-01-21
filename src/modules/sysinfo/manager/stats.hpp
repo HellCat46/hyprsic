@@ -16,8 +16,7 @@ public:
   unsigned long diskAvail, diskTotal;
   std::chrono::time_point<std::chrono::steady_clock> time;
 
-  Stats();
-  void Init(LoggingManager *logMgr);
+  Stats(LoggingManager *logMgr);
   void UpdateData();
   std::string GetNetRx();
   std::string GetNetTx();

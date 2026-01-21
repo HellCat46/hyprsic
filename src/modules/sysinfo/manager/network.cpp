@@ -6,11 +6,10 @@
 
 #define TAG "Network"
 
-NetInterface::NetInterface() { err = "Not Initialized"; }
+NetInterface::NetInterface(std::string ifaceName, LoggingManager *logMgr)
+    : logger(logMgr) {
+  err = "Not Initialized";
 
-int NetInterface::Init(std::string ifaceName, LoggingManager *logMgr) {
-  logger = logMgr;
-  
   std::string msg = "Initiating Interface ";
   msg += ifaceName;
   msg += " Object.";
@@ -22,7 +21,7 @@ int NetInterface::Init(std::string ifaceName, LoggingManager *logMgr) {
   std::ifstream ostate(path + "/operstate", std::ios::in);
   if (!ostate.is_open()) {
     err = "Unable to check status of Interface " + interface + ".";
-    return 1;
+    return;
   }
 
   char state[5];
@@ -34,11 +33,10 @@ int NetInterface::Init(std::string ifaceName, LoggingManager *logMgr) {
   tx.open(path + "/statistics/tx_bytes", std::ios::in);
   if (!rx.is_open() || !tx.is_open()) {
     err = "Unable to Open Stat Files.";
-    return 1;
+    return;
   }
 
   err = "";
-  return 0;
 }
 
 unsigned long NetInterface::GetTotRxBytes() {
@@ -80,8 +78,8 @@ double Network::GetTotRx() {
   double bytes = 0;
 
   for (int idx = 0; idx < ifaceSize; idx++) {
-    if (activeIfaces[idx].up && activeIfaces[idx].err.length() == 0)
-      bytes += activeIfaces[idx].GetTotRxBytes();
+    if (activeIfaces[idx]->up && activeIfaces[idx]->err.length() == 0)
+      bytes += activeIfaces[idx]->GetTotRxBytes();
   }
 
   return bytes;
@@ -91,21 +89,20 @@ double Network::GetTotTx() {
   double bytes = 0;
 
   for (int idx = 0; idx < ifaceSize; idx++) {
-    if (activeIfaces[idx].up && activeIfaces[idx].err.length() == 0)
-      bytes += activeIfaces[idx].GetTotTxBytes();
+    if (activeIfaces[idx]->up && activeIfaces[idx]->err.length() == 0)
+      bytes += activeIfaces[idx]->GetTotTxBytes();
   }
 
   return bytes;
 }
 
-int Network::Init(LoggingManager *logMgr) {
-  logger = logMgr;
-  
+Network::Network(LoggingManager *logMgr) : logger(logMgr) {
+
   DIR *dir;
   dir = opendir("/sys/class/net/");
   if (dir == nullptr) {
     logger->LogError(TAG, "Failed to Open /sys/class/net/ Directory");
-    return 1;
+    return;
   }
 
   const std::string baseIfaces[] = {"eno", "enp",  "ens", "enx",
@@ -118,19 +115,13 @@ int Network::Init(LoggingManager *logMgr) {
         if (std::strncmp(ent->d_name, baseIface.c_str(), baseIface.length()) ==
             0) {
           availIfaces.push_back(ent->d_name);
+          activeIfaces.push_back(std::make_unique<NetInterface>(ent->d_name, logger));
         }
       }
     }
   }
   closedir(dir);
 
-  activeIfaces = new NetInterface[availIfaces.size()];
   ifaceSize = availIfaces.size();
-  int idx = 0;
-  for (auto ifaceName : availIfaces) {
-    activeIfaces[idx++].Init(ifaceName, logger);
-  }
-  return 0;
 }
 
-Network::~Network() { delete[] activeIfaces; }

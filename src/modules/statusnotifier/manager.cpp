@@ -24,11 +24,9 @@ StatusNotifierManager::StatusNotifierManager(AppContext *appCtx) : ctx(appCtx) {
     protoFile.close();
   }
 
-  ssnThread = std::thread(&StatusNotifierManager::captureStatusNotifier, this);
 }
 
-void StatusNotifierManager::captureStatusNotifier() {
-  ctx->logging.LogDebug(TAG, "Starting Status Notifier Capture Service");
+void StatusNotifierManager::setupDBus() {
   int ret = dbus_bus_request_name(
       ctx->dbus.ssnConn, "org.kde.StatusNotifierWatcher",
       DBUS_NAME_FLAG_REPLACE_EXISTING, &(ctx->dbus.ssnErr));
@@ -74,61 +72,45 @@ void StatusNotifierManager::captureStatusNotifier() {
     dbus_error_free(&(ctx->dbus.ssnErr));
     return;
   }
+  
+  
+  ctx->logging.LogDebug(TAG, "Started Status Notifier Capture Service");
+}
 
-  DBusMessage *msg;
-  while (1) {
-    if (!dbus_connection_read_write_dispatch(ctx->dbus.ssnConn, 100)) {
-      ctx->logging.LogError(
-          TAG, "Connection Closed while Waiting for Notification Messages");
-      return;
-    }
+void StatusNotifierManager::handleDbusMessage(DBusMessage *msg) {
+  const char *interface = dbus_message_get_interface(msg);
+  const char *path = dbus_message_get_path(msg);
+  const char *member = dbus_message_get_member(msg);
 
-    msg = dbus_connection_pop_message(ctx->dbus.ssnConn);
-    if (!msg) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
-      continue;
-    }
+  if (HelperFunc::saferStrCmp(interface,
+                              "org.freedesktop.DBus.Introspectable") &&
+      HelperFunc::saferStrCmp(member, "Introspect") &&
+      HelperFunc::saferStrCmp(path, "/StatusNotifierWatcher")) {
 
-    const char *interface = dbus_message_get_interface(msg);
-    const char *member = dbus_message_get_member(msg);
-    const char *path = dbus_message_get_path(msg);
+    handleIntrospectCall(msg);
+  } else if (HelperFunc::saferStrCmp(interface,
+                                     "org.freedesktop.DBus.Properties") &&
+             HelperFunc::saferStrCmp(path, "/StatusNotifierWatcher")) {
 
-    // ctx->logging.LogDebug(
-    //     TAG, "Received Status Notifier Message. " + std::string(interface) +
-    //              "." + std::string(member) + " " + std::string(path));
+    if (HelperFunc::saferStrCmp(member, "GetAll"))
+      handleGetAllPropertiesCall(msg);
+    else if (HelperFunc::saferStrCmp(member, "Get"))
+      handleGetPropertyCall(msg);
 
-    if (HelperFunc::saferStrCmp(interface,
-                                "org.freedesktop.DBus.Introspectable") &&
-        HelperFunc::saferStrCmp(member, "Introspect") &&
-        HelperFunc::saferStrCmp(path, "/StatusNotifierWatcher")) {
+  } else if (HelperFunc::saferStrCmp(interface,
+                                     "org.kde.StatusNotifierWatcher") &&
+             HelperFunc::saferStrCmp(path, "/StatusNotifierWatcher")) {
 
-      handleIntrospectCall(msg);
-    } else if (HelperFunc::saferStrCmp(interface,
-                                       "org.freedesktop.DBus.Properties") &&
-               HelperFunc::saferStrCmp(path, "/StatusNotifierWatcher")) {
+    if (HelperFunc::saferStrCmp(member, "RegisterStatusNotifierItem"))
+      handleRegisterStatusNotifierItem(msg);
+    else if (HelperFunc::saferStrCmp(member, "RegisterStatusNotifierHost"))
+      handleRegisterStatusNotifierHost(msg);
 
-      if (HelperFunc::saferStrCmp(member, "GetAll"))
-        handleGetAllPropertiesCall(msg);
-      else if (HelperFunc::saferStrCmp(member, "Get"))
-        handleGetPropertyCall(msg);
+  } else if (HelperFunc::saferStrCmp(interface, "org.freedesktop.DBus") &&
+             HelperFunc::saferStrCmp(member, "NameOwnerChanged") &&
+             HelperFunc::saferStrCmp(path, "/org/freedesktop/DBus")) {
 
-    } else if (HelperFunc::saferStrCmp(interface,
-                                       "org.kde.StatusNotifierWatcher") &&
-               HelperFunc::saferStrCmp(path, "/StatusNotifierWatcher")) {
-
-      if (HelperFunc::saferStrCmp(member, "RegisterStatusNotifierItem"))
-        handleRegisterStatusNotifierItem(msg);
-      else if (HelperFunc::saferStrCmp(member, "RegisterStatusNotifierHost"))
-        handleRegisterStatusNotifierHost(msg);
-
-    } else if (HelperFunc::saferStrCmp(interface, "org.freedesktop.DBus") &&
-               HelperFunc::saferStrCmp(member, "NameOwnerChanged") &&
-               HelperFunc::saferStrCmp(path, "/org/freedesktop/DBus")) {
-
-      handleNameOwnerChangedSignal(msg);
-    }
-
-    dbus_message_unref(msg);
+    handleNameOwnerChangedSignal(msg);
   }
 }
 
@@ -554,9 +536,9 @@ void StatusNotifierManager::handleNameOwnerChangedSignal(DBusMessage *msg) {
   if (registeredItems.find(nameStr) != registeredItems.end() &&
       std::strlen(newOwner) == 0) {
     registeredItems.erase(nameStr);
-    
-    for(auto& callback : removeCallbacks) {
-        callback.callback(nameStr, callback.sniApps, callback.widget);
+
+    for (auto &callback : removeCallbacks) {
+      callback.callback(nameStr, callback.sniApps, callback.widget);
     }
     ctx->logging.LogDebug(TAG,
                           "Unregistered Status Notifier Item. New Count: " +
@@ -583,7 +565,8 @@ void StatusNotifierManager::executeMenuAction(const std::string &itemService,
 
   DBusMessageIter args, arrayArgs, structArgs;
   dbus_message_iter_init_append(msg, &args);
-  dbus_message_iter_open_container(&args, DBUS_TYPE_ARRAY, "(isvu)", &arrayArgs);
+  dbus_message_iter_open_container(&args, DBUS_TYPE_ARRAY, "(isvu)",
+                                   &arrayArgs);
   dbus_message_iter_open_container(&arrayArgs, DBUS_TYPE_STRUCT, nullptr,
                                    &structArgs);
   dbus_uint32_t actionId = actionIndex;

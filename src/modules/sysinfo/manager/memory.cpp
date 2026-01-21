@@ -4,15 +4,13 @@
 
 #define TAG "Memory"
 
-int Memory::Init(LoggingManager *logMgr) {
-  logger = logMgr;
+Memory::Memory(LoggingManager *logMgr) : logger(logMgr) {
 
   memInfo.open("/proc/meminfo", std::ios::in);
   if (!memInfo.is_open()) {
     logger->LogError(TAG, "Failed to Open Memory Info");
-    return 1;
+    return;
   }
-  return 0;
 }
 
 long Memory::GetUsedRAM() {

@@ -1,22 +1,18 @@
 #include "stats.hpp"
+#include "disk.hpp"
+#include "network.hpp"
 #include <cmath>
 #include <string>
 
 #define TAG "Stats"
 
-Stats::Stats() {
+Stats::Stats(LoggingManager *logMgr)
+    : logger(logMgr), net(logMgr), disk("/", logMgr) {
   logger = nullptr;
   rx = 0;
   tx = 0;
   diskAvail = 0;
   diskTotal = 0;
-}
-
-void Stats::Init(LoggingManager *logMgr) {
-  logger = logMgr;
-  
-  net.Init(logger);
-  disk.Init("/", logger);
 
   rx = net.GetTotRx();
   tx = net.GetTotTx();
@@ -25,11 +21,11 @@ void Stats::Init(LoggingManager *logMgr) {
   time = std::chrono::steady_clock::now();
 }
 
-void Stats::UpdateData() { 
-    tx = net.GetTotTx(); 
-    rx = net.GetTotRx();
-    disk.GetDiskInfo(diskAvail, diskTotal);
-    time = std::chrono::steady_clock::now();
+void Stats::UpdateData() {
+  tx = net.GetTotTx();
+  rx = net.GetTotRx();
+  disk.GetDiskInfo(diskAvail, diskTotal);
+  time = std::chrono::steady_clock::now();
 }
 
 std::string Stats::GetNetRx() {
@@ -51,7 +47,7 @@ std::string Stats::GetNetTx() {
 }
 
 std::string Stats::GetDiskAvail() {
-  return ParseBytes(diskTotal-diskAvail, 2);
+  return ParseBytes(diskTotal - diskAvail, 2);
 }
 
 std::string Stats::GetDiskTotal() { return ParseBytes(diskTotal, 2); }

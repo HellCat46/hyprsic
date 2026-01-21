@@ -10,7 +10,7 @@ private:
   long parseInfo(std::string type);
 
 public:
-  int Init(LoggingManager *logMgr);
+  Memory(LoggingManager *logMgr);
   long GetUsedRAM();
   long GetTotRAM();
   long GetUsedSwap();

@@ -5,15 +5,13 @@
 
 #define TAG "SysLoad"
 
-int SysLoad::Init(LoggingManager *logMgr) {
-  logger = logMgr;
+SysLoad::SysLoad(LoggingManager *logMgr) : logger(logMgr) {
   
   loadAvg.open("/proc/loadavg", std::ios::in);
   if (!loadAvg.is_open()) {
     logger->LogError(TAG, "Failed to Open Load Avg File");
-    return 1;
+    return;
   }
-  return 0;
 }
 
 float SysLoad::GetLoad(int dur) {

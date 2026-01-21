@@ -1,10 +1,10 @@
 #pragma once
 #include "../../app/context.hpp"
+#include "dbus/dbus.h"
 #include "gdk-pixbuf/gdk-pixbuf.h"
 #include "gtk/gtk.h"
 #include <functional>
 #include <string>
-#include <thread>
 #include <unordered_map>
 
 struct Notification {
@@ -29,10 +29,6 @@ struct NotifFuncArgs {
 class NotificationManager {
   AppContext *ctx;
   std::unordered_map<std::string, GtkWidget *> notifications;
-  std::thread notifThread;
-
-  void captureNotification(
-      std::function<void(NotifFuncArgs *)> showNotification);
 
   // Notification Daemon Responses to Messages
   Notification handleNotifyCall(DBusMessage *msg);
@@ -40,9 +36,12 @@ class NotificationManager {
   void handleGetServerInformationCall(DBusMessage *msg);
   void handleCloseNotificationCall(DBusMessage *msg);
 
+  // Helper Functions
   GdkPixbuf *parseImageData(DBusMessageIter *hintsIter);
 
 public:
   NotificationManager(AppContext *ctx);
-  void RunService(std::function<void(NotifFuncArgs *)> showNotification);
+
+  void setupDBus();
+  void handleDbusMessage(DBusMessage* msg, std::function<void(NotifFuncArgs *)> showNotification);
 };

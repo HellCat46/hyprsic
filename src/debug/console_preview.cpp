@@ -3,24 +3,15 @@
 
 #define TAG "Display"
 
-Display::Display(): hyprWS(&logger) {
+Display::Display()
+    : hyprWS(&logger), net(&logger), stat(&logger), load(&logger), mem(&logger),
+      disk("/home/hellcat", &logger), battery(&logger) {
   // Initiating The Network and It's Stats
-  net.Init(&logger);
-  stat.Init(&logger);
   stat.rx = net.GetTotRx();
   stat.tx = net.GetTotTx();
   stat.time = std::chrono::steady_clock::now();
-
-  load.Init(&logger);
-  mem.Init(&logger);
-
-  disk.Init("/home/hellcat", &logger);
-
-  battery.Init(&logger);
-
-  //playing.Init(&logger);
-
 }
+
 std::string Display::DisplayBar() {
   std::string str;
 
@@ -30,8 +21,9 @@ std::string Display::DisplayBar() {
           .count();
 
   double trx = net.GetTotRx(), ttx = net.GetTotTx();
-  str += Stats::ParseBytes(trx, 2) + " (" + Stats::ParseBytes((trx - stat.rx) / sec, 1) +
-         ")\t" + Stats::ParseBytes(ttx, 2) + " (" +
+  str += Stats::ParseBytes(trx, 2) + " (" +
+         Stats::ParseBytes((trx - stat.rx) / sec, 1) + ")\t" +
+         Stats::ParseBytes(ttx, 2) + " (" +
          Stats::ParseBytes((ttx - stat.tx) / sec, 1) + ")\t";
   str += std::to_string(load.GetLoad(1)) + " " +
          std::to_string(load.GetLoad(5)) + " " +
@@ -46,8 +38,7 @@ std::string Display::DisplayBar() {
            Stats::ParseBytes(stat.diskTotal, 2) + "\t";
   }
 
-  str += std::to_string(battery.getTotPercent()) +
-         "\t";
+  str += std::to_string(battery.getTotPercent()) + "\t";
 
   if (hyprWS.activeWorkspaceId == 0) {
     auto wsEntry = hyprWS.workspaces.find(hyprWS.activeWorkspaceId);

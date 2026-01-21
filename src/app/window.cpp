@@ -1,4 +1,5 @@
 #include "window.hpp"
+#include "../utils/helper_func.hpp"
 #include "gdk/gdk.h"
 #include "gio/gio.h"
 #include "glib-object.h"
@@ -22,17 +23,14 @@ Window::Window(AppContext *ctx, MprisManager *mprisMgr,
 
 MainWindow::MainWindow()
     : notifManager(&ctx), btManager(&ctx), mprisManager(&ctx),
-      scrnsavrManager(&ctx), hyprInstance(&ctx.logging), snManager(&ctx) {
-  load.Init(&ctx.logging);
-  mem.Init(&ctx.logging);
-  battery.Init(&ctx.logging);
-  stat.Init(&ctx.logging);
-  btManager.setup();
-  // playing.Init(&ctx.logging);
+      scrnsavrManager(&ctx), hyprInstance(&ctx.logging), snManager(&ctx),
+      load(&ctx.logging), mem(&ctx.logging), stat(&ctx.logging),
+      battery(&ctx.logging) {
 
+  btManager.setup();
   hyprInstance.liveEventListener();
   btManager.getDeviceList();
-  notifManager.RunService(NotificationModule::showNotification);
+  ssnDBusThread = std::thread(&MainWindow::captureSessionDBus, this);
 
   app = gtk_application_new("com.hellcat.hyprsic", G_APPLICATION_DEFAULT_FLAGS);
   g_signal_connect(app, "activate", G_CALLBACK(activate), this);
@@ -83,11 +81,10 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
     gtk_widget_set_hexpand(right_box, TRUE);
     gtk_grid_set_column_spacing(GTK_GRID(right_box), 2);
 
-    
     winInstance->hyprModule.setup(main_box);
-    
+
     winInstance->mprisModule.setup(main_box);
-    
+
     winInstance->sysinfoModule.setup(right_box);
     winInstance->notifModule.setup(right_box);
     winInstance->btModule.setupBT(right_box);
@@ -113,4 +110,35 @@ gboolean MainWindow::UpdateData(gpointer data) {
   self->stat.UpdateData();
 
   return true;
+}
+
+void MainWindow::captureSessionDBus() {
+  notifManager.setupDBus();
+  snManager.setupDBus();
+
+  DBusMessage *msg;
+  while (1) {
+    if (!dbus_connection_read_write_dispatch(ctx.dbus.ssnConn, 100)) {
+      ctx.logging.LogError(
+          TAG, "Connection Closed while Waiting for Notification Messages");
+      return;
+    }
+
+    msg = dbus_connection_pop_message(ctx.dbus.ssnConn);
+    if (!msg) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      continue;
+    }
+
+    const char *interface = dbus_message_get_interface(msg);
+    const char *path = dbus_message_get_path(msg);
+
+    if (HelperFunc::saferStrCmp(interface, "org.freedesktop.Notifications")) {
+      notifManager.handleDbusMessage(msg, NotificationModule::showNotification);
+    } else {
+      snManager.handleDbusMessage(msg);
+    }
+
+    dbus_message_unref(msg);
+  }
 }

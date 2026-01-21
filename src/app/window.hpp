@@ -42,14 +42,15 @@ class MainWindow {
   Memory mem;
   SysLoad load;
   BatteryInfo battery;
-  // PlayingNow playing;
-
   BluetoothManager btManager;
   NotificationManager notifManager;
   MprisManager mprisManager;
   ScreenSaverManager scrnsavrManager;
   HyprWSManager hyprInstance;
   StatusNotifierManager snManager;
+  
+  std::thread ssnDBusThread;
+  void captureSessionDBus();
 
 public:
   MainWindow();
