@@ -1,12 +1,11 @@
 #pragma once
 #include "../logging/manager.hpp"
-//#include "../modules/media/playing_now.hpp"
-#include "../modules/sysinfo/battery.hpp"
-#include "../modules/sysinfo/disk.hpp"
-#include "../modules/sysinfo/memory.hpp"
-#include "../modules/sysinfo/network.hpp"
-#include "../modules/sysinfo/stats.hpp"
-#include "../modules/sysinfo/sys_load.hpp"
+#include "../modules/sysinfo/manager/battery.hpp"
+#include "../modules/sysinfo/manager/disk.hpp"
+#include "../modules/sysinfo/manager/memory.hpp"
+#include "../modules/sysinfo/manager/network.hpp"
+#include "../modules/sysinfo/manager/stats.hpp"
+#include "../modules/sysinfo/manager/sys_load.hpp"
 #include "../modules/workspaces/hyprland/manager.hpp"
 #include "math.h"
 

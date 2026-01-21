@@ -34,21 +34,29 @@ endif()
 set(MODULES_SOURCES
     src/modules/workspaces/hyprland/manager.cpp
     src/modules/workspaces/hyprland/module.cpp
-    src/modules/sysinfo/battery.cpp
-    src/modules/sysinfo/disk.cpp
-    src/modules/sysinfo/memory.cpp
-    src/modules/sysinfo/network.cpp
+    
+    src/modules/sysinfo/manager/battery.cpp
+    src/modules/sysinfo/manager/disk.cpp
+    src/modules/sysinfo/manager/memory.cpp
+    src/modules/sysinfo/manager/network.cpp
+    src/modules/sysinfo/manager/sys_load.cpp
+    src/modules/sysinfo/manager/stats.cpp
+    src/modules/sysinfo/module.cpp
+    
     src/modules/pulseaudio/manager.cpp
+    
     src/modules/mpris/manager.cpp
     src/modules/mpris/module.cpp
-    src/modules/sysinfo/sys_load.cpp
-    src/modules/sysinfo/stats.cpp
+    
     src/modules/bluetooth/manager.cpp
     src/modules/bluetooth/module.cpp
+    
     src/modules/notifications/manager.cpp
     src/modules/notifications/module.cpp
+    
     src/modules/screensaver/manager.cpp
     src/modules/screensaver/module.cpp
+    
     src/modules/statusnotifier/manager.cpp
     src/modules/statusnotifier/module.cpp
 )

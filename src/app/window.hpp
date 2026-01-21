@@ -12,10 +12,7 @@
 #include "../modules/mpris/module.hpp"
 #include "../modules/notifications/module.hpp"
 #include "../modules/screensaver/module.hpp"
-#include "../modules/sysinfo/battery.hpp"
-#include "../modules/sysinfo/memory.hpp"
-#include "../modules/sysinfo/stats.hpp"
-#include "../modules/sysinfo/sys_load.hpp"
+#include "../modules/sysinfo/module.hpp"
 #include "../modules/workspaces/hyprland/module.hpp"
 #include "../modules/statusnotifier/manager.hpp"
 #include "../modules/statusnotifier/module.hpp"
@@ -23,13 +20,7 @@
 struct Window {
   GtkWidget *window = nullptr;
 
-  GtkWidget *netWid;
-  GtkWidget *diskWid;
-  GtkWidget *loadWid;
-  GtkWidget *memWid;
-  GtkWidget *batteryWid;
-  GtkWidget *timeWid;
-
+  SysInfoModule sysinfoModule;
   MprisModule mprisModule;
   HyprWSModule hyprModule;
   ScreenSaverModule scrnsavrModule;
@@ -39,7 +30,7 @@ struct Window {
 
   Window(AppContext *ctx, MprisManager *mprisMgr,
          ScreenSaverManager *scrnsavrMgr, NotificationManager *notifInstance,
-         BluetoothManager *btMgr, HyprWSManager *hyprMgr, StatusNotifierManager *snManager);
+         BluetoothManager *btMgr, HyprWSManager *hyprMgr, StatusNotifierManager *snManager, Stats* stat, Memory* mem, SysLoad* load, BatteryInfo* battery);
 };
 
 class MainWindow {

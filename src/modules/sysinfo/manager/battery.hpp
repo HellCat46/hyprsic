@@ -1,5 +1,5 @@
 #pragma once
-#include "../../logging/manager.hpp"
+#include "../../../logging/manager.hpp"
 #include "fstream"
 
 class Battery {

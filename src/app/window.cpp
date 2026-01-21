@@ -6,19 +6,19 @@
 #include "gtk-layer-shell.h"
 #include "gtk/gtk.h"
 #include <ctime>
-#include <iomanip>
 #include <memory>
-#include <string>
 
 #define TAG "MainWindow"
 
 Window::Window(AppContext *ctx, MprisManager *mprisMgr,
                ScreenSaverManager *scrnsavrMgr,
                NotificationManager *notifInstance, BluetoothManager *btMgr,
-               HyprWSManager *hyprMgr, StatusNotifierManager *snManager)
+               HyprWSManager *hyprMgr, StatusNotifierManager *snManager,
+               Stats *stat, Memory *mem, SysLoad *load, BatteryInfo *battery)
     : mprisModule(ctx, mprisMgr), hyprModule(ctx, hyprMgr),
       scrnsavrModule(ctx, scrnsavrMgr), btModule(ctx, btMgr),
-      notifModule(ctx, notifInstance), snModule(ctx, snManager) {}
+      notifModule(ctx, notifInstance), snModule(ctx, snManager),
+      sysinfoModule(stat, mem, load, battery) {}
 
 MainWindow::MainWindow()
     : notifManager(&ctx), btManager(&ctx), mprisManager(&ctx),
@@ -50,9 +50,11 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
   int mCount = gdk_display_get_n_monitors(display);
 
   for (int i = 0; i < mCount; i++) {
-    std::unique_ptr<Window> winInstance = std::unique_ptr<Window>(new Window(&self->ctx, &self->mprisManager, &self->scrnsavrManager,
-                       &self->notifManager, &self->btManager,
-                       &self->hyprInstance, &self->snManager));
+    std::unique_ptr<Window> winInstance = std::unique_ptr<Window>(
+        new Window(&self->ctx, &self->mprisManager, &self->scrnsavrManager,
+                   &self->notifManager, &self->btManager, &self->hyprInstance,
+                   &self->snManager, &self->stat, &self->mem, &self->load,
+                   &self->battery));
     GdkMonitor *monitor = gdk_display_get_monitor(display, i);
 
     winInstance->window = gtk_application_window_new(app);
@@ -74,63 +76,24 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
     GtkWidget *main_box = gtk_grid_new();
     gtk_grid_set_column_homogeneous(GTK_GRID(main_box), TRUE);
     gtk_container_add(GTK_CONTAINER(winInstance->window), main_box);
-    std::string txt = "";
 
     // Right Box to Show System Stats
     GtkWidget *right_box = gtk_grid_new();
-
     gtk_grid_attach(GTK_GRID(main_box), right_box, 3, 0, 2, 1);
     gtk_widget_set_hexpand(right_box, TRUE);
     gtk_grid_set_column_spacing(GTK_GRID(right_box), 2);
 
-    txt = "⬇" + self->stat.GetNetRx() + "⬆" + self->stat.GetNetTx();
-    winInstance->netWid = gtk_label_new(txt.c_str());
-
-    txt = " " + self->stat.GetDiskAvail() + "/" + self->stat.GetDiskTotal();
-    winInstance->diskWid = gtk_label_new(txt.c_str());
-
-    self->stat.UpdateData();
-
-    txt = std::to_string(self->load.GetLoad(5));
-    txt = " " + txt.substr(0, txt.find('.') + 3);
-    winInstance->loadWid = gtk_label_new(txt.c_str());
-
-    txt = " " + Stats::ParseBytes(self->mem.GetUsedRAM() * 1000, 2) + "/" +
-          Stats::ParseBytes(self->mem.GetTotRAM() * 1000, 2);
-    winInstance->memWid = gtk_label_new(txt.c_str());
-
-    txt = " " + std::to_string(self->battery.getTotPercent()) + "%";
-    winInstance->batteryWid = gtk_label_new(txt.c_str());
-
-    auto t = std::time(nullptr);
-    auto tm = *std::localtime(&t);
-    std::ostringstream oss;
-    oss << std::put_time(&tm, "%H:%M:%S");
-    winInstance->timeWid = gtk_label_new(oss.str().c_str());
-
-    gtk_grid_attach(GTK_GRID(right_box), winInstance->netWid, 0, 0, 1, 1);
-    gtk_widget_set_hexpand(winInstance->netWid, TRUE);
-    gtk_grid_attach(GTK_GRID(right_box), winInstance->diskWid, 1, 0, 1, 1);
-    gtk_widget_set_hexpand(winInstance->diskWid, TRUE);
-    gtk_grid_attach(GTK_GRID(right_box), winInstance->loadWid, 2, 0, 1, 1);
-    gtk_widget_set_hexpand(winInstance->loadWid, TRUE);
-    gtk_grid_attach(GTK_GRID(right_box), winInstance->memWid, 3, 0, 1, 1);
-    gtk_widget_set_hexpand(winInstance->memWid, TRUE);
-    gtk_grid_attach(GTK_GRID(right_box), winInstance->batteryWid, 4, 0, 1, 1);
-    gtk_widget_set_hexpand(winInstance->batteryWid, TRUE);
-    gtk_grid_attach(GTK_GRID(right_box), winInstance->timeWid, 5, 0, 1, 1);
-    gtk_widget_set_hexpand(winInstance->timeWid, TRUE);
-
-    winInstance->mprisModule.setup(main_box);
+    
     winInstance->hyprModule.setup(main_box);
-
+    
+    winInstance->mprisModule.setup(main_box);
+    
+    winInstance->sysinfoModule.setup(right_box);
     winInstance->notifModule.setup(right_box);
-
     winInstance->btModule.setupBT(right_box);
     winInstance->scrnsavrModule.setup(right_box);
     winInstance->snModule.setup(right_box);
 
-    
     gtk_widget_show_all(winInstance->window);
     self->mainWindows.push_back(std::move(winInstance));
   }
@@ -138,48 +101,15 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
 
 gboolean MainWindow::UpdateData(gpointer data) {
   MainWindow *self = static_cast<MainWindow *>(data);
-  std::string txt = "";
 
   self->btManager.getDeviceList();
   for (auto &window : self->mainWindows) {
-
-    // Update Network Usage
-    txt = "⬇" + self->stat.GetNetRx() + "⬆" + self->stat.GetNetTx();
-    gtk_label_set_label(GTK_LABEL(window->netWid), txt.c_str());
-
-    // Update Disk Usage
-    txt = " " + self->stat.GetDiskAvail() + "/" + self->stat.GetDiskTotal();
-    gtk_label_set_label(GTK_LABEL(window->diskWid), txt.c_str());
-
-    // Update System Load
-    txt = std::to_string(self->load.GetLoad(5));
-    txt = " " + txt.substr(0, txt.find('.') + 3);
-    gtk_label_set_label(GTK_LABEL(window->loadWid), txt.c_str());
-
-    // Update memory
-    txt = " " + Stats::ParseBytes(self->mem.GetUsedRAM() * 1000, 2) + "/" +
-          Stats::ParseBytes(self->mem.GetTotRAM() * 1000, 2);
-    gtk_label_set_label(GTK_LABEL(window->memWid), txt.c_str());
-
-    // Update battery
-    txt = " " + std::to_string(self->battery.getTotPercent()) + "%";
-    gtk_label_set_label(GTK_LABEL(window->batteryWid),
-                        txt.c_str());
-
-    // Update time
-    auto t = std::time(nullptr);
-    auto tm = *std::localtime(&t);
-    std::ostringstream oss;
-    oss << std::put_time(&tm, "%H:%M:%S");
-    gtk_label_set_label(GTK_LABEL(window->timeWid),
-                        oss.str().c_str());
-
+    window->sysinfoModule.update();
     window->mprisModule.update();
     window->notifModule.update();
     window->btModule.updateBTList();
     window->snModule.update();
   }
-
   self->stat.UpdateData();
 
   return true;
