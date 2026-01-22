@@ -25,7 +25,7 @@ MainWindow::MainWindow()
     : notifManager(&ctx), btManager(&ctx), mprisManager(&ctx),
       scrnsavrManager(&ctx), hyprInstance(&ctx.logging), snManager(&ctx),
       load(&ctx.logging), mem(&ctx.logging), stat(&ctx.logging),
-      battery(&ctx.logging) {
+      battery(&ctx.logging), paManager(&ctx.logging) {
 
   btManager.setup();
   hyprInstance.liveEventListener();
@@ -108,6 +108,8 @@ gboolean MainWindow::UpdateData(gpointer data) {
     window->snModule.update();
   }
   self->stat.UpdateData();
+  
+  //self->paManager.getDevices();
 
   return true;
 }

@@ -1,30 +1,40 @@
 #pragma once
 #include "../../logging/manager.hpp"
 #include "string"
+#include <cstdint>
+#include <map>
 #include <pulse/context.h>
 #include <pulse/introspect.h>
+#include <string>
+#include <vector>
 
-struct PulseAudioData {
-  std::string server, source, sink, out, client, in;
+struct PulseAudioDevice {
+  uint32_t index;
+  std::string description;
+  bool mute;
+  uint8_t channels;
+  std::vector<uint32_t> volume;
 };
 
 class PulseAudioManager {
-private:
   pa_context *pulseContext;
   LoggingManager *logger;
+  std::string defOutput, defInput;
+  std::map<std::string, PulseAudioDevice> outDevs;
+  std::map<std::string, PulseAudioDevice> inDevs;
+
   static void contextStateHandler(pa_context *, void *);
   static void handleStateChanges(pa_context *, const pa_subscription_event_type,
                                  unsigned int, void *);
 
   static void serverInfoCallBack(pa_context *, const pa_server_info *, void *);
-  static void outputInfoCallBack(pa_context *, const pa_sink_input_info *, int,
-                                 void *);
-  static void inputInfoCallBack(pa_context *, const pa_source_output_info *,
-                                int, void *);
-  static void clientInfoCallBack(pa_context *, const pa_client_info *, int,
-                                 void *);
+  static void sinkInfoCallBack(pa_context *pulseCtx, const pa_sink_info *info,
+                               int eol, void *data);
+  static void sourceInfoCallBack(pa_context *pulseCtx,
+                                 const pa_source_info *info, int eol,
+                                 void *data);
 
 public:
-  PulseAudioData data;
-  int Init(LoggingManager *logMgr);
+  PulseAudioManager(LoggingManager *logMgr);
+  void getDevices();
 };
