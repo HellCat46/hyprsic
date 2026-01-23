@@ -1,4 +1,5 @@
 #include "network.hpp"
+#include "../../../utils/helper_func.hpp"
 #include "cstring"
 #include "dirent.h"
 #include "fstream"
@@ -26,7 +27,7 @@ NetInterface::NetInterface(std::string ifaceName, LoggingManager *logMgr)
 
   char state[5];
   ostate >> state;
-  up = std::strncmp(state, "down", 4) != 0;
+  up = !(HelperFunc::saferStrNCmp(state, "down", 4)) ;
   ostate.close();
 
   rx.open(path + "/statistics/rx_bytes", std::ios::in);
@@ -112,8 +113,7 @@ Network::Network(LoggingManager *logMgr) : logger(logMgr) {
   for (dirent *ent = readdir(dir); ent != nullptr; ent = readdir(dir)) {
     if (ent->d_name[0] != '.') {
       for (auto baseIface : baseIfaces) {
-        if (std::strncmp(ent->d_name, baseIface.c_str(), baseIface.length()) ==
-            0) {
+        if (HelperFunc::saferStrNCmp(ent->d_name, baseIface.c_str(), baseIface.length())) {
           availIfaces.push_back(ent->d_name);
           activeIfaces.push_back(std::make_unique<NetInterface>(ent->d_name, logger));
         }
@@ -124,4 +124,3 @@ Network::Network(LoggingManager *logMgr) : logger(logMgr) {
 
   ifaceSize = availIfaces.size();
 }
-

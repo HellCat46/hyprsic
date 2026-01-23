@@ -1,4 +1,5 @@
 #include "battery.hpp"
+#include "../../../utils/helper_func.hpp"
 #include "cstring"
 #include "dirent.h"
 #include "fstream"
@@ -90,7 +91,7 @@ BatteryInfo::BatteryInfo(LoggingManager *logMgr) : logger(logMgr) {
 
   std::vector<std::string> battPaths;
   for (dirent *ent = readdir(dir); ent != nullptr; ent = readdir(dir)) {
-    if (std::strncmp(folderStr, ent->d_name, 3) == 0) {
+    if (HelperFunc::saferStrNCmp(folderStr, ent->d_name, 3)) {
       battPaths.push_back(ent->d_name);
       batteries.push_back(std::make_unique<Battery>(basePath + ent->d_name, logger));
     }

@@ -283,7 +283,7 @@ GdkPixbuf *NotificationManager::parseImageData(DBusMessageIter *hintsIter) {
     dbus_message_iter_get_basic(&dictIter, &key);
     dbus_message_iter_next(&dictIter);
 
-    if (std::strcmp(key, "image-data") == 0) {
+    if (HelperFunc::saferStrCmp(key, "image-data")) {
       dbus_message_iter_recurse(&dictIter, &variantIter);
       dbus_message_iter_recurse(&variantIter, &structIter);
 

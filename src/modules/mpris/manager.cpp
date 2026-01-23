@@ -1,4 +1,5 @@
 #include "manager.hpp"
+#include "../../utils/helper_func.hpp"
 #include "dbus/dbus-protocol.h"
 #include "dbus/dbus.h"
 #include <algorithm>
@@ -37,10 +38,10 @@ MprisManager::MprisManager(AppContext *appCtx) : ctx(appCtx) {
       char *value;
       dbus_message_iter_get_basic(&subIter, &value);
 
-      if (std::strncmp(value, "org.mpris.MediaPlayer2", 22) == 0) {
+      if (HelperFunc::saferStrNCmp(value, "org.mpris.MediaPlayer2", 22)) {
         // ctx->logging.LogInfo(TAG, "Found DBus Name: " + std::string(value));
 
-        if (std::strncmp(value + 22, "playerctld", 10) == 0)
+        if (HelperFunc::saferStrNCmp(value + 22, "playerctld", 10))
           continue;
 
         players.push_back(std::string(value));
@@ -146,13 +147,13 @@ int MprisManager::GetPlayerInfoDbusCall(const char *player,
       dbus_message_iter_get_basic(&dictEntryIter, &key);
 
       dbus_message_iter_next(&dictEntryIter);
-      if (std::strcmp(key, "xesam:title") == 0) {
-        ctx->dbus.DictToString(&dictEntryIter, &track->title);
+      if (HelperFunc::saferStrCmp(key, "xesam:title")) {
+        ctx->dbus.DictToString(&dictEntryIter, track->title);
         track->playerName = std::string(player);
-      } else if (std::strcmp(key, "mpris:length") == 0) {
-        ctx->dbus.DictToInt64(&dictEntryIter, &track->length);
-      } else if (std::strcmp(key, "mpris:trackid") == 0) {
-        ctx->dbus.DictToString(&dictEntryIter, &track->trackId);
+      } else if (HelperFunc::saferStrCmp(key, "mpris:length")) {
+        ctx->dbus.DictToInt64(&dictEntryIter, track->length);
+      } else if (HelperFunc::saferStrCmp(key, "mpris:trackid")) {
+        ctx->dbus.DictToString(&dictEntryIter, track->trackId);
       }
     }
     dbus_message_iter_next(&arrayIter);

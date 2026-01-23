@@ -1,4 +1,5 @@
 #include "manager.hpp"
+#include "../../../utils/helper_func.hpp"
 #include "cstdlib"
 #include "cstring"
 #include "sstream"
@@ -80,14 +81,14 @@ void HyprWSManager::liveEventListener() {
         chngMade = false;
 
         // Update the String Length Too If Event name is being updated
-        if (std::strncmp(buffer, "createworkspace", 15) == 0) {
+        if (HelperFunc::saferStrNCmp(buffer, "createworkspace", 15)) {
           char *ptr = std::strstr(buffer, "createworkspacev2>>");
           int wsId = parseWorkspaceId(ptr + 19);
           chngMade = true;
 
           logger->LogInfo(TAG, "Workspace Created: " + std::to_string(wsId));
 
-        } else if (std::strncmp(buffer, "workspace", 9) == 0) {
+        } else if (HelperFunc::saferStrNCmp(buffer, "workspace", 9)) {
           char *ptr = std::strstr(buffer, "workspacev2>>");
           int wsId = parseWorkspaceId(ptr + 13);
           chngMade = true;
@@ -96,13 +97,13 @@ void HyprWSManager::liveEventListener() {
           // logger->LogInfo(TAG,
           //                 "Active Workspace Changed: " +
           //                 std::to_string(wsId));
-        } else if(!std::strncmp(buffer, "focusedmon", 10)){
+        } else if (HelperFunc::saferStrNCmp(buffer, "focusedmon", 10)) {
           char *ptr = std::strstr(buffer, "focusedmonv2>>");
           int wsId = parseWorkspaceId(ptr + 14);
           chngMade = true;
 
           activeWorkspaceId = wsId;
-        }else {
+        } else {
 
           if (std::strstr(buffer, "destroyworkspace") != nullptr) {
             char *ptr = std::strstr(buffer, "destroyworkspacev2>>");

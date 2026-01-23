@@ -103,12 +103,17 @@ void MprisModule::update() {
 
   // Current Issue: Improper UTF-8 handling (Japanese characters make the markup
   // fail);
-  std::string title = "<span foreground='green'><b>";
+  std::string content;
   if (mprisInstance->playingTrack.title.length() > 50) {
-    title += mprisInstance->playingTrack.title.substr(0, 47).append("...");
+    content = mprisInstance->playingTrack.title.substr(0, 47).append("...");
   } else {
-    title += mprisInstance->playingTrack.title;
+    content = mprisInstance->playingTrack.title;
   }
+  gchar *valiText = g_utf8_make_valid(content.c_str(), -1);
+  gchar *finalText = g_markup_escape_text(valiText, -1);
+
+  std::string title = "<span foreground='green'><b>";
+  title += finalText;
   title += "</b></span>";
 
   gtk_label_set_markup(GTK_LABEL(mainLabel), title.c_str());
@@ -146,7 +151,7 @@ void MprisModule::handlePlayPause(GtkWidget *widget, GdkEvent *e,
 void MprisModule::chgVisibilityMenu(GtkWidget *widget, GdkEvent *e,
                                     gpointer user_data) {
   MprisModule *self = static_cast<MprisModule *>(user_data);
-  
+
   if (!gtk_widget_is_visible(self->menuWindow)) {
     gtk_widget_show(self->menuWindow);
     self->update();

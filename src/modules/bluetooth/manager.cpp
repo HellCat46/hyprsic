@@ -1,5 +1,6 @@
 #include "manager.hpp"
 #include "../../utils/dbus_utils.hpp"
+#include "../../utils/helper_func.hpp"
 #include "cstring"
 #include "dbus/dbus-protocol.h"
 #include "dbus/dbus.h"
@@ -229,7 +230,7 @@ void BluetoothManager::monitorChanges() {
 
         dbus_message_iter_recurse(&entIter, &devIter);
         dbus_message_iter_get_basic(&devIter, &objPath);
-        if (std::strncmp(objPath, "org.bluez.Device1", 17) == 0) {
+        if (HelperFunc::saferStrNCmp(objPath, "org.bluez.Device1", 17)) {
           break;
         }
         dbus_message_iter_next(&entIter);
@@ -277,7 +278,7 @@ void BluetoothManager::monitorChanges() {
                                       "PropertiesChanged")) {
       // ctx->logging.LogInfo(TAG, "Received PropertiesChanged Signal");
       const char *path = dbus_message_get_path(msg);
-      if (std::strncmp(path, "/org/bluez", 10) != 0 || std::strlen(path) > 37)
+      if (!HelperFunc::saferStrNCmp(path, "/org/bluez", 10) || std::strlen(path) > 37)
         continue;
 
       std::string logMsg = "PropertiesChanged Signal Path: ";
@@ -311,7 +312,7 @@ void BluetoothManager::monitorChanges() {
 
       char *iface;
       dbus_message_iter_get_basic(&rootIter, &iface);
-      if (std::strcmp(iface, "org.bluez.Device1") != 0) {
+      if (!HelperFunc::saferStrCmp(iface, "org.bluez.Device1")) {
         continue;
       }
 
@@ -386,7 +387,7 @@ int BluetoothManager::getDeviceList() {
     // Skip every entry (including endpoint and transport) except the actual
     // device
     if (!(std::strlen(objPath) == 37 &&
-          std::strncmp(objPath, "/org/bluez/hci0/dev", 19) == 0)) {
+          HelperFunc::saferStrNCmp(objPath, "/org/bluez/hci0/dev", 19))) {
       dbus_message_iter_next(&entIter);
       continue;
     }
@@ -407,9 +408,9 @@ int BluetoothManager::getDeviceList() {
       dbus_message_iter_next(&ifaceEntry);
       dbus_message_iter_recurse(&ifaceEntry, &propsIter);
 
-      if (std::strcmp(ifaceName, "org.bluez.Device1") == 0) {
+      if (HelperFunc::saferStrCmp(ifaceName, "org.bluez.Device1")) {
         setDeviceProps(deviceInfo, propsIter);
-      } else if (std::strcmp(ifaceName, "org.bluez.Battery1") == 0) {
+      } else if (HelperFunc::saferStrCmp(ifaceName, "org.bluez.Battery1")) {
         std::string properties[] = {"Percentage"};
         DBusMessageIter values[1];
         DbusUtils::getProperties(propsIter, properties, 1, values);
@@ -419,7 +420,7 @@ int BluetoothManager::getDeviceList() {
           dbus_message_iter_get_basic(&values[0], &value);
           deviceInfo.batteryPer = value;
         }
-      } else if (std::strcmp(ifaceName, "org.bluez.MediaControl1") == 0) {
+      } else if (HelperFunc::saferStrCmp(ifaceName, "org.bluez.MediaControl1")) {
         std::string properties[] = {"Connected"};
         DBusMessageIter values[1];
         DbusUtils::getProperties(propsIter, properties, 1, values);

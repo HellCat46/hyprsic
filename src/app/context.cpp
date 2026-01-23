@@ -39,16 +39,16 @@ DbusSystem::~DbusSystem() {
   dbus_connection_close(ssnConn);
 }
 
-void DbusSystem::DictToInt64(DBusMessageIter *iter, uint64_t *outValue) {
+void DbusSystem::DictToInt64(DBusMessageIter *iter, uint64_t& outValue) {
   DBusMessageIter variantIter;
   dbus_message_iter_recurse(iter, &variantIter);
 
   if (dbus_message_iter_get_arg_type(&variantIter) == DBUS_TYPE_INT64) {
-    dbus_message_iter_get_basic(&variantIter, outValue);
+    dbus_message_iter_get_basic(&variantIter, &outValue);
   }
 }
 
-void DbusSystem::DictToString(DBusMessageIter *iter, std::string *outValue) {
+void DbusSystem::DictToString(DBusMessageIter *iter, std::string& outValue) {
   DBusMessageIter variantIter;
   dbus_message_iter_recurse(iter, &variantIter);
 
@@ -56,6 +56,6 @@ void DbusSystem::DictToString(DBusMessageIter *iter, std::string *outValue) {
       dbus_message_iter_get_arg_type(&variantIter) == DBUS_TYPE_OBJECT_PATH) {
     char *strValue;
     dbus_message_iter_get_basic(&variantIter, &strValue);
-    *outValue = std::string(strValue);
+    outValue = strValue;
   }
 }

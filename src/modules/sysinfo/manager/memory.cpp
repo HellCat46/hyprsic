@@ -1,4 +1,5 @@
 #include "memory.hpp"
+#include "../../../utils/helper_func.hpp"
 #include "cstring"
 #include "fstream"
 
@@ -29,7 +30,7 @@ long Memory::parseInfo(std::string type) {
   char line[100];
 
   while (memInfo.getline(line, 100)) {
-    if (std::strncmp(line, type.c_str(), type.length()) == 0) {
+    if (HelperFunc::saferStrNCmp(line, type.c_str(), type.length())) {
       int idx = 0;
       while (line[idx] != '\0') {
         if (line[idx] >= 48 && line[idx] <= 57) {
