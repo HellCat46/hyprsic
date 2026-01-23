@@ -105,8 +105,20 @@ void PulseAudioManager::sinkInfoCallBack(pa_context *pulseCtx,
     return;
 
   PulseAudioManager *self = static_cast<PulseAudioManager *>(data);
-  if (self->inDevs.find(info->name) == self->inDevs.end())
+
+  auto it = self->inDevs.find(info->name);
+  if (it != self->inDevs.end()) {
+    // Device already exists, update its information
+    it->second.index = info->index;
+    it->second.description = info->description;
+    it->second.mute = info->mute ? true : false;
+    it->second.channels = info->volume.channels;
+    it->second.volume.clear();
+    for (int i = 0; i < info->volume.channels; i++) {
+      it->second.volume.push_back(info->volume.values[i]);
+    }
     return;
+  }
 
   PulseAudioDevice dev{info->index, info->description,
                        info->mute ? true : false, info->volume.channels,
@@ -129,8 +141,20 @@ void PulseAudioManager::sourceInfoCallBack(pa_context *pulseCtx,
     return;
 
   PulseAudioManager *self = static_cast<PulseAudioManager *>(data);
-  if (self->outDevs.find(info->name) != self->outDevs.end())
+
+  auto it = self->outDevs.find(info->name);
+  if (it != self->outDevs.end()) {
+    // Device already exists, update its information
+    it->second.index = info->index;
+    it->second.description = info->description;
+    it->second.mute = info->mute ? true : false;
+    it->second.channels = info->volume.channels;
+    it->second.volume.clear();
+    for (int i = 0; i < info->volume.channels; i++) {
+      it->second.volume.push_back(info->volume.values[i]);
+    }
     return;
+  }
 
   PulseAudioDevice dev{info->index, info->description,
                        info->mute ? true : false, info->volume.channels,
@@ -149,4 +173,37 @@ void PulseAudioManager::sourceInfoCallBack(pa_context *pulseCtx,
 void PulseAudioManager::getDevices() {
   pa_context_get_sink_info_list(pulseContext, sinkInfoCallBack, this);
   pa_context_get_source_info_list(pulseContext, sourceInfoCallBack, this);
+}
+
+void PulseAudioManager::setVolume(const std::string &devName, bool isOutput,
+                                  uint32_t volume) {
+  pa_cvolume paVolume;
+  pa_cvolume_set(&paVolume, 2, (uint32_t)((float)volume / 100 * 65535));
+
+  auto it = inDevs.find(devName);
+  if (it == outDevs.end())
+    return;
+
+  if (isOutput) {
+    pa_context_set_sink_volume_by_index(pulseContext, it->second.index,
+                                        &paVolume, nullptr, nullptr);
+  } else {
+    pa_context_set_source_volume_by_index(pulseContext, it->second.index,
+                                          &paVolume, nullptr, nullptr);
+  }
+}
+
+void PulseAudioManager::setMute(const std::string &devName, bool isOutput,
+                                bool mute) {
+  auto it = inDevs.find(devName);
+  if (it == outDevs.end())
+    return;
+
+  if (isOutput) {
+    pa_context_set_sink_mute_by_index(pulseContext, it->second.index, mute,
+                                      nullptr, nullptr);
+  } else {
+    pa_context_set_source_mute_by_index(pulseContext, it->second.index, mute,
+                                        nullptr, nullptr);
+  }
 }

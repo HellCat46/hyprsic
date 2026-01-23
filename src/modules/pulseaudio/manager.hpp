@@ -19,9 +19,6 @@ struct PulseAudioDevice {
 class PulseAudioManager {
   pa_context *pulseContext;
   LoggingManager *logger;
-  std::string defOutput, defInput;
-  std::map<std::string, PulseAudioDevice> outDevs;
-  std::map<std::string, PulseAudioDevice> inDevs;
 
   static void contextStateHandler(pa_context *, void *);
   static void handleStateChanges(pa_context *, const pa_subscription_event_type,
@@ -35,6 +32,11 @@ class PulseAudioManager {
                                  void *data);
 
 public:
+  std::string defOutput, defInput;
+  std::map<std::string, PulseAudioDevice> outDevs, inDevs;
   PulseAudioManager(LoggingManager *logMgr);
   void getDevices();
+  
+  void setVolume(const std::string &devName, bool isOutput, uint32_t volume);
+  void setMute(const std::string &devName, bool isOutput, bool mute);
 };

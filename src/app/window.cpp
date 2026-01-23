@@ -80,6 +80,7 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
     gtk_grid_attach(GTK_GRID(main_box), right_box, 3, 0, 2, 1);
     gtk_widget_set_hexpand(right_box, TRUE);
     gtk_grid_set_column_spacing(GTK_GRID(right_box), 2);
+    gtk_widget_set_margin_end(right_box, 5);
 
     winInstance->hyprModule.setup(main_box);
 
@@ -108,9 +109,8 @@ gboolean MainWindow::UpdateData(gpointer data) {
     window->snModule.update();
   }
   self->stat.UpdateData();
+  self->paManager.getDevices();
   
-  //self->paManager.getDevices();
-
   return true;
 }
 
@@ -134,10 +134,36 @@ void MainWindow::captureSessionDBus() {
 
     const char *interface = dbus_message_get_interface(msg);
     const char *path = dbus_message_get_path(msg);
+    const char *member = dbus_message_get_member(msg);
 
     if (HelperFunc::saferStrCmp(interface, "org.freedesktop.Notifications")) {
       notifManager.handleDbusMessage(msg, NotificationModule::showNotification);
-    } else {
+    } else if (HelperFunc::saferStrCmp(interface, "org.freedesktop.DBus") &&
+               HelperFunc::saferStrCmp(member, "NameOwnerChanged") &&
+               HelperFunc::saferStrCmp(path, "/org/freedesktop/DBus")) {
+
+      DBusMessageIter args;
+      dbus_message_iter_init(msg, &args);
+
+      const char *name, *oldOwner, *newOwner;
+      dbus_message_iter_get_basic(&args, &name);
+      dbus_message_iter_next(&args);
+      dbus_message_iter_get_basic(&args, &oldOwner);
+      dbus_message_iter_next(&args);
+      dbus_message_iter_get_basic(&args, &newOwner);
+
+
+      if (HelperFunc::saferStrNCmp(name, "org.mpris.MediaPlayer2", 22)) {
+        if (std::strlen(newOwner) != 0) {
+          mprisManager.addPlayer(name);
+        } else {
+          mprisManager.removePlayer(name);
+        }
+      }
+
+      snManager.handleNameOwnerChangedSignal(msg, name, newOwner);
+    }
+    {
       snManager.handleDbusMessage(msg);
     }
 

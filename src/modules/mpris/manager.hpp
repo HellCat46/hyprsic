@@ -19,6 +19,8 @@ class MprisManager {
 public:
   PlayerTrack playingTrack;
   MprisManager(AppContext *appCtx);
+  void addPlayer(const std::string &playerName);
+  void removePlayer(const std::string &playerName);
 
   int PlayPause();
   int PlayPauseDbusCall(const char *player);

@@ -23,7 +23,6 @@ StatusNotifierManager::StatusNotifierManager(AppContext *appCtx) : ctx(appCtx) {
 
     protoFile.close();
   }
-
 }
 
 void StatusNotifierManager::setupDBus() {
@@ -50,21 +49,25 @@ void StatusNotifierManager::setupDBus() {
       ctx->dbus.ssnConn,
       "type='method_call',interface='org.kde.StatusNotifierWatcher'",
       &(ctx->dbus.ssnErr));
+
   dbus_bus_add_match(
       ctx->dbus.ssnConn,
       "type='method_call',interface='org.kde.StatusNotifierWatcher',"
       "member='RegisterStatusNotifierItem',path='/StatusNotifierWatcher'",
       &(ctx->dbus.ssnErr));
+
   dbus_bus_add_match(
       ctx->dbus.ssnConn,
       "type='method_call',interface='org.kde.StatusNotifierWatcher',"
       "member='RegisterStatusNotifierHost',path='/StatusNotifierWatcher'",
       &(ctx->dbus.ssnErr));
+
   dbus_bus_add_match(ctx->dbus.ssnConn,
                      "type='signal', sender='org.freedesktop.DBus', "
                      "interface='org.freedesktop.DBus', "
                      "member='NameOwnerChanged',path='/org/freedesktop/DBus'",
                      &ctx->dbus.ssnErr);
+
   if (dbus_error_is_set(&(ctx->dbus.ssnErr))) {
     std::string errMsg = "Failed to add filter for Notifications: ";
     errMsg += ctx->dbus.ssnErr.message;
@@ -72,8 +75,7 @@ void StatusNotifierManager::setupDBus() {
     dbus_error_free(&(ctx->dbus.ssnErr));
     return;
   }
-  
-  
+
   ctx->logging.LogDebug(TAG, "Started Status Notifier Capture Service");
 }
 
@@ -106,12 +108,7 @@ void StatusNotifierManager::handleDbusMessage(DBusMessage *msg) {
     else if (HelperFunc::saferStrCmp(member, "RegisterStatusNotifierHost"))
       handleRegisterStatusNotifierHost(msg);
 
-  } else if (HelperFunc::saferStrCmp(interface, "org.freedesktop.DBus") &&
-             HelperFunc::saferStrCmp(member, "NameOwnerChanged") &&
-             HelperFunc::saferStrCmp(path, "/org/freedesktop/DBus")) {
-
-    handleNameOwnerChangedSignal(msg);
-  }
+  } 
 }
 
 /*
@@ -521,16 +518,8 @@ void StatusNotifierManager::getMenuActions(const std::string &itemService,
   dbus_message_unref(msg);
 }
 
-void StatusNotifierManager::handleNameOwnerChangedSignal(DBusMessage *msg) {
-  DBusMessageIter args;
-  dbus_message_iter_init(msg, &args);
-
-  const char *name, *oldOwner, *newOwner;
-  dbus_message_iter_get_basic(&args, &name);
-  dbus_message_iter_next(&args);
-  dbus_message_iter_get_basic(&args, &oldOwner);
-  dbus_message_iter_next(&args);
-  dbus_message_iter_get_basic(&args, &newOwner);
+void StatusNotifierManager::handleNameOwnerChangedSignal(DBusMessage *msg, const char* name, const char* newOwner) {
+  
 
   std::string nameStr = std::string(name);
   if (registeredItems.find(nameStr) != registeredItems.end() &&

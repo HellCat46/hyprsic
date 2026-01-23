@@ -1,13 +1,14 @@
 #include "manager.hpp"
 #include "dbus/dbus-protocol.h"
 #include "dbus/dbus.h"
+#include <algorithm>
 #include <cstring>
 #include <string>
 
 #define TAG "MprisManager"
 
-MprisManager::MprisManager(AppContext *appCtx) : ctx(appCtx){
-    
+MprisManager::MprisManager(AppContext *appCtx) : ctx(appCtx) {
+
   DBusMessage *msg = dbus_message_new_method_call(
       "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus",
       "ListNames");
@@ -37,7 +38,7 @@ MprisManager::MprisManager(AppContext *appCtx) : ctx(appCtx){
       dbus_message_iter_get_basic(&subIter, &value);
 
       if (std::strncmp(value, "org.mpris.MediaPlayer2", 22) == 0) {
-        //ctx->logging.LogInfo(TAG, "Found DBus Name: " + std::string(value));
+        // ctx->logging.LogInfo(TAG, "Found DBus Name: " + std::string(value));
 
         if (std::strncmp(value + 22, "playerctld", 10) == 0)
           continue;
@@ -87,7 +88,8 @@ int MprisManager::PlayPause() {
   return 0;
 }
 
-int MprisManager::GetPlayerInfoDbusCall(const char *player, PlayerTrack *track) {
+int MprisManager::GetPlayerInfoDbusCall(const char *player,
+                                        PlayerTrack *track) {
   DBusMessage *msg =
       dbus_message_new_method_call(player, "/org/mpris/MediaPlayer2",
                                    "org.freedesktop.DBus.Properties", "Get");
@@ -233,22 +235,20 @@ int MprisManager::GetPlayerInfo() {
       break;
     }
   }
-  
-  
+
   if (titleFound) {
     GetCurrentPositionDbusCall();
-    playingTrack.currPos /= 1000000; 
+    playingTrack.currPos /= 1000000;
     playingTrack.length /= 1000000;
     return 0;
   }
-  
+
   return 1;
 }
 
 int MprisManager::SetPosition(uint64_t position) {
   if (playingTrack.playerName.empty() || playingTrack.trackId.empty()) {
-    ctx->logging.LogError(TAG,
-                          "No player available to set position.");
+    ctx->logging.LogError(TAG, "No player available to set position.");
     return 1;
   }
 
@@ -257,7 +257,7 @@ int MprisManager::SetPosition(uint64_t position) {
       "org.mpris.MediaPlayer2.Player", "SetPosition");
 
   const char *trackId = playingTrack.trackId.c_str();
-  int64_t pos = static_cast<int64_t>(position * 1000000); 
+  int64_t pos = static_cast<int64_t>(position * 1000000);
 
   dbus_message_append_args(msg, DBUS_TYPE_OBJECT_PATH, &trackId,
                            DBUS_TYPE_INT64, &pos, DBUS_TYPE_INVALID);
@@ -274,7 +274,8 @@ int MprisManager::SetPosition(uint64_t position) {
     return 1;
   }
 
-  ctx->logging.LogInfo(TAG, "Set position to " + std::to_string(position) + "s.");
+  ctx->logging.LogInfo(TAG,
+                       "Set position to " + std::to_string(position) + "s.");
 
   dbus_message_unref(msg);
   dbus_message_ref(reply);
@@ -354,4 +355,18 @@ int MprisManager::NextTrack() {
   dbus_message_ref(reply);
 
   return 0;
+}
+
+void MprisManager::addPlayer(const std::string &playerName) {
+  players.push_back(playerName);
+  ctx->logging.LogInfo(TAG, "Added new MPRIS Player: " + playerName);
+}
+
+void MprisManager::removePlayer(const std::string &playerName) {
+  auto it = std::find(players.begin(), players.end(), playerName);
+  if (it == players.end())
+    return;
+
+  players.erase(it);
+  ctx->logging.LogInfo(TAG, "Removed MPRIS Player: " + playerName);
 }

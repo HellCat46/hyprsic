@@ -24,6 +24,8 @@ DbusSystem::DbusSystem() {
               << "\n[DBUS Error Message - Context] : " << ssnErr.message
               << std::endl;
   }
+  
+  dbus_threads_init_default();
 }
 
 DbusSystem::~DbusSystem() {
