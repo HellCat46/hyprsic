@@ -3,17 +3,18 @@
 #include "cstring"
 #include "fstream"
 #include <memory>
+#include <string>
 #include <vector>
 
 class NetInterface {
 private:
-  std::string interface;
   std::ifstream rx;
   std::ifstream tx;
   LoggingManager *logger;
 
 public:
   std::string err;
+  std::string interface;
   bool up;
   
   NetInterface(std::string ifaceName, LoggingManager *logMgr);
@@ -32,4 +33,5 @@ public:
   Network(LoggingManager *logMgr);
   double GetTotRx();
   double GetTotTx();
+  std::string GetIfaces();
 };

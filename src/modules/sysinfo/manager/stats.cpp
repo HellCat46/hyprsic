@@ -77,3 +77,7 @@ std::string Stats::ParseBytes(double bytes, int precision) {
   }
   return str;
 }
+
+std::string Stats::GetIfaces() {
+  return net.GetIfaces();
+}

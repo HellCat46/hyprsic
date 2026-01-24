@@ -1,84 +1,93 @@
 #include "module.hpp"
+#include "gtk/gtk.h"
 #include <iomanip>
 #include <sstream>
+#include <string>
 
-SysInfoModule::SysInfoModule(Stats* stats, Memory* memory, SysLoad* sysLoad, BatteryInfo* batteryInfo) : stat(stats), mem(memory), load(sysLoad), battery(batteryInfo) {
+SysInfoModule::SysInfoModule(Stats *stats, Memory *memory, SysLoad *sysLoad,
+                             BatteryInfo *batteryInfo)
+    : stat(stats), mem(memory), load(sysLoad), battery(batteryInfo) {}
 
+void SysInfoModule::setup(GtkWidget *gridBox) {
+
+  stat->UpdateData();
+  std::string txt = "";
+
+  netWid = gtk_label_new(nullptr);
+  gtk_grid_attach(GTK_GRID(gridBox), netWid, 0, 0, 1, 1);
+  gtk_widget_set_hexpand(netWid, TRUE);
+
+  diskWid = gtk_label_new(nullptr);
+  gtk_grid_attach(GTK_GRID(gridBox), diskWid, 1, 0, 1, 1);
+  gtk_widget_set_hexpand(diskWid, TRUE);
+
+  loadWid = gtk_label_new(nullptr);
+  gtk_grid_attach(GTK_GRID(gridBox), loadWid, 2, 0, 1, 1);
+  gtk_widget_set_hexpand(loadWid, TRUE);
+
+  memWid = gtk_label_new(nullptr);
+  gtk_grid_attach(GTK_GRID(gridBox), memWid, 3, 0, 1, 1);
+  gtk_widget_set_hexpand(memWid, TRUE);
+
+  batteryWid = gtk_label_new(nullptr);
+  gtk_grid_attach(GTK_GRID(gridBox), batteryWid, 4, 0, 1, 1);
+  gtk_widget_set_hexpand(batteryWid, TRUE);
+
+  timeWid = gtk_label_new(nullptr);
+  gtk_grid_attach(GTK_GRID(gridBox), timeWid, 5, 0, 1, 1);
+  gtk_widget_set_hexpand(timeWid, TRUE);
+  
+  update();
 }
 
-void SysInfoModule::setup(GtkWidget* gridBox){
-    std::string txt = "";
- 
-    txt = "⬇" + stat->GetNetRx() + "⬆" + stat->GetNetTx();
-    netWid = gtk_label_new(txt.c_str());
+void SysInfoModule::update() {
+  std::string txt = "", tooltipTxt = "";
 
-    txt = " " + stat->GetDiskAvail() + "/" + stat->GetDiskTotal();
-    diskWid = gtk_label_new(txt.c_str());
+  // Update Network Usage
+  txt = "⬇" + stat->GetNetRx() + "⬆" + stat->GetNetTx();
+  gtk_label_set_label(GTK_LABEL(netWid), txt.c_str());
+  gtk_widget_set_tooltip_markup(netWid, stat->GetIfaces().c_str());
 
-    stat->UpdateData();
+  // Update Disk Usage
+  txt = " " + stat->GetDiskAvail();
+  gtk_label_set_label(GTK_LABEL(diskWid), txt.c_str());
+  gtk_widget_set_tooltip_markup(
+      diskWid, ("<b>Total:</b> " + stat->GetDiskTotal()).c_str());
 
-    txt = std::to_string(load->GetLoad(5));
-    txt = " " + txt.substr(0, txt.find('.') + 3);
-    loadWid = gtk_label_new(txt.c_str());
+  // Update System Load
+  txt = std::to_string(load->GetLoad(5));
+  txt = " " + txt.substr(0, txt.find('.') + 3);
+  gtk_label_set_label(GTK_LABEL(loadWid), txt.c_str());
+  txt = std::to_string(load->GetLoad(1));
+  tooltipTxt = "<b>1 Min:</b> " + txt.substr(0, txt.find('.') + 3) + "\n";
+  txt = std::to_string(load->GetLoad(5));
+  tooltipTxt += "<b>5 Min:</b> " + txt.substr(0, txt.find('.') + 3) + "\n";
+  txt = std::to_string(load->GetLoad(15));
+  tooltipTxt += "<b>15 Min:</b> " + txt.substr(0, txt.find('.') + 3);
+  gtk_widget_set_tooltip_markup(loadWid, tooltipTxt.c_str());
 
-    txt = " " + Stats::ParseBytes(mem->GetUsedRAM() * 1000, 2) + "/" +
-          Stats::ParseBytes(mem->GetTotRAM() * 1000, 2);
-    memWid = gtk_label_new(txt.c_str());
+  // Update memory
+  txt = " " + Stats::ParseBytes(mem->GetUsedRAM() * 1000, 2);
+  gtk_label_set_label(GTK_LABEL(memWid), txt.c_str());
+  tooltipTxt = "";
+  txt = Stats::ParseBytes(mem->GetUsedRAM() * 1000, 2);
+  tooltipTxt += "<b>Used RAM:</b> " + txt + "\n";
+  txt = Stats::ParseBytes(mem->GetTotRAM() * 1000, 2);
+  tooltipTxt += "<b>Total RAM:</b> " + txt + "\n";
+  txt = Stats::ParseBytes(mem->GetUsedSwap() * 1000, 2);
+  tooltipTxt += "<b>Used Swap:</b> " + txt + "\n";
+  txt = Stats::ParseBytes(mem->GetTotSwap() * 1000, 2);
+  tooltipTxt += "<b>Total Swap:</b> " + txt;
+  gtk_widget_set_tooltip_markup(memWid, tooltipTxt.c_str());
 
-    txt = " " + std::to_string(battery->getTotPercent()) + "%";
-    batteryWid = gtk_label_new(txt.c_str());
+  // Update battery
+  txt = " " + std::to_string(battery->getTotPercent()) + "%";
+  gtk_label_set_label(GTK_LABEL(batteryWid), txt.c_str());
 
-    auto t = std::time(nullptr);
-    auto tm = *std::localtime(&t);
-    std::ostringstream oss;
-    oss << std::put_time(&tm, "%H:%M:%S");
-    timeWid = gtk_label_new(oss.str().c_str());
-
-    gtk_grid_attach(GTK_GRID(gridBox), netWid, 0, 0, 1, 1);
-    gtk_widget_set_hexpand(netWid, TRUE);
-    gtk_grid_attach(GTK_GRID(gridBox), diskWid, 1, 0, 1, 1);
-    gtk_widget_set_hexpand(diskWid, TRUE);
-    gtk_grid_attach(GTK_GRID(gridBox), loadWid, 2, 0, 1, 1);
-    gtk_widget_set_hexpand(loadWid, TRUE);
-    gtk_grid_attach(GTK_GRID(gridBox), memWid, 3, 0, 1, 1);
-    gtk_widget_set_hexpand(memWid, TRUE);
-    gtk_grid_attach(GTK_GRID(gridBox), batteryWid, 4, 0, 1, 1);
-    gtk_widget_set_hexpand(batteryWid, TRUE);
-    gtk_grid_attach(GTK_GRID(gridBox), timeWid, 5, 0, 1, 1);
-    gtk_widget_set_hexpand(timeWid, TRUE);
-   
-}
-
-void SysInfoModule::update(){
-    std::string txt = "";
-    
-    // Update Network Usage
-    txt = "⬇" + stat->GetNetRx() + "⬆" + stat->GetNetTx();
-    gtk_label_set_label(GTK_LABEL(netWid), txt.c_str());
-
-    // Update Disk Usage
-    txt = " " + stat->GetDiskAvail() + "/" + stat->GetDiskTotal();
-    gtk_label_set_label(GTK_LABEL(diskWid), txt.c_str());
-
-    // Update System Load
-    txt = std::to_string(load->GetLoad(5));
-    txt = " " + txt.substr(0, txt.find('.') + 3);
-    gtk_label_set_label(GTK_LABEL(loadWid), txt.c_str());
-
-    // Update memory
-    txt = " " + Stats::ParseBytes(mem->GetUsedRAM() * 1000, 2) + "/" +
-          Stats::ParseBytes(mem->GetTotRAM() * 1000, 2);
-    gtk_label_set_label(GTK_LABEL(memWid), txt.c_str());
-
-    // Update battery
-    txt = " " + std::to_string(battery->getTotPercent()) + "%";
-    gtk_label_set_label(GTK_LABEL(batteryWid), txt.c_str());
-
-    // Update time
-    auto t = std::time(nullptr);
-    auto tm = *std::localtime(&t);
-    std::ostringstream oss;
-    oss << std::put_time(&tm, "%H:%M:%S");
-    gtk_label_set_label(GTK_LABEL(timeWid), oss.str().c_str());
-
+  // Update time
+  auto t = std::time(nullptr);
+  auto tm = *std::localtime(&t);
+  std::ostringstream oss;
+  oss << std::put_time(&tm, "%H:%M:%S");
+  gtk_label_set_label(GTK_LABEL(timeWid), oss.str().c_str());
 }

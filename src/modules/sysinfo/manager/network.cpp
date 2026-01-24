@@ -4,6 +4,8 @@
 #include "dirent.h"
 #include "fstream"
 #include "vector"
+#include <string>
+#include <vector>
 
 #define TAG "Network"
 
@@ -27,7 +29,7 @@ NetInterface::NetInterface(std::string ifaceName, LoggingManager *logMgr)
 
   char state[5];
   ostate >> state;
-  up = !(HelperFunc::saferStrNCmp(state, "down", 4)) ;
+  up = !(HelperFunc::saferStrNCmp(state, "down", 4));
   ostate.close();
 
   rx.open(path + "/statistics/rx_bytes", std::ios::in);
@@ -113,9 +115,11 @@ Network::Network(LoggingManager *logMgr) : logger(logMgr) {
   for (dirent *ent = readdir(dir); ent != nullptr; ent = readdir(dir)) {
     if (ent->d_name[0] != '.') {
       for (auto baseIface : baseIfaces) {
-        if (HelperFunc::saferStrNCmp(ent->d_name, baseIface.c_str(), baseIface.length())) {
+        if (HelperFunc::saferStrNCmp(ent->d_name, baseIface.c_str(),
+                                     baseIface.length())) {
           availIfaces.push_back(ent->d_name);
-          activeIfaces.push_back(std::make_unique<NetInterface>(ent->d_name, logger));
+          activeIfaces.push_back(
+              std::make_unique<NetInterface>(ent->d_name, logger));
         }
       }
     }
@@ -123,4 +127,16 @@ Network::Network(LoggingManager *logMgr) : logger(logMgr) {
   closedir(dir);
 
   ifaceSize = availIfaces.size();
+}
+
+std::string Network::GetIfaces() {
+  std::string ifaceStats;
+  for (auto &iface : activeIfaces) {
+    ifaceStats += "<b>" + iface->interface + ":</b> " +
+                  (iface->up ? "up " : "down ") + "\n";
+  }
+
+  ifaceStats = ifaceStats.substr(0, ifaceStats.length() - 1);
+
+  return ifaceStats;
 }

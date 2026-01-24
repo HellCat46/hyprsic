@@ -25,7 +25,7 @@ void MprisModule::setup(GtkWidget *mainBox) {
 
   gtk_container_add(GTK_CONTAINER(labelAction), mainLabel);
   gtk_grid_attach(GTK_GRID(mainBox), labelAction, 2, 0, 1, 1);
-  gtk_widget_set_hexpand(labelAction, TRUE);
+  gtk_widget_set_hexpand(labelAction, FALSE);
 
   // Popover Menu
   menuWindow = gtk_window_new(GTK_WINDOW_TOPLEVEL);

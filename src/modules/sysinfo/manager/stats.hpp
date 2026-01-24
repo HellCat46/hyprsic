@@ -20,6 +20,8 @@ public:
   void UpdateData();
   std::string GetNetRx();
   std::string GetNetTx();
+  std::string GetIfaces();
+  
   std::string GetDiskAvail();
   std::string GetDiskTotal();
 
