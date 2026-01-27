@@ -7,7 +7,7 @@
 #include <memory>
 #include <vector>
 
-#include "../modules/pulseaudio/manager.hpp"
+//#include "../modules/pulseaudio/manager.hpp"
 #include "../modules/bluetooth/module.hpp"
 #include "../modules/mpris/module.hpp"
 #include "../modules/notifications/module.hpp"
@@ -48,7 +48,7 @@ class MainWindow {
   ScreenSaverManager scrnsavrManager;
   HyprWSManager hyprInstance;
   StatusNotifierManager snManager;
-  PulseAudioManager paManager;
+  //PulseAudioManager paManager;
   
   std::thread ssnDBusThread;
   void captureSessionDBus();

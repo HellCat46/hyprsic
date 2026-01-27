@@ -14,29 +14,23 @@ void SysInfoModule::setup(GtkWidget *gridBox) {
   std::string txt = "";
 
   netWid = gtk_label_new(nullptr);
-  gtk_grid_attach(GTK_GRID(gridBox), netWid, 0, 0, 1, 1);
-  gtk_widget_set_hexpand(netWid, TRUE);
+  gtk_grid_attach(GTK_GRID(gridBox), netWid, 1, 0, 1, 1);
 
   diskWid = gtk_label_new(nullptr);
-  gtk_grid_attach(GTK_GRID(gridBox), diskWid, 1, 0, 1, 1);
-  gtk_widget_set_hexpand(diskWid, TRUE);
+  gtk_grid_attach(GTK_GRID(gridBox), diskWid, 2, 0, 1, 1);
 
   loadWid = gtk_label_new(nullptr);
-  gtk_grid_attach(GTK_GRID(gridBox), loadWid, 2, 0, 1, 1);
-  gtk_widget_set_hexpand(loadWid, TRUE);
+  gtk_grid_attach(GTK_GRID(gridBox), loadWid, 3, 0, 1, 1);
 
   memWid = gtk_label_new(nullptr);
-  gtk_grid_attach(GTK_GRID(gridBox), memWid, 3, 0, 1, 1);
-  gtk_widget_set_hexpand(memWid, TRUE);
+  gtk_grid_attach(GTK_GRID(gridBox), memWid, 4, 0, 1, 1);
 
   batteryWid = gtk_label_new(nullptr);
-  gtk_grid_attach(GTK_GRID(gridBox), batteryWid, 4, 0, 1, 1);
-  gtk_widget_set_hexpand(batteryWid, TRUE);
+  gtk_grid_attach(GTK_GRID(gridBox), batteryWid, 5, 0, 1, 1);
 
   timeWid = gtk_label_new(nullptr);
-  gtk_grid_attach(GTK_GRID(gridBox), timeWid, 5, 0, 1, 1);
-  gtk_widget_set_hexpand(timeWid, TRUE);
-  
+  gtk_grid_attach(GTK_GRID(gridBox), timeWid, 6, 0, 1, 1);
+
   update();
 }
 

@@ -21,7 +21,7 @@ void NotificationModule::setup(GtkWidget *box) {
   GtkWidget *notifEBox = gtk_event_box_new();
   GtkWidget *notif = gtk_label_new("");
   gtk_container_add(GTK_CONTAINER(notifEBox), notif);
-  gtk_grid_attach(GTK_GRID(box), notifEBox, 6, 0, 1, 1);
+  gtk_grid_attach(GTK_GRID(box), notifEBox, 7, 0, 1, 1);
   gtk_widget_set_margin_start(notifEBox, 10);
 
   g_signal_connect(notifEBox, "button-press-event",

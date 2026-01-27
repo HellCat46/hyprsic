@@ -71,7 +71,7 @@ void BluetoothModule::setupBT(GtkWidget *box) {
   g_signal_connect(btScanEBox, "button-press-event",
                    G_CALLBACK(BluetoothModule::switchVisibilityBTMenu), this);
 
-  gtk_grid_attach(GTK_GRID(box), btScanEBox, 7, 0, 1, 1);
+  gtk_grid_attach(GTK_GRID(box), btScanEBox, 8, 0, 1, 1);
 }
 
 void BluetoothModule::switchVisibilityBTMenu(GtkWidget *widget, GdkEvent *e,

@@ -151,8 +151,8 @@ void MprisModule::handlePlayPause(GtkWidget *widget, GdkEvent *e,
 void MprisModule::chgVisibilityMenu(GtkWidget *widget, GdkEvent *e,
                                     gpointer user_data) {
   MprisModule *self = static_cast<MprisModule *>(user_data);
-
-  if (!gtk_widget_is_visible(self->menuWindow)) {
+  
+  if (!gtk_widget_is_visible(self->menuWindow) && e->button.button == 3) {
     gtk_widget_show(self->menuWindow);
     self->update();
   } else {

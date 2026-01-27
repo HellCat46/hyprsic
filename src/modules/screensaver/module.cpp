@@ -21,7 +21,7 @@ void ScreenSaverModule::setup(GtkWidget *grid) {
   g_signal_connect(scrnSvrEBox, "button-press-event",
                    G_CALLBACK(switchScreenSaverCb), this);
 
-  gtk_grid_attach(GTK_GRID(grid), scrnSvrEBox, 8, 0, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), scrnSvrEBox, 9, 0, 1, 1);
 }
 
 void ScreenSaverModule::switchScreenSaverCb(GtkWidget *widget, GdkEvent *e,

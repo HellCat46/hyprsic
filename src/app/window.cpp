@@ -1,5 +1,6 @@
 #include "window.hpp"
 #include "../utils/helper_func.hpp"
+#include "dbus/dbus.h"
 #include "gdk/gdk.h"
 #include "gio/gio.h"
 #include "glib-object.h"
@@ -25,7 +26,7 @@ MainWindow::MainWindow()
     : notifManager(&ctx), btManager(&ctx), mprisManager(&ctx),
       scrnsavrManager(&ctx), hyprInstance(&ctx.logging), snManager(&ctx),
       load(&ctx.logging), mem(&ctx.logging), stat(&ctx.logging),
-      battery(&ctx.logging), paManager(&ctx.logging) {
+      battery(&ctx.logging) {
 
   btManager.setup();
   hyprInstance.liveEventListener();
@@ -76,21 +77,24 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
     gtk_container_add(GTK_CONTAINER(winInstance->window), main_box);
 
     // Right Box to Show System Stats
-    GtkWidget *right_box = gtk_grid_new();
+    GtkWidget *right_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_grid_attach(GTK_GRID(main_box), right_box, 3, 0, 2, 1);
     gtk_widget_set_hexpand(right_box, TRUE);
-    gtk_grid_set_column_spacing(GTK_GRID(right_box), 2);
+    
+    GtkWidget *rightGrid = gtk_grid_new();
+    gtk_box_pack_end(GTK_BOX(right_box), rightGrid, FALSE, FALSE, 0);
+    gtk_grid_set_column_spacing(GTK_GRID(rightGrid), 10);
     gtk_widget_set_margin_end(right_box, 5);
 
     winInstance->hyprModule.setup(main_box);
 
     winInstance->mprisModule.setup(main_box);
 
-    winInstance->sysinfoModule.setup(right_box);
-    winInstance->notifModule.setup(right_box);
-    winInstance->btModule.setupBT(right_box);
-    winInstance->scrnsavrModule.setup(right_box);
-    winInstance->snModule.setup(right_box);
+    winInstance->sysinfoModule.setup(rightGrid);
+    winInstance->notifModule.setup(rightGrid);
+    winInstance->btModule.setupBT(rightGrid);
+    winInstance->scrnsavrModule.setup(rightGrid);
+    winInstance->snModule.setup(rightGrid);
 
     gtk_widget_show_all(winInstance->window);
     self->mainWindows.push_back(std::move(winInstance));
@@ -109,7 +113,7 @@ gboolean MainWindow::UpdateData(gpointer data) {
     window->snModule.update();
   }
   self->stat.UpdateData();
-  self->paManager.getDevices();
+  //self->paManager.getDevices();
   
   return true;
 }
