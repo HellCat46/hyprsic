@@ -1,4 +1,5 @@
 #include "helper_func.hpp"
+#include "glib.h"
 #include <cstring>
 
 bool HelperFunc::saferStrCmp(const char *a, const char *b) {
@@ -19,4 +20,12 @@ bool HelperFunc::saferStrNCmp(const char *a, const char *b, int len) {
     return false;
 
   return (std::strncmp(a, b, len) == 0);
+}
+
+gchar* HelperFunc::ValidString(std::string str) {
+  if (str.empty())
+    return g_strdup("");
+  
+  gchar *validText = g_utf8_make_valid(str.c_str(), -1);
+  return g_markup_escape_text(validText, -1);
 }

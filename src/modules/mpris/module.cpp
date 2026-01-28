@@ -1,4 +1,5 @@
 #include "module.hpp"
+#include "../../utils/helper_func.hpp"
 #include "glib-object.h"
 #include "glib.h"
 #include "glibconfig.h"
@@ -110,7 +111,7 @@ void MprisModule::update() {
     content = mprisInstance->playingTrack.title;
   }
   gchar *valiText = g_utf8_make_valid(content.c_str(), -1);
-  gchar *finalText = g_markup_escape_text(valiText, -1);
+  gchar *finalText = HelperFunc::ValidString(content);
 
   std::string title = "<span foreground='green'><b>";
   title += finalText;
@@ -151,10 +152,14 @@ void MprisModule::handlePlayPause(GtkWidget *widget, GdkEvent *e,
 void MprisModule::chgVisibilityMenu(GtkWidget *widget, GdkEvent *e,
                                     gpointer user_data) {
   MprisModule *self = static_cast<MprisModule *>(user_data);
-  
-  if (!gtk_widget_is_visible(self->menuWindow) && e->button.button == 3) {
-    gtk_widget_show(self->menuWindow);
-    self->update();
+
+  if (!gtk_widget_is_visible(self->menuWindow)) {
+    if (e->button.button == 3) {
+      gtk_widget_show(self->menuWindow);
+      self->update();
+    } else {
+      self->mprisInstance->PlayPause();
+    }
   } else {
     gtk_widget_hide(self->menuWindow);
   }

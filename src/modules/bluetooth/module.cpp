@@ -151,6 +151,7 @@ void BluetoothModule::updateBTList() {
     gtk_box_pack_start(GTK_BOX(btDevList), availDevtitle, FALSE, FALSE, 0);
     gtk_widget_show(availDevtitle);
 
+    int newDevicesCount = 0;
     for (auto [_, device] : btManager->devices) {
       if (device.paired)
         continue; // Improve it later on. Combine both Devices Loops
@@ -176,6 +177,11 @@ void BluetoothModule::updateBTList() {
 
       gtk_box_pack_start(GTK_BOX(btDevList), devSection, FALSE, FALSE, 2);
       gtk_widget_show_all(devSection);
+
+      newDevicesCount++;
+      if (newDevicesCount >= 15) {
+        break; // Limit to 15 new devices shown
+      }
     }
   }
 

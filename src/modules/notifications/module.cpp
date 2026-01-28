@@ -1,4 +1,5 @@
 #include "module.hpp"
+#include "../../utils/helper_func.hpp"
 #include "gdk-pixbuf/gdk-pixbuf.h"
 #include "glib-object.h"
 #include "glib.h"
@@ -136,7 +137,8 @@ void NotificationModule::showNotification(NotifFuncArgs *args) {
     args->notif->body = args->notif->body.substr(0, 497) + "...";
   }
   GtkWidget *body_box = gtk_label_new(nullptr);
-  gtk_label_set_markup(GTK_LABEL(body_box), args->notif->body.c_str());
+  gtk_label_set_markup(GTK_LABEL(body_box),
+                       HelperFunc::ValidString(args->notif->body));
   gtk_label_set_line_wrap(GTK_LABEL(body_box), TRUE);
   gtk_widget_set_halign(body_box, GTK_ALIGN_START);
   gtk_box_pack_start(GTK_BOX(text_box), body_box, FALSE, FALSE, 0);
@@ -255,16 +257,18 @@ void NotificationModule::update() {
     GtkWidget *titleLbl = gtk_label_new(nullptr);
     gtk_label_set_markup(
         GTK_LABEL(titleLbl),
-        ("<b>Summary:</b> " + (notif.summary.size() > 25
-                                   ? notif.summary.substr(0, 22) + "..."
-                                   : notif.summary))
+        (std::string("<b>Summary:</b> ") +
+         (notif.summary.size() > 25
+              ? HelperFunc::ValidString(notif.summary.substr(0, 22) + "...")
+              : HelperFunc::ValidString(notif.summary)))
             .c_str());
     gtk_label_set_line_wrap(GTK_LABEL(titleLbl), TRUE);
     gtk_widget_set_halign(titleLbl, GTK_ALIGN_START);
     gtk_box_pack_start(GTK_BOX(contentBox), titleLbl, FALSE, FALSE, 0);
 
     GtkWidget *bodyLbl = gtk_label_new(nullptr);
-    gtk_label_set_markup(GTK_LABEL(bodyLbl), notif.body.c_str());
+    gtk_label_set_markup(GTK_LABEL(bodyLbl),
+                         (notif.body.c_str()));
     gtk_label_set_line_wrap(GTK_LABEL(bodyLbl), TRUE);
     gtk_widget_set_halign(bodyLbl, GTK_ALIGN_START);
     gtk_box_pack_start(GTK_BOX(contentBox), bodyLbl, FALSE, FALSE, 0);
