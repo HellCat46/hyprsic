@@ -17,7 +17,7 @@ StatusNotifierModule::StatusNotifierModule(
 
 void StatusNotifierModule::setup(GtkWidget *box) {
   sniBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
-  gtk_grid_attach(GTK_GRID(box), sniBox, 9, 0, 1, 1);
+  gtk_grid_attach(GTK_GRID(box), sniBox, 11, 0, 1, 1);
 
   snManager->removeCallbacks.push_back(
       {StatusNotifierModule::remove, sniBox, &sniApps});

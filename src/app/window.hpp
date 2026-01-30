@@ -7,7 +7,8 @@
 #include <memory>
 #include <vector>
 
-//#include "../modules/pulseaudio/manager.hpp"
+#include "../modules/pulseaudio/manager.hpp"
+#include "../modules/pulseaudio/module.hpp"
 #include "../modules/bluetooth/module.hpp"
 #include "../modules/mpris/module.hpp"
 #include "../modules/notifications/module.hpp"
@@ -27,10 +28,11 @@ struct Window {
   BluetoothModule btModule;
   NotificationModule notifModule;
   StatusNotifierModule snModule;
+  PulseAudioModule paModule;
 
   Window(AppContext *ctx, MprisManager *mprisMgr,
          ScreenSaverManager *scrnsavrMgr, NotificationManager *notifInstance,
-         BluetoothManager *btMgr, HyprWSManager *hyprMgr, StatusNotifierManager *snManager, Stats* stat, Memory* mem, SysLoad* load, BatteryInfo* battery);
+         BluetoothManager *btMgr, HyprWSManager *hyprMgr, StatusNotifierManager *snManager, Stats* stat, Memory* mem, SysLoad* load, BatteryInfo* battery, PulseAudioManager* paMgr);
 };
 
 class MainWindow {
@@ -48,7 +50,7 @@ class MainWindow {
   ScreenSaverManager scrnsavrManager;
   HyprWSManager hyprInstance;
   StatusNotifierManager snManager;
-  //PulseAudioManager paManager;
+  PulseAudioManager paManager;
   
   std::thread ssnDBusThread;
   void captureSessionDBus();

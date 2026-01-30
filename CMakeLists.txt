@@ -44,6 +44,7 @@ set(MODULES_SOURCES
     src/modules/sysinfo/module.cpp
     
     src/modules/pulseaudio/manager.cpp
+    src/modules/pulseaudio/module.cpp
     
     src/modules/mpris/manager.cpp
     src/modules/mpris/module.cpp

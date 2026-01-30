@@ -16,17 +16,17 @@ Window::Window(AppContext *ctx, MprisManager *mprisMgr,
                ScreenSaverManager *scrnsavrMgr,
                NotificationManager *notifInstance, BluetoothManager *btMgr,
                HyprWSManager *hyprMgr, StatusNotifierManager *snManager,
-               Stats *stat, Memory *mem, SysLoad *load, BatteryInfo *battery)
+               Stats *stat, Memory *mem, SysLoad *load, BatteryInfo *battery, PulseAudioManager* paMgr)
     : mprisModule(ctx, mprisMgr), hyprModule(ctx, hyprMgr),
       scrnsavrModule(ctx, scrnsavrMgr), btModule(ctx, btMgr),
       notifModule(ctx, notifInstance), snModule(ctx, snManager),
-      sysinfoModule(stat, mem, load, battery) {}
+      sysinfoModule(stat, mem, load, battery), paModule(paMgr, &ctx->logging) {}
 
 MainWindow::MainWindow()
     : notifManager(&ctx), btManager(&ctx), mprisManager(&ctx),
       scrnsavrManager(&ctx), hyprInstance(&ctx.logging), snManager(&ctx),
       load(&ctx.logging), mem(&ctx.logging), stat(&ctx.logging),
-      battery(&ctx.logging) {
+      battery(&ctx.logging), paManager(&ctx.logging) {
 
   btManager.setup();
   hyprInstance.liveEventListener();
@@ -53,7 +53,7 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
         new Window(&self->ctx, &self->mprisManager, &self->scrnsavrManager,
                    &self->notifManager, &self->btManager, &self->hyprInstance,
                    &self->snManager, &self->stat, &self->mem, &self->load,
-                   &self->battery));
+                   &self->battery, &self->paManager));
     GdkMonitor *monitor = gdk_display_get_monitor(display, i);
 
     winInstance->window = gtk_application_window_new(app);
@@ -95,6 +95,7 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
     winInstance->btModule.setupBT(rightGrid);
     winInstance->scrnsavrModule.setup(rightGrid);
     winInstance->snModule.setup(rightGrid);
+    winInstance->paModule.setup(rightGrid);
 
     gtk_widget_show_all(winInstance->window);
     self->mainWindows.push_back(std::move(winInstance));
@@ -111,9 +112,10 @@ gboolean MainWindow::UpdateData(gpointer data) {
     window->notifModule.update();
     window->btModule.updateBTList();
     window->snModule.update();
+    window->paModule.update();
   }
   self->stat.UpdateData();
-  //self->paManager.getDevices();
+  self->paManager.getDevices();
   
   return true;
 }
