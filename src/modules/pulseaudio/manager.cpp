@@ -5,7 +5,7 @@
 #include <pulse/thread-mainloop.h>
 #include <string>
 
-#define TAG "PlayingNow"
+#define TAG "PulseAudioManager"
 
 PulseAudioManager::PulseAudioManager(LoggingManager *logMgr) : logger(logMgr) {
 
@@ -207,7 +207,7 @@ short PulseAudioManager::toggleMute(const std::string &devName, bool isOutput) {
     it->second.mute = !it->second.mute;
     pa_context_set_sink_mute_by_index(pulseContext, it->second.index,
                                       it->second.mute, nullptr, nullptr);
-    
+
     return it->second.mute;
   } else {
     auto it = inDevs.find(devName);
@@ -220,4 +220,29 @@ short PulseAudioManager::toggleMute(const std::string &devName, bool isOutput) {
 
     return it->second.mute;
   }
+}
+
+bool PulseAudioManager::updateDefDevice(const std::string &devName,
+                                        bool isOutput) {
+  if (isOutput) {
+    auto it = outDevs.find(devName);
+    if (it != outDevs.end()) {
+      defOutput = devName;
+      pa_context_set_default_sink(pulseContext, devName.c_str(), nullptr,
+                                  nullptr);
+      defOutput = devName;
+      return true;
+    }
+  } else {
+
+    auto it = inDevs.find(devName);
+    if (it != inDevs.end()) {
+      defInput = devName;
+      pa_context_set_default_source(pulseContext, devName.c_str(), nullptr,
+                                    nullptr);
+      defInput = devName;
+      return true;
+    }
+  }
+  return false;
 }

@@ -105,8 +105,8 @@ void MprisModule::update() {
   // Current Issue: Improper UTF-8 handling (Japanese characters make the markup
   // fail);
   std::string content;
-  if (mprisInstance->playingTrack.title.length() > 50) {
-    content = mprisInstance->playingTrack.title.substr(0, 47).append("...");
+  if (mprisInstance->playingTrack.title.length() > 40) {
+    content = mprisInstance->playingTrack.title.substr(0, 37).append("...");
   } else {
     content = mprisInstance->playingTrack.title;
   }
@@ -116,6 +116,7 @@ void MprisModule::update() {
   std::string title = "<span foreground='green'><b>";
   title += finalText;
   title += "</b></span>";
+  
 
   gtk_label_set_markup(GTK_LABEL(mainLabel), title.c_str());
 

@@ -6,11 +6,11 @@ A Status Bar for Hyprland inspired by Simplicity of i3Bar (Not Anymore i suppose
 - [x] Hyprland IPC Integration
 - [x] PulseAudio Integration
 - [x] Bluetooth Frontend
-- [ ] Tooltip Support
+- [x] Tooltip Support
 - [x] Multi-monitor Support
 - [x] System Tray Integration
 - [x] Playback Showcase & Controls
-- [ ] Input and Output Device Management
+- [x] Input and Output Device Management
 - [ ] Config to control which modules load & their Order in the Bar UI
 - [x] Notification Manager Integration
 - [ ] Encrypt Notification Contents (Using libsodium)

@@ -39,4 +39,5 @@ public:
   
   void setVolume(const std::string &devName, bool isOutput, uint32_t volume);
   short toggleMute(const std::string &devName, bool isOutput);
+  bool updateDefDevice(const std::string &devName, bool isOutput);
 };
