@@ -26,7 +26,7 @@ MainWindow::MainWindow()
     : notifManager(&ctx), btManager(&ctx), mprisManager(&ctx),
       scrnsavrManager(&ctx), hyprInstance(&ctx.logging), snManager(&ctx),
       load(&ctx.logging), mem(&ctx.logging), stat(&ctx.logging),
-      battery(&ctx.logging), paManager(&ctx.logging) {
+      battery(&ctx.logging), paManager(&ctx.logging), wifiManager(&ctx) {
 
   btManager.setup();
   hyprInstance.liveEventListener();

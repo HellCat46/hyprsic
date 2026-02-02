@@ -17,6 +17,7 @@
 #include "../modules/workspaces/hyprland/module.hpp"
 #include "../modules/statusnotifier/manager.hpp"
 #include "../modules/statusnotifier/module.hpp"
+#include "../modules/wifi/manager.hpp"
 
 struct Window {
   GtkWidget *window = nullptr;
@@ -51,6 +52,7 @@ class MainWindow {
   HyprWSManager hyprInstance;
   StatusNotifierManager snManager;
   PulseAudioManager paManager;
+  WifiManager wifiManager;
   
   std::thread ssnDBusThread;
   void captureSessionDBus();

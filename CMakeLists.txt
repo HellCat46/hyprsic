@@ -60,6 +60,8 @@ set(MODULES_SOURCES
     
     src/modules/statusnotifier/manager.cpp
     src/modules/statusnotifier/module.cpp
+    
+    src/modules/wifi/manager.cpp
 )
 
 set(DATABASE_SOURCES
