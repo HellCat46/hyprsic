@@ -1,15 +1,15 @@
 #include "manager.hpp"
 #include <pulse/context.h>
 #include <pulse/introspect.h>
+#include <pulse/operation.h>
 #include <pulse/subscribe.h>
-#include <pulse/thread-mainloop.h>
 #include <string>
 
 #define TAG "PulseAudioManager"
 
 PulseAudioManager::PulseAudioManager(LoggingManager *logMgr) : logger(logMgr) {
 
-  pa_threaded_mainloop *mainLoop = pa_threaded_mainloop_new();
+  mainLoop = pa_threaded_mainloop_new();
   if (mainLoop == nullptr) {
     logger->LogError(TAG, "Failed to Get Pulseaudio Main Loop.");
     return;
@@ -185,15 +185,29 @@ void PulseAudioManager::setVolume(const std::string &devName, bool isOutput,
     if (it == outDevs.end())
       return;
 
-    pa_context_set_sink_volume_by_index(pulseContext, it->second.index,
-                                        &paVolume, nullptr, nullptr);
+    pa_threaded_mainloop_lock(mainLoop);
+    auto op = pa_context_set_sink_volume_by_index(
+        pulseContext, it->second.index, &paVolume, nullptr, nullptr);
+    pa_threaded_mainloop_unlock(mainLoop);
+
+    if (!op)
+      return;
+
+    pa_operation_unref(op);
   } else {
     auto it = inDevs.find(devName);
     if (it == inDevs.end())
       return;
 
-    pa_context_set_source_volume_by_index(pulseContext, it->second.index,
-                                          &paVolume, nullptr, nullptr);
+    pa_threaded_mainloop_lock(mainLoop);
+    auto op = pa_context_set_source_volume_by_index(
+        pulseContext, it->second.index, &paVolume, nullptr, nullptr);
+    pa_threaded_mainloop_unlock(mainLoop);
+
+    if (!op)
+      return;
+
+    pa_operation_unref(op);
   }
 }
 
@@ -204,20 +218,32 @@ short PulseAudioManager::toggleMute(const std::string &devName, bool isOutput) {
     if (it == outDevs.end())
       return -1;
 
-    it->second.mute = !it->second.mute;
-    pa_context_set_sink_mute_by_index(pulseContext, it->second.index,
-                                      it->second.mute, nullptr, nullptr);
+    pa_threaded_mainloop_lock(mainLoop);
+    auto op = pa_context_set_sink_mute_by_index(
+        pulseContext, it->second.index, !it->second.mute, nullptr, nullptr);
+    pa_threaded_mainloop_lock(mainLoop);
 
+    if (!op)
+      return -1;
+
+    it->second.mute = !it->second.mute;
+    pa_operation_unref(op);
     return it->second.mute;
   } else {
     auto it = inDevs.find(devName);
     if (it == inDevs.end())
       return -1;
 
-    it->second.mute = !it->second.mute;
-    pa_context_set_source_mute_by_index(pulseContext, it->second.index,
-                                        it->second.mute, nullptr, nullptr);
+    pa_threaded_mainloop_lock(mainLoop);
+    auto op = pa_context_set_source_mute_by_index(
+        pulseContext, it->second.index, !it->second.mute, nullptr, nullptr);
+    pa_threaded_mainloop_lock(mainLoop);
 
+    if (!op)
+      return -1;
+
+    it->second.mute = !it->second.mute;
+    pa_operation_unref(op);
     return it->second.mute;
   }
 }
@@ -227,9 +253,16 @@ bool PulseAudioManager::updateDefDevice(const std::string &devName,
   if (isOutput) {
     auto it = outDevs.find(devName);
     if (it != outDevs.end()) {
-      defOutput = devName;
-      pa_context_set_default_sink(pulseContext, devName.c_str(), nullptr,
-                                  nullptr);
+
+      pa_threaded_mainloop_lock(mainLoop);
+      auto op = pa_context_set_default_sink(pulseContext, devName.c_str(),
+                                            nullptr, nullptr);
+      pa_threaded_mainloop_lock(mainLoop);
+
+      if (!op)
+        return false;
+
+      pa_operation_unref(op);
       defOutput = devName;
       return true;
     }
@@ -237,9 +270,16 @@ bool PulseAudioManager::updateDefDevice(const std::string &devName,
 
     auto it = inDevs.find(devName);
     if (it != inDevs.end()) {
-      defInput = devName;
-      pa_context_set_default_source(pulseContext, devName.c_str(), nullptr,
-                                    nullptr);
+
+      pa_threaded_mainloop_lock(mainLoop);
+      auto op = pa_context_set_default_source(pulseContext, devName.c_str(),
+                                              nullptr, nullptr);
+      pa_threaded_mainloop_lock(mainLoop);
+
+      if (!op)
+        return false;
+
+      pa_operation_unref(op);
       defInput = devName;
       return true;
     }

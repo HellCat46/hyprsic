@@ -5,6 +5,7 @@
 #include <map>
 #include <pulse/context.h>
 #include <pulse/introspect.h>
+#include <pulse/thread-mainloop.h>
 #include <string>
 #include <vector>
 
@@ -18,6 +19,7 @@ struct PulseAudioDevice {
 
 class PulseAudioManager {
   pa_context *pulseContext;
+  pa_threaded_mainloop *mainLoop;
   LoggingManager *logger;
 
   static void contextStateHandler(pa_context *, void *);
