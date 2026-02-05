@@ -22,12 +22,13 @@ public:
   void addPlayer(const std::string &playerName);
   void removePlayer(const std::string &playerName);
 
-  int PlayPause();
-  int PlayPauseDbusCall(const char *player);
+  bool PlayPause();
+  bool PlayPauseDbusCall(const char *player);
 
-  int GetPlayerInfo();
+  bool GetPlayerInfo();
   int GetPlayerInfoDbusCall(const char *player, PlayerTrack *track);
-
+  
+  bool GetPosition();
   int GetCurrentPositionDbusCall();
 
   int SetPosition(uint64_t position);

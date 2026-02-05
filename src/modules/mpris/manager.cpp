@@ -52,10 +52,9 @@ MprisManager::MprisManager(AppContext *appCtx) : ctx(appCtx) {
   }
 }
 
-int MprisManager::PlayPause() {
+bool MprisManager::PlayPause() {
   if (playingTrack.playerName.empty()) {
-    ctx->logger.LogError(TAG,
-                          "No player available to send PlayPause command.");
+    ctx->logger.LogError(TAG, "No player available to send PlayPause command.");
     return 1;
   }
 
@@ -64,8 +63,7 @@ int MprisManager::PlayPause() {
       "org.mpris.MediaPlayer2.Player", "PlayPause");
 
   if (!msg) {
-    ctx->logger.LogError(TAG,
-                          "Failed to create PlayPause message for player.");
+    ctx->logger.LogError(TAG, "Failed to create PlayPause message for player.");
     return 1;
   }
 
@@ -223,7 +221,7 @@ int MprisManager::GetCurrentPositionDbusCall() {
   return 0;
 }
 
-int MprisManager::GetPlayerInfo() {
+bool MprisManager::GetPlayerInfo() {
   bool titleFound = false;
   for (const auto &player : players) {
 
@@ -232,19 +230,20 @@ int MprisManager::GetPlayerInfo() {
 
     if (res == 0 && !track.title.empty()) {
       playingTrack = track;
-      titleFound = true;
-      break;
+      return 1;
     }
   }
 
-  if (titleFound) {
-    GetCurrentPositionDbusCall();
-    playingTrack.currPos /= 1000000;
-    playingTrack.length /= 1000000;
-    return 0;
-  }
+  return 0;
+}
 
-  return 1;
+bool MprisManager::GetPosition() {
+  if (GetCurrentPositionDbusCall())
+    return 1;
+
+  playingTrack.currPos /= 1000000;
+  playingTrack.length /= 1000000;
+  return 0;
 }
 
 int MprisManager::SetPosition(uint64_t position) {
@@ -276,7 +275,7 @@ int MprisManager::SetPosition(uint64_t position) {
   }
 
   ctx->logger.LogInfo(TAG,
-                       "Set position to " + std::to_string(position) + "s.");
+                      "Set position to " + std::to_string(position) + "s.");
 
   dbus_message_unref(msg);
   dbus_message_ref(reply);
@@ -287,7 +286,7 @@ int MprisManager::SetPosition(uint64_t position) {
 int MprisManager::PreviousTrack() {
   if (playingTrack.playerName.empty()) {
     ctx->logger.LogError(TAG,
-                          "No player available to send PreviousTrack command.");
+                         "No player available to send PreviousTrack command.");
     return 1;
   }
 
@@ -297,7 +296,7 @@ int MprisManager::PreviousTrack() {
 
   if (!msg) {
     ctx->logger.LogError(TAG,
-                          "Failed to create PreviousTrack message for player.");
+                         "Failed to create PreviousTrack message for player.");
     return 1;
   }
 
@@ -323,8 +322,7 @@ int MprisManager::PreviousTrack() {
 
 int MprisManager::NextTrack() {
   if (playingTrack.playerName.empty()) {
-    ctx->logger.LogError(TAG,
-                          "No player available to send NextTrack command.");
+    ctx->logger.LogError(TAG, "No player available to send NextTrack command.");
     return 1;
   }
 
@@ -333,8 +331,7 @@ int MprisManager::NextTrack() {
       "org.mpris.MediaPlayer2.Player", "Next");
 
   if (!msg) {
-    ctx->logger.LogError(TAG,
-                          "Failed to create NextTrack message for player.");
+    ctx->logger.LogError(TAG, "Failed to create NextTrack message for player.");
     return 1;
   }
 

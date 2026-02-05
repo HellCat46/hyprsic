@@ -99,11 +99,9 @@ void MprisModule::setup(GtkWidget *mainBox) {
 }
 
 void MprisModule::update() {
-  if (mprisInstance->GetPlayerInfo())
+  if (!mprisInstance->GetPlayerInfo())
     return;
 
-  // Current Issue: Improper UTF-8 handling (Japanese characters make the markup
-  // fail);
   std::string content;
   if (mprisInstance->playingTrack.title.length() > 40) {
     content = mprisInstance->playingTrack.title.substr(0, 37).append("...");
@@ -116,18 +114,20 @@ void MprisModule::update() {
   std::string title = "<span foreground='green'><b>";
   title += finalText;
   title += "</b></span>";
-  
 
   gtk_label_set_markup(GTK_LABEL(mainLabel), title.c_str());
 
   // Save Resources by Not Updating if Menu is Not Visible
   if (!gtk_widget_is_visible(menuWindow))
     return;
+  
 
   gtk_label_set_markup(GTK_LABEL(progTitle), title.c_str());
+  mprisInstance->GetPosition();
 
   // If Length is 64 Bit Int Max Value, The Track is Probably a Stream
-  if (mprisInstance->playingTrack.length != 9223372036854775807) {
+  if (
+      mprisInstance->playingTrack.length != 9223372036854775807) {
     gtk_label_set_label(
         GTK_LABEL(progScaleMax),
         MprisModule::timeToStr(mprisInstance->playingTrack.length).c_str());

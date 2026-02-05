@@ -23,6 +23,6 @@ public:
   
   // Notification PopUp Functions
   static void showNotification(NotifFuncArgs *args);
-  static gboolean autoCloseNotificationCb(gpointer user_data);
+  static void autoCloseNotificationCb(gpointer user_data);
   static void closeNotificationCb(GtkWidget *widget, gpointer user_data);
 };

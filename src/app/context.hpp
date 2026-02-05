@@ -44,5 +44,5 @@ public:
   AppContext();
 
   void initUpdateWindow();
-  int showUpdateWindow(UpdateModule module, std::string type, std::string msg);
+  bool showUpdateWindow(UpdateModule module, std::string type, std::string msg);
 };

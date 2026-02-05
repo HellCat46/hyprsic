@@ -61,6 +61,74 @@ void NotificationModule::setup(GtkWidget *box) {
   gtk_widget_show_all(main_box);
 }
 
+void NotificationModule::update() {
+  if (!gtk_widget_get_visible(menuWin))
+    return;
+
+  GList *children = gtk_container_get_children(GTK_CONTAINER(scrollWinBox));
+  for (GList *iter = children; iter != nullptr; iter = iter->next) {
+    gtk_widget_destroy(GTK_WIDGET(iter->data));
+  }
+  g_list_free(children);
+
+  for (const auto &[notifId, notif] : dbManager->notificationCache) {
+    GtkWidget *notifBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+    gtk_widget_set_margin_top(notifBox, 5);
+    gtk_widget_set_margin_bottom(notifBox, 5);
+    gtk_widget_set_margin_start(notifBox, 5);
+    gtk_widget_set_margin_end(notifBox, 5);
+
+    GtkWidget *contentBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+    gtk_box_pack_start(GTK_BOX(notifBox), contentBox, TRUE, TRUE, 0);
+
+    GtkWidget *topContent = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+    gtk_box_pack_start(GTK_BOX(contentBox), topContent, FALSE, FALSE, 0);
+
+    GtkWidget *appName = gtk_label_new(nullptr);
+    gtk_label_set_markup(GTK_LABEL(appName),
+                         ("<b>" + notif.app_name + "</b> - ").c_str());
+    gtk_widget_set_halign(appName, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(topContent), appName, FALSE, FALSE, 0);
+
+    GtkWidget *timestampLbl = gtk_label_new(nullptr);
+    gtk_label_set_markup(GTK_LABEL(timestampLbl),
+                         ("<i>" + notif.timestamp + "</i>").c_str());
+    gtk_widget_set_halign(timestampLbl, GTK_ALIGN_END);
+    gtk_box_pack_start(GTK_BOX(topContent), timestampLbl, FALSE, FALSE, 0);
+
+    GtkWidget *titleLbl = gtk_label_new(nullptr);
+    gtk_label_set_markup(
+        GTK_LABEL(titleLbl),
+        (std::string("<b>Summary:</b> ") +
+         (notif.summary.size() > 25
+              ? HelperFunc::ValidString(notif.summary.substr(0, 22) + "...")
+              : HelperFunc::ValidString(notif.summary)))
+            .c_str());
+    gtk_label_set_line_wrap(GTK_LABEL(titleLbl), TRUE);
+    gtk_widget_set_halign(titleLbl, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(contentBox), titleLbl, FALSE, FALSE, 0);
+
+    GtkWidget *bodyLbl = gtk_label_new(nullptr);
+    gtk_label_set_markup(GTK_LABEL(bodyLbl), (notif.body.c_str()));
+    gtk_label_set_line_wrap(GTK_LABEL(bodyLbl), TRUE);
+    gtk_widget_set_halign(bodyLbl, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(contentBox), bodyLbl, FALSE, FALSE, 0);
+
+    GtkWidget *removeBtn = gtk_button_new_with_label("✖");
+    gtk_box_pack_end(GTK_BOX(notifBox), removeBtn, FALSE, FALSE, 0);
+    NotifFuncArgs *close_args = g_new0(NotifFuncArgs, 1);
+    close_args->notifId = g_strdup(notifId.c_str());
+    close_args->dbManager = dbManager;
+    g_signal_connect_data(removeBtn, "clicked",
+                          G_CALLBACK(NotificationModule::deleteNotificationCb),
+                          close_args, (GClosureNotify)g_free, (GConnectFlags)0);
+
+    gtk_container_add(GTK_CONTAINER(scrollWinBox), notifBox);
+
+    gtk_widget_show_all(notifBox);
+  }
+}
+
 void NotificationModule::showNotification(NotifFuncArgs *args) {
 
   NotifFuncArgs *close_args = g_new0(NotifFuncArgs, 1);
@@ -99,10 +167,10 @@ void NotificationModule::showNotification(NotifFuncArgs *args) {
 
   // Set Expire Timeout
   args->notif->expire_timeout =
-      args->notif->expire_timeout == 0 ? 5000 : args->notif->expire_timeout;
-  g_timeout_add(args->notif->expire_timeout,
-                (GSourceFunc)NotificationModule::autoCloseNotificationCb,
-                close_args);
+      args->notif->expire_timeout <= 0 ? 5000 : args->notif->expire_timeout;
+  g_timeout_add_once(
+      args->notif->expire_timeout,
+      (GSourceOnceFunc)NotificationModule::autoCloseNotificationCb, close_args);
 
   // Logo of Application
   GdkPixbuf *scaled_pixbuf = gdk_pixbuf_scale_simple(
@@ -167,8 +235,13 @@ void NotificationModule::closeNotificationCb(GtkWidget *widget,
   }
 }
 
-gboolean NotificationModule::autoCloseNotificationCb(gpointer user_data) {
+void NotificationModule::autoCloseNotificationCb(gpointer user_data) {
   NotifFuncArgs *args = static_cast<NotifFuncArgs *>(user_data);
+  
+  args->logger->LogInfo(
+      TAG, "Auto-closing notification ID: " + std::string(args->notifId) +
+               " after timeout of " +
+               std::to_string(args->notif->expire_timeout) + " ms.");
 
   // Save to DB that notification was closed due to timeout
   auto it = args->notifications->find(args->notifId);
@@ -196,8 +269,6 @@ gboolean NotificationModule::autoCloseNotificationCb(gpointer user_data) {
   g_free(args->notifId);
   delete args->notif;
   g_free(args);
-
-  return G_SOURCE_REMOVE;
 }
 
 void NotificationModule::chgVisibiltyWin(GtkWidget *widget, GdkEvent *e,
@@ -217,73 +288,4 @@ void NotificationModule::deleteNotificationCb(GtkWidget *widget,
   NotifFuncArgs *args = static_cast<NotifFuncArgs *>(user_data);
 
   args->dbManager->removeNotification(args->notifId);
-}
-
-void NotificationModule::update() {
-  if (!gtk_widget_get_visible(menuWin))
-    return;
-
-  GList *children = gtk_container_get_children(GTK_CONTAINER(scrollWinBox));
-  for (GList *iter = children; iter != nullptr; iter = iter->next) {
-    gtk_widget_destroy(GTK_WIDGET(iter->data));
-  }
-  g_list_free(children);
-
-  for (const auto &[notifId, notif] : dbManager->notificationCache) {
-    GtkWidget *notifBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-    gtk_widget_set_margin_top(notifBox, 5);
-    gtk_widget_set_margin_bottom(notifBox, 5);
-    gtk_widget_set_margin_start(notifBox, 5);
-    gtk_widget_set_margin_end(notifBox, 5);
-
-    GtkWidget *contentBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-    gtk_box_pack_start(GTK_BOX(notifBox), contentBox, TRUE, TRUE, 0);
-
-    GtkWidget *topContent = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-    gtk_box_pack_start(GTK_BOX(contentBox), topContent, FALSE, FALSE, 0);
-
-    GtkWidget *appName = gtk_label_new(nullptr);
-    gtk_label_set_markup(GTK_LABEL(appName),
-                         ("<b>" + notif.app_name + "</b> - ").c_str());
-    gtk_widget_set_halign(appName, GTK_ALIGN_START);
-    gtk_box_pack_start(GTK_BOX(topContent), appName, FALSE, FALSE, 0);
-
-    GtkWidget *timestampLbl = gtk_label_new(nullptr);
-    gtk_label_set_markup(GTK_LABEL(timestampLbl),
-                         ("<i>" + notif.timestamp + "</i>").c_str());
-    gtk_widget_set_halign(timestampLbl, GTK_ALIGN_END);
-    gtk_box_pack_start(GTK_BOX(topContent), timestampLbl, FALSE, FALSE, 0);
-
-    GtkWidget *titleLbl = gtk_label_new(nullptr);
-    gtk_label_set_markup(
-        GTK_LABEL(titleLbl),
-        (std::string("<b>Summary:</b> ") +
-         (notif.summary.size() > 25
-              ? HelperFunc::ValidString(notif.summary.substr(0, 22) + "...")
-              : HelperFunc::ValidString(notif.summary)))
-            .c_str());
-    gtk_label_set_line_wrap(GTK_LABEL(titleLbl), TRUE);
-    gtk_widget_set_halign(titleLbl, GTK_ALIGN_START);
-    gtk_box_pack_start(GTK_BOX(contentBox), titleLbl, FALSE, FALSE, 0);
-
-    GtkWidget *bodyLbl = gtk_label_new(nullptr);
-    gtk_label_set_markup(GTK_LABEL(bodyLbl),
-                         (notif.body.c_str()));
-    gtk_label_set_line_wrap(GTK_LABEL(bodyLbl), TRUE);
-    gtk_widget_set_halign(bodyLbl, GTK_ALIGN_START);
-    gtk_box_pack_start(GTK_BOX(contentBox), bodyLbl, FALSE, FALSE, 0);
-
-    GtkWidget *removeBtn = gtk_button_new_with_label("✖");
-    gtk_box_pack_end(GTK_BOX(notifBox), removeBtn, FALSE, FALSE, 0);
-    NotifFuncArgs *close_args = g_new0(NotifFuncArgs, 1);
-    close_args->notifId = g_strdup(notifId.c_str());
-    close_args->dbManager = dbManager;
-    g_signal_connect_data(removeBtn, "clicked",
-                          G_CALLBACK(NotificationModule::deleteNotificationCb),
-                          close_args, (GClosureNotify)g_free, (GConnectFlags)0);
-
-    gtk_container_add(GTK_CONTAINER(scrollWinBox), notifBox);
-
-    gtk_widget_show_all(notifBox);
-  }
 }

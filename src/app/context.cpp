@@ -104,7 +104,7 @@ void AppContext::initUpdateWindow() {
   gtk_grid_attach(updateWinGrid, updateMsg, 0, 4, 1, 1);
 }
 
-int AppContext::showUpdateWindow(UpdateModule module, std::string type,
+bool AppContext::showUpdateWindow(UpdateModule module, std::string type,
                                  std::string msg) {
   if (updateTimeoutId != 0) {
     g_source_remove(updateTimeoutId);
@@ -136,7 +136,7 @@ int AppContext::showUpdateWindow(UpdateModule module, std::string type,
   GdkPixbuf *pixBuf = gdk_pixbuf_new_from_file(svgPath.c_str(), &error);
   if (!pixBuf) {
     logger.LogError(TAG, error->message);
-    return -1;
+    return 1;
   }
   gtk_image_set_from_pixbuf(GTK_IMAGE(updateIcon), pixBuf);
   g_object_unref(pixBuf);
