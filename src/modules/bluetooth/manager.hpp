@@ -1,14 +1,13 @@
 #pragma once
 
+#include "../../app/context.hpp"
 #include "cstring"
 #include "dbus/dbus.h"
-#include "thread"
 #include "string"
-#include "../../app/context.hpp"
+#include "thread"
 #include "unordered_map"
 #include <string>
 #include <unordered_map>
-
 
 struct Device {
   std::string addr, name, path, deviceType;
@@ -17,34 +16,46 @@ struct Device {
   short batteryPer;
 };
 
-
-
-
-class BluetoothManager {
-  private:
-    AppContext* ctx;
-    DBusMessage* devListMsg;
-  	std::thread signalThread;
-
-    void monitorChanges();
-	void setDeviceProps(Device& dev, DBusMessageIter& propsIter);
-	int getPropertyVal(const char* prop);
-  public:
-    bool discovering, power;
-    std::unordered_map<std::string, Device> devices;
-    
-    int getDeviceList();
-    
-    // Device Operations
-    int connectDevice(bool state, const char* devPath);
-    int removeDevice(bool state, const char* devPath);
-    int trustDevice(bool state, const char* devPath);
-    
-    int switchDiscovery(bool on);
-    int switchPower(bool on);
-
-    BluetoothManager(AppContext* ctx);
-    int setup();
+enum DevicePropFlags {
+  NAME = 1,
+  ADDRESS = 2,
+  CONNECTED = 4,
+  PAIRED = 4,
+  RSSI = 8,
+  TRUSTED = 16,
+  DEVICE_TYPE = 32,
 };
 
+class BluetoothManager {
+private:
+  AppContext *ctx;
+  DBusMessage *devListMsg;
+  std::thread signalThread;
 
+  void monitorChanges();
+  unsigned char setDeviceProps(Device &dev, DBusMessageIter &propsIter);
+  int getPropertyVal(const char *prop);
+
+  // Monitor Changes Functions
+  int addMatchRules();
+  void handleInterfacesAdded(DBusMessage *msg, DBusMessageIter &rootIter);
+  void handleInterfacesRemoved(DBusMessage *msg, DBusMessageIter &rootIter);
+  void handlePropertiesChanged(DBusMessage *msg, DBusMessageIter &rootIter);
+
+public:
+  bool discovering, power;
+  std::unordered_map<std::string, Device> devices;
+
+  int getDeviceList();
+
+  // Device Operations
+  int connectDevice(bool state, const char *devPath);
+  int removeDevice(bool state, const char *devPath);
+  int trustDevice(bool state, const char *devPath);
+
+  int switchDiscovery(bool on);
+  int switchPower(bool on);
+
+  BluetoothManager(AppContext *ctx);
+  int setup();
+};

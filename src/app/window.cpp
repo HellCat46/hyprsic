@@ -30,7 +30,6 @@ MainWindow::MainWindow()
 
   btManager.setup();
   hyprInstance.liveEventListener();
-  btManager.getDeviceList();
   ssnDBusThread = std::thread(&MainWindow::captureSessionDBus, this);
 
   app = gtk_application_new("com.hellcat.hyprsic", G_APPLICATION_DEFAULT_FLAGS);

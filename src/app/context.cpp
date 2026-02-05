@@ -68,6 +68,7 @@ void DbusSystem::DictToString(DBusMessageIter *iter, std::string &outValue) {
 
 void AppContext::initUpdateWindow() {
   // Setting Up Update Window
+  updateTimeoutId = 0;
   updateWindow = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 
   gtk_layer_init_for_window(GTK_WINDOW(updateWindow));
@@ -97,6 +98,9 @@ void AppContext::initUpdateWindow() {
 
   updateMsg = gtk_label_new("");
   gtk_widget_set_margin_top(updateMsg, 10);
+  gtk_label_set_line_wrap(GTK_LABEL(updateMsg), true);
+  gtk_widget_set_size_request(updateMsg, 200, -1);
+  
   gtk_grid_attach(updateWinGrid, updateMsg, 0, 4, 1, 1);
 }
 
