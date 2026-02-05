@@ -12,7 +12,7 @@
 StatusNotifierModule::StatusNotifierModule(
     AppContext *ctx, StatusNotifierManager *snManagerInstance) {
   snManager = snManagerInstance;
-  logger = &ctx->logging;
+  logger = &ctx->logger;
 }
 
 void StatusNotifierModule::setup(GtkWidget *box) {

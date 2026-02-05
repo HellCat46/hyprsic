@@ -13,14 +13,14 @@ WifiManager::WifiManager(AppContext *appCtx) : ctx(appCtx) {
       "net.connman.iwd", "/", "org.freedesktop.DBus.ObjectManager",
       "GetManagedObjects");
   if (!msg) {
-    ctx->logging.LogError(TAG, "Failed to create D-Bus message for ListNames");
+    ctx->logger.LogError(TAG, "Failed to create D-Bus message for ListNames");
     return;
   }
 
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
       ctx->dbus.sysConn, msg, -1, &ctx->dbus.sysErr);
   if (dbus_error_is_set(&ctx->dbus.sysErr) && !reply) {
-    ctx->logging.LogError(TAG,
+    ctx->logger.LogError(TAG,
                           std::string("D-Bus GetManagedObjects call failed: ") +
                               ctx->dbus.sysErr.message);
     dbus_error_free(&ctx->dbus.sysErr);
@@ -32,7 +32,7 @@ WifiManager::WifiManager(AppContext *appCtx) : ctx(appCtx) {
   dbus_message_iter_init(reply, &iter);
 
   if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY) {
-    ctx->logging.LogError(
+    ctx->logger.LogError(
         TAG,
         "Unexpected argument type (Array Type) in GetManagedObjects reply");
 
@@ -55,7 +55,7 @@ WifiManager::WifiManager(AppContext *appCtx) : ctx(appCtx) {
   dbus_message_iter_recurse(&arrayIter, &dictEntryIter);
 
   if (dbus_message_iter_get_arg_type(&dictEntryIter) != DBUS_TYPE_OBJECT_PATH) {
-    ctx->logging.LogError(TAG, "Unexpected argument type (Object Path Type) in "
+    ctx->logger.LogError(TAG, "Unexpected argument type (Object Path Type) in "
                                "GetManagedObjects reply");
 
     return;
@@ -121,7 +121,7 @@ int WifiManager::GetConnectedDevice() {
       dbus_message_new_method_call("net.connman.iwd", "/net/connman/iwd/0/4",
                                    "org.freedesktop.DBus.Properties", "Get");
   if (!msg) {
-    ctx->logging.LogError(
+    ctx->logger.LogError(
         TAG, "Failed to create D-Bus message for Get Connected Device");
     return -1;
   }
@@ -137,7 +137,7 @@ int WifiManager::GetConnectedDevice() {
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
       ctx->dbus.sysConn, msg, -1, &ctx->dbus.sysErr);
   if (dbus_error_is_set(&ctx->dbus.sysErr) && !reply) {
-    ctx->logging.LogError(
+    ctx->logger.LogError(
         TAG, std::string("D-Bus Get Connected Device call failed: ") +
                  ctx->dbus.sysErr.message);
     dbus_error_free(&ctx->dbus.sysErr);
@@ -163,7 +163,7 @@ void WifiManager::GetDevices() {
       "net.connman.iwd", "/net/connman/iwd/0/4", "net.connman.iwd.Station",
       "GetOrderedNetworks");
   if (!msg) {
-    ctx->logging.LogError(
+    ctx->logger.LogError(
         TAG, "Failed to create D-Bus message for GetOrderedNetworks");
     return;
   }
@@ -171,7 +171,7 @@ void WifiManager::GetDevices() {
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
       ctx->dbus.sysConn, msg, -1, &ctx->dbus.sysErr);
   if (dbus_error_is_set(&ctx->dbus.sysErr) && !reply) {
-    ctx->logging.LogError(
+    ctx->logger.LogError(
         TAG, std::string("D-Bus GetOrderedNetworks call failed: ") +
                  ctx->dbus.sysErr.message);
     dbus_error_free(&ctx->dbus.sysErr);
@@ -221,7 +221,7 @@ int WifiManager::GetDeviceInfo(std::string devPath, WifiStation &station) {
       dbus_message_new_method_call("net.connman.iwd", devPath.c_str(),
                                    "org.freedesktop.DBus.Properties", "GetAll");
   if (!msg) {
-    ctx->logging.LogError(TAG,
+    ctx->logger.LogError(TAG,
                           "Failed to create D-Bus message for Get Device Info");
     return -1;
   }
@@ -234,7 +234,7 @@ int WifiManager::GetDeviceInfo(std::string devPath, WifiStation &station) {
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
       ctx->dbus.sysConn, msg, -1, &ctx->dbus.sysErr);
   if (dbus_error_is_set(&ctx->dbus.sysErr) && !reply) {
-    ctx->logging.LogError(TAG,
+    ctx->logger.LogError(TAG,
                           std::string("D-Bus Get Device Info call failed: ") +
                               ctx->dbus.sysErr.message);
     dbus_error_free(&ctx->dbus.sysErr);

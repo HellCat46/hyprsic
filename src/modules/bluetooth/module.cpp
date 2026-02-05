@@ -8,7 +8,7 @@
 #define TAG "BluetoothModule"
 
 BluetoothModule::BluetoothModule(AppContext *ctx, BluetoothManager *manager)
-    : logger(&ctx->logging) {
+    : ctx(ctx) {
   btManager = manager;
 }
 
@@ -137,6 +137,8 @@ void BluetoothModule::updateBTList() {
       args->devIfacePath = g_strdup(device.path.c_str());
       args->state = !device.connected;
       args->btManager = btManager;
+      args->ctx = ctx;
+      
       g_signal_connect(devConnBtn, "clicked",
                        G_CALLBACK(BluetoothModule::handleDeviceConnect), args);
 
@@ -171,6 +173,7 @@ void BluetoothModule::updateBTList() {
       args->devIfacePath = g_strdup(device.path.c_str());
       args->state = !device.connected;
       args->btManager = btManager;
+      args->ctx = ctx;
 
       g_signal_connect(devConnBtn, "clicked",
                        G_CALLBACK(BluetoothModule::handleDeviceConnect), args);
@@ -192,15 +195,15 @@ void BluetoothModule::handleDiscovery(GtkWidget *widget, gpointer user_data) {
   BluetoothModule *self = static_cast<BluetoothModule *>(user_data);
 
   if (self->btManager->discovering) {
-    self->logger->LogInfo(TAG, "Stopping Bluetooth Discovery.");
+    self->ctx->logger.LogInfo(TAG, "Stopping Bluetooth Discovery.");
 
     if (self->btManager->switchDiscovery(false) == 0)
-      self->logger->LogError(TAG, "Bluetooth Discovery Stopped.");
+      self->ctx->logger.LogError(TAG, "Bluetooth Discovery Stopped.");
   } else {
-    self->logger->LogInfo(TAG, "Starting Bluetooth Discovery.");
+    self->ctx->logger.LogInfo(TAG, "Starting Bluetooth Discovery.");
 
     if (self->btManager->switchDiscovery(true) == 0) {
-      self->logger->LogInfo(TAG, "Bluetooth Discovery Started.");
+      self->ctx->logger.LogInfo(TAG, "Bluetooth Discovery Started.");
       self->updateBTList();
     }
   }
@@ -216,7 +219,9 @@ void BluetoothModule::handlePower(GtkWidget *widget, gpointer user_data) {
   if (!self->btManager->switchPower(active)) {
     std::string msg = "Bluetooth Power Switched ";
     msg += (active ? "ON" : "OFF");
-    self->logger->LogInfo(TAG, msg);
+    self->ctx->logger.LogInfo(TAG, msg);
+    self->ctx->showUpdateWindow(UpdateModule::BLUETOOTH, "base",
+                                msg);
   }
 
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget),
@@ -227,5 +232,8 @@ void BluetoothModule::handleDeviceConnect(GtkWidget *widget,
                                           gpointer user_data) {
   FuncArgs *args = static_cast<FuncArgs *>(user_data);
 
-  args->btManager->connectDevice(args->state, args->devIfacePath);
+  if(!args->btManager->connectDevice(args->state, args->devIfacePath)) {
+      args->ctx->showUpdateWindow(UpdateModule::BLUETOOTH, "connected",
+                                  args->state ? "Connected to Device" : "Disconnected from Device");
+  }
 }

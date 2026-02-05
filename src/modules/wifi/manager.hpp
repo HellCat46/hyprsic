@@ -22,4 +22,11 @@ public:
   int GetConnectedDevice();
   void GetDevices();
   int GetDeviceInfo(std::string devPath, WifiStation &station);
+  
+  // Action methods
+  int Connect(const std::string &networkPath);
+  int Disconnect;
+  
+  
+    
 };

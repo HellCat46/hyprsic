@@ -7,7 +7,7 @@ ScreenSaverModule::ScreenSaverModule(AppContext *ctx,
                                      ScreenSaverManager *scrnsavrInstance) {
   screenSaverMgr = scrnsavrInstance;
   screenSaverMgr = new ScreenSaverManager(ctx);
-  logger = &ctx->logging;
+  logger = &ctx->logger;
 }
 
 void ScreenSaverModule::setup(GtkWidget *grid) {

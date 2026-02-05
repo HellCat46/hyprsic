@@ -14,7 +14,7 @@
 NotificationModule::NotificationModule(AppContext *ctx,
                                        NotificationManager *notifInstance) {
   notifInstance = notifInstance;
-  logger = &ctx->logging;
+  logger = &ctx->logger;
   dbManager = &ctx->dbManager;
 }
 

@@ -19,13 +19,13 @@ void NotificationManager::setupDBus() {
   if (dbus_error_is_set(&(ctx->dbus.ssnErr))) {
     std::string errMsg = "Failed to request name for Notifications: ";
     errMsg += ctx->dbus.ssnErr.message;
-    ctx->logging.LogError(TAG, errMsg);
+    ctx->logger.LogError(TAG, errMsg);
     dbus_error_free(&(ctx->dbus.ssnErr));
     return;
   }
 
   if (ret != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) {
-    ctx->logging.LogError(TAG,
+    ctx->logger.LogError(TAG,
                           "Another Notification Service is already running.");
     return;
   }
@@ -43,12 +43,12 @@ void NotificationManager::setupDBus() {
   if (dbus_error_is_set(&(ctx->dbus.ssnErr))) {
     std::string errMsg = "Failed to add filter for Notifications: ";
     errMsg += ctx->dbus.ssnErr.message;
-    ctx->logging.LogError(TAG, errMsg);
+    ctx->logger.LogError(TAG, errMsg);
     dbus_error_free(&(ctx->dbus.ssnErr));
     return;
   }
 
-  ctx->logging.LogInfo(TAG, "Started Notification Capture Service");
+  ctx->logger.LogInfo(TAG, "Started Notification Capture Service");
 }
 
 void NotificationManager::handleDbusMessage(
@@ -67,7 +67,7 @@ void NotificationManager::handleDbusMessage(
       NotifFuncArgs args;
       args.notif = &notification;
       args.notifications = &notifications;
-      args.logger = &ctx->logging;
+      args.logger = &ctx->logger;
       args.dbManager = &ctx->dbManager;
 
       showNotification(&args);
@@ -80,7 +80,7 @@ void NotificationManager::handleDbusMessage(
     handleGetCapabilitiesCall(msg);
   } else if (HelperFunc::saferStrCmp(member, "GetServerInformation")) {
 
-    ctx->logging.LogInfo(TAG, "Received GetServerInformation Call");
+    ctx->logger.LogInfo(TAG, "Received GetServerInformation Call");
     handleGetServerInformationCall(msg);
   }
 }
@@ -131,7 +131,7 @@ void NotificationManager::handleCloseNotificationCall(DBusMessage *msg) {
   dbus_int32_t notifId;
 
   if (!dbus_message_iter_init(msg, &args)) {
-    ctx->logging.LogError(TAG, "CloseNotification Message has no arguments!");
+    ctx->logger.LogError(TAG, "CloseNotification Message has no arguments!");
     return;
   }
 
@@ -160,7 +160,7 @@ Notification NotificationManager::handleNotifyCall(DBusMessage *msg) {
   notif.id = g_uuid_string_random();
 
   if (!dbus_message_iter_init(msg, &args)) {
-    ctx->logging.LogError(TAG, "Notification Message has no arguments!");
+    ctx->logger.LogError(TAG, "Notification Message has no arguments!");
 
     DBusMessage *reply = dbus_message_new_error(msg, DBUS_ERROR_INVALID_ARGS,
                                                 "No arguments provided");
@@ -172,7 +172,7 @@ Notification NotificationManager::handleNotifyCall(DBusMessage *msg) {
   // Parse Application Name
   const char *app_name = nullptr;
   if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_STRING) {
-    ctx->logging.LogError(TAG, "Invalid argument type for app_name!");
+    ctx->logger.LogError(TAG, "Invalid argument type for app_name!");
     return notif;
   }
   dbus_message_iter_get_basic(&args, &app_name);
@@ -182,7 +182,7 @@ Notification NotificationManager::handleNotifyCall(DBusMessage *msg) {
   // Parse Replaces ID
   dbus_uint32_t replaces_id = 0;
   if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_UINT32) {
-    ctx->logging.LogError(TAG, "Invalid argument type for replaces_id!");
+    ctx->logger.LogError(TAG, "Invalid argument type for replaces_id!");
     return notif;
   }
   dbus_message_iter_get_basic(&args, &replaces_id);
@@ -192,7 +192,7 @@ Notification NotificationManager::handleNotifyCall(DBusMessage *msg) {
   // Parse App Icon
   const char *app_icon = nullptr;
   if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_STRING) {
-    ctx->logging.LogError(TAG, "Invalid argument type for app_icon!");
+    ctx->logger.LogError(TAG, "Invalid argument type for app_icon!");
     return notif;
   }
   dbus_message_iter_get_basic(&args, &app_icon);
@@ -202,7 +202,7 @@ Notification NotificationManager::handleNotifyCall(DBusMessage *msg) {
   // Parse Summary
   const char *summary = nullptr;
   if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_STRING) {
-    ctx->logging.LogError(TAG, "Invalid argument type for summary!");
+    ctx->logger.LogError(TAG, "Invalid argument type for summary!");
     return notif;
   }
   dbus_message_iter_get_basic(&args, &summary);
@@ -212,7 +212,7 @@ Notification NotificationManager::handleNotifyCall(DBusMessage *msg) {
   // Parse Body
   const char *body = nullptr;
   if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_STRING) {
-    ctx->logging.LogError(TAG, "Invalid argument type for body!");
+    ctx->logger.LogError(TAG, "Invalid argument type for body!");
     return notif;
   }
   dbus_message_iter_get_basic(&args, &body);
@@ -222,7 +222,7 @@ Notification NotificationManager::handleNotifyCall(DBusMessage *msg) {
   // Parse Actions
   DBusMessageIter actions_iter;
   if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_ARRAY) {
-    ctx->logging.LogError(TAG, "Invalid argument type for actions!");
+    ctx->logger.LogError(TAG, "Invalid argument type for actions!");
     return notif;
   }
   dbus_message_iter_recurse(&args, &actions_iter);
@@ -231,7 +231,7 @@ Notification NotificationManager::handleNotifyCall(DBusMessage *msg) {
   // Parse Hints
   DBusMessageIter hints_iter;
   if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_ARRAY) {
-    ctx->logging.LogError(TAG, "Invalid argument type for hints!");
+    ctx->logger.LogError(TAG, "Invalid argument type for hints!");
     return notif;
   }
   dbus_message_iter_recurse(&args, &hints_iter);
@@ -241,7 +241,7 @@ Notification NotificationManager::handleNotifyCall(DBusMessage *msg) {
   // Parse Expire Timeout
   dbus_int32_t expire_timeout = 0;
   if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_INT32) {
-    ctx->logging.LogError(TAG, "Invalid argument type for expire_timeout!");
+    ctx->logger.LogError(TAG, "Invalid argument type for expire_timeout!");
     return notif;
   }
   dbus_message_iter_get_basic(&args, &expire_timeout);
@@ -257,7 +257,7 @@ Notification NotificationManager::handleNotifyCall(DBusMessage *msg) {
   // notifLog += app_icon;
   // notifLog += " | Timeout: ";
   // notifLog += std::to_string(expire_timeout);
-  // ctx->logging.LogInfo(TAG, notifLog);
+  // ctx->logger.LogInfo(TAG, notifLog);
 
   static dbus_uint32_t notifIdCounter = 1;
   dbus_uint32_t notifId = notifIdCounter++;

@@ -14,7 +14,7 @@
 
 MprisModule::MprisModule(AppContext *ctx, MprisManager *mprisMgr) {
   mprisInstance = mprisMgr;
-  logger = &ctx->logging;
+  logger = &ctx->logger;
 }
 
 void MprisModule::setup(GtkWidget *mainBox) {

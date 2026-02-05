@@ -2,6 +2,8 @@
 #include "../database/db_manager.hpp"
 #include "../logging/manager.hpp"
 #include "dbus/dbus.h"
+#include "glib.h"
+#include "gtk/gtk.h"
 
 class DbusSystem {
 public:
@@ -13,15 +15,34 @@ public:
 
   DbusSystem();
   ~DbusSystem();
-  
-  void DictToInt64(DBusMessageIter *iter, uint64_t& outValue);
-  void DictToString(DBusMessageIter *iter, std::string& outValue);
+
+  void DictToInt64(DBusMessageIter *iter, uint64_t &outValue);
+  void DictToString(DBusMessageIter *iter, std::string &outValue);
+};
+
+enum class UpdateModule {
+  MPRIS,
+  NOTIFICATIONS,
+  BLUETOOTH,
+  SCREENSAVER,
+  PULSEAUDIO,
+  WIFI
 };
 
 class AppContext {
+  GtkWidget *updateWindow;
+  GtkGrid *updateWinGrid;
+  GtkWidget *updateIcon;
+  GtkWidget *updateMsg;
+  guint updateTimeoutId;
+  
+  static void hideUpdateWindow(gpointer user_data);
 public:
   DbusSystem dbus;
   DBManager dbManager;
-  LoggingManager logging;
+  LoggingManager logger;
   AppContext();
+
+  void initUpdateWindow();
+  int showUpdateWindow(UpdateModule module, std::string type, std::string msg);
 };

@@ -12,7 +12,7 @@ int ScreenSaverManager::activateScreenSaver() {
       "org.freedesktop.ScreenSaver", "/org/freedesktop/ScreenSaver",
       "org.freedesktop.ScreenSaver", "Inhibit");
   if (!msg) {
-    this->ctx->logging.LogError(
+    this->ctx->logger.LogError(
         TAG, "Failed to create D-Bus message for Screen Saver Inhibit");
     return 1;
   }
@@ -22,7 +22,7 @@ int ScreenSaverManager::activateScreenSaver() {
 
   if (!dbus_message_append_args(msg, DBUS_TYPE_STRING, &app_name,
                                 DBUS_TYPE_STRING, &reason, DBUS_TYPE_INVALID)) {
-    this->ctx->logging.LogError(
+    this->ctx->logger.LogError(
         TAG, "Failed to append arguments to Screen Saver Inhibit message");
     dbus_message_unref(msg);
     return 1;
@@ -33,7 +33,7 @@ int ScreenSaverManager::activateScreenSaver() {
   if (!reply && dbus_error_is_set(&this->ctx->dbus.ssnErr)) {
     std::string errMsg = "D-Bus Error on Screen Saver Inhibit: ";
     errMsg += this->ctx->dbus.ssnErr.message;
-    this->ctx->logging.LogError(TAG, errMsg.c_str());
+    this->ctx->logger.LogError(TAG, errMsg.c_str());
     dbus_error_free(&this->ctx->dbus.ssnErr);
     dbus_message_unref(msg);
     return 1;
@@ -41,7 +41,7 @@ int ScreenSaverManager::activateScreenSaver() {
 
   DBusMessageIter iter;
   if (!dbus_message_iter_init(reply, &iter)) {
-    this->ctx->logging.LogError(TAG,
+    this->ctx->logger.LogError(TAG,
                                 "Screen Saver Inhibit reply has no arguments");
     dbus_message_unref(msg);
     dbus_message_unref(reply);
@@ -59,14 +59,14 @@ int ScreenSaverManager::deactivateScreenSaver() {
       "org.freedesktop.ScreenSaver", "/org/freedesktop/ScreenSaver",
       "org.freedesktop.ScreenSaver", "UnInhibit");
   if (!msg) {
-    this->ctx->logging.LogError(
+    this->ctx->logger.LogError(
         TAG, "Failed to create D-Bus message for Screen Saver UnInhibit");
     return 1;
   }
 
   if (!dbus_message_append_args(msg, DBUS_TYPE_UINT32, &inhibitCookie,
                                 DBUS_TYPE_INVALID)) {
-    this->ctx->logging.LogError(
+    this->ctx->logger.LogError(
         TAG, "Failed to append arguments to Screen Saver UnInhibit message");
     dbus_message_unref(msg);
     return 1;
@@ -77,7 +77,7 @@ int ScreenSaverManager::deactivateScreenSaver() {
   if (!reply && dbus_error_is_set(&this->ctx->dbus.ssnErr)) {
     std::string errMsg = "D-Bus Error on Screen Saver UnInhibit: ";
     errMsg += this->ctx->dbus.ssnErr.message;
-    this->ctx->logging.LogError(TAG, errMsg.c_str());
+    this->ctx->logger.LogError(TAG, errMsg.c_str());
     dbus_error_free(&this->ctx->dbus.ssnErr);
     dbus_message_unref(msg);
     return 1;

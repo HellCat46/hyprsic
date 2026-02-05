@@ -84,15 +84,23 @@ void HyprWSManager::liveEventListener() {
         if (HelperFunc::saferStrNCmp(buffer, "createworkspace", 15)) {
           char *ptr = std::strstr(buffer, "createworkspacev2>>");
           int wsId = parseWorkspaceId(ptr + 19);
+          if (wsId == -1) {
+            logger->LogError(TAG, "Failed to Parse Workspace ID from Event Info");
+            continue;
+          }
+          
           chngMade = true;
-
           logger->LogInfo(TAG, "Workspace Created: " + std::to_string(wsId));
 
         } else if (HelperFunc::saferStrNCmp(buffer, "workspace", 9)) {
           char *ptr = std::strstr(buffer, "workspacev2>>");
           int wsId = parseWorkspaceId(ptr + 13);
+          if(wsId == -1) {
+            logger->LogError(TAG, "Failed to Parse Workspace ID from Event Info");
+            continue;
+          }
+          
           chngMade = true;
-
           activeWorkspaceId = wsId;
           // logger->LogInfo(TAG,
           //                 "Active Workspace Changed: " +
@@ -100,16 +108,24 @@ void HyprWSManager::liveEventListener() {
         } else if (HelperFunc::saferStrNCmp(buffer, "focusedmon", 10)) {
           char *ptr = std::strstr(buffer, "focusedmonv2>>");
           int wsId = parseWorkspaceId(ptr + 14);
+          if (wsId == -1) {
+            logger->LogError(TAG, "Failed to Parse Workspace ID from Event Info");
+            continue;
+          }
+          
           chngMade = true;
-
           activeWorkspaceId = wsId;
         } else {
 
           if (std::strstr(buffer, "destroyworkspace") != nullptr) {
             char *ptr = std::strstr(buffer, "destroyworkspacev2>>");
             int wsId = parseWorkspaceId(ptr + 20);
+            if (wsId == -1) {
+              logger->LogError(TAG, "Failed to Parse Workspace ID from Event Info");
+              continue;
+            }
+            
             chngMade = true;
-
             workspaces.erase(wsId);
             logger->LogInfo(TAG, "Workspace Deleted: " + std::to_string(wsId));
           }
@@ -126,10 +142,13 @@ void HyprWSManager::liveEventListener() {
 }
 
 int HyprWSManager::parseWorkspaceId(char *stPoint) {
-  int id = 0;
+  if (stPoint == nullptr) {
+    return -1;
+  }
+  int id = -1;
 
-  for (int idx = 0;
-       stPoint[idx] != '\n' && stPoint[idx] != '\0' && stPoint[idx] != ',';
+  for (int idx = 0; stPoint[idx] != '\n' && stPoint[idx] != '\0' &&
+                    stPoint[idx] != ',' && idx < 1005;
        idx++) {
     if (stPoint[idx] >= 48 && stPoint[idx] <= 57) {
       id = (id * 10) + (stPoint[idx] - 48);

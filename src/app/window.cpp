@@ -20,13 +20,13 @@ Window::Window(AppContext *ctx, MprisManager *mprisMgr,
     : mprisModule(ctx, mprisMgr), hyprModule(ctx, hyprMgr),
       scrnsavrModule(ctx, scrnsavrMgr), btModule(ctx, btMgr),
       notifModule(ctx, notifInstance), snModule(ctx, snManager),
-      sysinfoModule(stat, mem, load, battery), paModule(paMgr, &ctx->logging) {}
+      sysinfoModule(stat, mem, load, battery), paModule(paMgr, &ctx->logger) {}
 
 MainWindow::MainWindow()
     : notifManager(&ctx), btManager(&ctx), mprisManager(&ctx),
-      scrnsavrManager(&ctx), hyprInstance(&ctx.logging), snManager(&ctx),
-      load(&ctx.logging), mem(&ctx.logging), stat(&ctx.logging),
-      battery(&ctx.logging), paManager(&ctx.logging), wifiManager(&ctx) {
+      scrnsavrManager(&ctx), hyprInstance(&ctx.logger), snManager(&ctx),
+      load(&ctx.logger), mem(&ctx.logger), stat(&ctx.logger),
+      battery(&ctx.logger), paManager(&ctx.logger), wifiManager(&ctx) {
 
   btManager.setup();
   hyprInstance.liveEventListener();
@@ -46,8 +46,9 @@ void MainWindow::RunApp() {
 void MainWindow::activate(GtkApplication *app, gpointer user_data) {
   MainWindow *self = static_cast<MainWindow *>(user_data);
   GdkDisplay *display = gdk_display_get_default();
+  self->ctx.initUpdateWindow();
+  
   int mCount = gdk_display_get_n_monitors(display);
-
   for (int i = 0; i < mCount; i++) {
     std::unique_ptr<Window> winInstance = std::unique_ptr<Window>(
         new Window(&self->ctx, &self->mprisManager, &self->scrnsavrManager,
@@ -127,7 +128,7 @@ void MainWindow::captureSessionDBus() {
   DBusMessage *msg;
   while (1) {
     if (!dbus_connection_read_write_dispatch(ctx.dbus.ssnConn, 100)) {
-      ctx.logging.LogError(
+      ctx.logger.LogError(
           TAG, "Connection Closed while Waiting for Notification Messages");
       return;
     }

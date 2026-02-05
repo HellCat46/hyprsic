@@ -7,7 +7,7 @@
 
 HyprWSModule::HyprWSModule(AppContext *ctx, HyprWSManager *hyprInstance) {
     this->hyprInstance = hyprInstance;
-  logger = &ctx->logging;
+  logger = &ctx->logger;
 }
 
 void HyprWSModule::setup(GtkWidget *main_box) {

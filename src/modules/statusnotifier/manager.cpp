@@ -33,13 +33,13 @@ void StatusNotifierManager::setupDBus() {
   if (dbus_error_is_set(&(ctx->dbus.ssnErr))) {
     std::string errMsg = "Failed to request name for Notifications: ";
     errMsg += ctx->dbus.ssnErr.message;
-    ctx->logging.LogError(TAG, errMsg);
+    ctx->logger.LogError(TAG, errMsg);
     dbus_error_free(&(ctx->dbus.ssnErr));
     return;
   }
 
   if (ret != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) {
-    ctx->logging.LogError(TAG,
+    ctx->logger.LogError(TAG,
                           "Another Notification Service is already running.");
     return;
   }
@@ -71,12 +71,12 @@ void StatusNotifierManager::setupDBus() {
   if (dbus_error_is_set(&(ctx->dbus.ssnErr))) {
     std::string errMsg = "Failed to add filter for Notifications: ";
     errMsg += ctx->dbus.ssnErr.message;
-    ctx->logging.LogError(TAG, errMsg);
+    ctx->logger.LogError(TAG, errMsg);
     dbus_error_free(&(ctx->dbus.ssnErr));
     return;
   }
 
-  ctx->logging.LogDebug(TAG, "Started Status Notifier Capture Service");
+  ctx->logger.LogDebug(TAG, "Started Status Notifier Capture Service");
 }
 
 void StatusNotifierManager::handleDbusMessage(DBusMessage *msg) {
@@ -125,7 +125,7 @@ void StatusNotifierManager::handleIntrospectCall(DBusMessage *msg) {
   dbus_connection_flush(ctx->dbus.ssnConn);
   dbus_message_unref(reply);
 
-  ctx->logging.LogDebug(TAG, "Responded to Introspect Call.");
+  ctx->logger.LogDebug(TAG, "Responded to Introspect Call.");
 }
 
 void StatusNotifierManager::handleGetAllPropertiesCall(DBusMessage *msg) {
@@ -140,7 +140,7 @@ void StatusNotifierManager::handleGetAllPropertiesCall(DBusMessage *msg) {
   dbus_connection_flush(ctx->dbus.ssnConn);
   dbus_message_unref(reply);
 
-  ctx->logging.LogDebug(TAG, "Received GetAll Properties Call.");
+  ctx->logger.LogDebug(TAG, "Received GetAll Properties Call.");
 }
 
 void StatusNotifierManager::handleGetPropertyCall(DBusMessage *msg) {
@@ -198,7 +198,7 @@ void StatusNotifierManager::handleRegisterStatusNotifierHost(DBusMessage *msg) {
   dbus_connection_flush(ctx->dbus.ssnConn);
   dbus_message_unref(reply);
 
-  ctx->logging.LogDebug(TAG, "Registered Status Notifier Host.");
+  ctx->logger.LogDebug(TAG, "Registered Status Notifier Host.");
 }
 
 /* Function will handle Registration of New Apps into Status Notifier Items
@@ -218,7 +218,7 @@ void StatusNotifierManager::handleRegisterStatusNotifierItem(DBusMessage *msg) {
   // Send Method Return Reply
   DBusMessage *reply = dbus_message_new_method_return(msg);
   if (!reply) {
-    ctx->logging.LogError(
+    ctx->logger.LogError(
         TAG, "Failed to create a Method Return Reply for Item Registration.");
     return;
   }
@@ -231,7 +231,7 @@ void StatusNotifierManager::handleRegisterStatusNotifierItem(DBusMessage *msg) {
       "/StatusNotifierWatcher", "org.kde.StatusNotifierWatcher",
       "StatusNotifierItemRegistered");
   if (!regSignal) {
-    ctx->logging.LogError(
+    ctx->logger.LogError(
         TAG, "Failed to create StatusNotifierItemRegistered Signal.");
     return;
   }
@@ -251,7 +251,7 @@ void StatusNotifierManager::handleRegisterStatusNotifierItem(DBusMessage *msg) {
       "/StatusNotifierWatcher", "org.freedesktop.DBus.Properties",
       "PropertiesChanged");
   if (!chgSignal) {
-    ctx->logging.LogError(TAG, "Failed to create PropertiesChanged Signal.");
+    ctx->logger.LogError(TAG, "Failed to create PropertiesChanged Signal.");
     return;
   }
 
@@ -304,7 +304,7 @@ void StatusNotifierManager::handleRegisterStatusNotifierItem(DBusMessage *msg) {
 
   registeredItems.insert({itemServiceStr, appInfo});
 
-  ctx->logging.LogDebug(TAG, "Registered Status Notifier Item. New Count: " +
+  ctx->logger.LogDebug(TAG, "Registered Status Notifier Item. New Count: " +
                                  std::to_string(registeredItems.size()));
 }
 
@@ -315,7 +315,7 @@ void StatusNotifierManager::getItemInfo(const std::string &itemService,
       dbus_message_new_method_call(itemService.c_str(), "/StatusNotifierItem",
                                    "org.freedesktop.DBus.Properties", "GetAll");
   if (!msg) {
-    ctx->logging.LogError(TAG, "Failed to create a message to get Item Info.");
+    ctx->logger.LogError(TAG, "Failed to create a message to get Item Info.");
     return;
   }
 
@@ -329,7 +329,7 @@ void StatusNotifierManager::getItemInfo(const std::string &itemService,
   if (!reply && dbus_error_is_set(&(ctx->dbus.ssnErr))) {
     std::string errMsg = "Failed to get a reply for Item Info. ";
     errMsg += ctx->dbus.ssnErr.message;
-    ctx->logging.LogError(TAG, errMsg);
+    ctx->logger.LogError(TAG, errMsg);
     dbus_error_free(&ctx->dbus.ssnErr);
     dbus_message_unref(msg);
     return;
@@ -391,7 +391,7 @@ void StatusNotifierManager::getItemInfo(const std::string &itemService,
 void StatusNotifierManager::getMenuActions(const std::string &itemService,
                                            StatusApp &outApp) {
   if (outApp.menu_path.size() == 0) {
-    ctx->logging.LogDebug(TAG, "No Menu Path available for the Item. Skipping "
+    ctx->logger.LogDebug(TAG, "No Menu Path available for the Item. Skipping "
                                "Menu Actions retrieval.");
     return;
   }
@@ -405,7 +405,7 @@ void StatusNotifierManager::getMenuActions(const std::string &itemService,
                                                   outApp.menu_path.c_str(),
                                                   iface.c_str(), "GetLayout");
   if (!msg) {
-    ctx->logging.LogError(TAG,
+    ctx->logger.LogError(TAG,
                           "Failed to create a message to get Menu Actions.");
     return;
   }
@@ -440,7 +440,7 @@ void StatusNotifierManager::getMenuActions(const std::string &itemService,
   if (!reply && dbus_error_is_set(&(ctx->dbus.ssnErr))) {
     std::string errMsg = "Failed to get a reply for Menu Actions. ";
     errMsg += ctx->dbus.ssnErr.message;
-    ctx->logging.LogError(TAG, errMsg);
+    ctx->logger.LogError(TAG, errMsg);
     dbus_error_free(&ctx->dbus.ssnErr);
     dbus_message_unref(msg);
     return;
@@ -529,7 +529,7 @@ void StatusNotifierManager::handleNameOwnerChangedSignal(DBusMessage *msg, const
     for (auto &callback : removeCallbacks) {
       callback.callback(nameStr, callback.sniApps, callback.widget);
     }
-    ctx->logging.LogDebug(TAG,
+    ctx->logger.LogDebug(TAG,
                           "Unregistered Status Notifier Item. New Count: " +
                               std::to_string(registeredItems.size()));
   }
@@ -547,7 +547,7 @@ void StatusNotifierManager::executeMenuAction(const std::string &itemService,
   DBusMessage *msg = dbus_message_new_method_call(
       itemService.c_str(), menuPath.c_str(), iface.c_str(), "EventGroup");
   if (!msg) {
-    ctx->logging.LogError(TAG,
+    ctx->logger.LogError(TAG,
                           "Failed to create a message to execute Menu Action.");
     return;
   }
@@ -580,7 +580,7 @@ void StatusNotifierManager::executeMenuAction(const std::string &itemService,
   if (!reply && dbus_error_is_set(&(ctx->dbus.ssnErr))) {
     std::string errMsg = "Failed to get a reply for Execute Menu Action. ";
     errMsg += ctx->dbus.ssnErr.message;
-    ctx->logging.LogError(TAG, errMsg);
+    ctx->logger.LogError(TAG, errMsg);
     dbus_error_free(&ctx->dbus.ssnErr);
     dbus_message_unref(msg);
     return;

@@ -34,12 +34,15 @@ dbus-cpp
 jsoncpp
 ```
 
+## Credits
+- Icons from [Material Design Icons](https://fonts.google.com/icons)
+
 ## References
 - [Hyprland IPC](https://wiki.hyprland.org/IPC/)
 - [Socket Programming](https://www.linuxhowtos.org/C_C++/socket.htm)
 - [CPP Reference](https://en.cppreference.com/w/)
 - [PulseAudio Async API](https://freedesktop.org/software/pulseaudio/doxygen/async.html)
-- [Dbus-1 Docs](https://dbus.freedesktop.org/doc/api/html/group__DBusBus.html)
+- [Dbus-1 Docs](https://dbus.freedesktop.org/doc/dbus-specification.html)
 - [Desktop Notification Specs - Linux](https://specifications.freedesktop.org/notification/latest/)
 
 [//]: # (Why were dbus-1 docs so hard to find ;-;)

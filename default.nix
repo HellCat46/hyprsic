@@ -16,6 +16,7 @@ pkgs.stdenv.mkDerivation {
     wayland
     wayland-protocols
     jsoncpp
+    librsvg
     dbus-cpp
     dbus.dev
     libpulseaudio

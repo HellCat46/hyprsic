@@ -6,11 +6,12 @@ struct FuncArgs {
   char *devIfacePath;
   bool state;
   BluetoothManager *btManager;
+  AppContext *ctx;
 };
 
 class BluetoothModule {
   BluetoothManager* btManager;
-  LoggingManager *logger;
+  AppContext *ctx;
   GtkWidget *btPowerBtn;
   GtkWidget *btScanBtn;
   GtkWidget *btMenuWin;
