@@ -6,7 +6,7 @@
 
 class NotificationModule {
   NotificationManager* notifInstance;
-  LoggingManager *logger;
+  AppContext *ctx;
   DBManager* dbManager;
 
   GtkWidget *menuWin;
@@ -20,6 +20,8 @@ public:
 
   static void chgVisibiltyWin(GtkWidget *widget, GdkEvent *e, gpointer user_data);
   static void deleteNotificationCb(GtkWidget *widget, gpointer user_data);
+  
+  static void handleDndToggle(GtkSwitch *widget, gboolean state, gpointer user_data);
   
   // Notification PopUp Functions
   static void showNotification(NotifFuncArgs *args);

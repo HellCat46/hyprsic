@@ -12,11 +12,8 @@
 #define TAG "NotificationModule"
 
 NotificationModule::NotificationModule(AppContext *ctx,
-                                       NotificationManager *notifInstance) {
-  notifInstance = notifInstance;
-  logger = &ctx->logger;
-  dbManager = &ctx->dbManager;
-}
+                                       NotificationManager *notifInstance)
+    : notifInstance(notifInstance), ctx(ctx), dbManager(&ctx->dbManager) {}
 
 void NotificationModule::setup(GtkWidget *box) {
   GtkWidget *notifEBox = gtk_event_box_new();
@@ -41,11 +38,27 @@ void NotificationModule::setup(GtkWidget *box) {
   gtk_widget_set_margin_top(main_box, 10);
   gtk_widget_set_margin_bottom(main_box, 10);
 
-  // Title Bar with Close Button
-
+  // Title Bar
   GtkWidget *notifTitle = gtk_label_new(nullptr);
-  gtk_label_set_markup(GTK_LABEL(notifTitle), "<b>Notifications</b>");
+  gtk_label_set_markup(GTK_LABEL(notifTitle),
+                       "<big><b>Notifications</b></big>");
   gtk_box_pack_start(GTK_BOX(main_box), notifTitle, FALSE, FALSE, 0);
+
+  // Do Not Disturb Toggle
+  GtkWidget *dndBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  gtk_widget_set_margin_bottom(dndBox, 10);
+  gtk_widget_set_margin_start(dndBox, 10);
+  gtk_widget_set_margin_end(dndBox, 10);
+
+  GtkWidget *dndLbl = gtk_label_new(nullptr);
+  gtk_label_set_markup(GTK_LABEL(dndLbl), "<b>Do Not Disturb</b>");
+  gtk_widget_set_halign(dndLbl, GTK_ALIGN_START);
+  gtk_box_pack_start(GTK_BOX(dndBox), dndLbl, FALSE, FALSE, 0);
+
+  GtkWidget *dndSwitch = gtk_switch_new();
+  gtk_box_pack_end(GTK_BOX(dndBox), dndSwitch, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(main_box), dndBox, FALSE, FALSE, 0);
+  g_signal_connect(dndSwitch, "state-set", G_CALLBACK(handleDndToggle), this);
 
   // Scrollable Window for Notifications
   GtkWidget *scrollWin = gtk_scrolled_window_new(nullptr, nullptr);
@@ -136,11 +149,17 @@ void NotificationModule::showNotification(NotifFuncArgs *args) {
   close_args->notifications = args->notifications;
   close_args->logger = args->logger;
   close_args->dbManager = args->dbManager;
+  close_args->dnd = args->dnd;
 
   close_args->notif = new Notification();
   close_args->notif->app_name = args->notif->app_name.c_str();
   close_args->notif->summary = args->notif->summary.c_str();
   close_args->notif->body = args->notif->body.c_str();
+
+  if (args->dnd) {
+    autoCloseNotificationCb(close_args);
+    return;
+  }
 
   GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 
@@ -237,7 +256,7 @@ void NotificationModule::closeNotificationCb(GtkWidget *widget,
 
 void NotificationModule::autoCloseNotificationCb(gpointer user_data) {
   NotifFuncArgs *args = static_cast<NotifFuncArgs *>(user_data);
-  
+
   args->logger->LogInfo(
       TAG, "Auto-closing notification ID: " + std::string(args->notifId) +
                " after timeout of " +
@@ -245,9 +264,7 @@ void NotificationModule::autoCloseNotificationCb(gpointer user_data) {
 
   // Save to DB that notification was closed due to timeout
   auto it = args->notifications->find(args->notifId);
-  if (it != args->notifications->end()) {
-    args->logger->LogInfo(TAG, "Auto-closing notification ID: " +
-                                   std::string(args->notifId));
+  if (it != args->notifications->end() || args->dnd) {
     NotificationRecord record;
     record.id = args->notifId;
     record.app_name = args->notif->app_name;
@@ -288,4 +305,16 @@ void NotificationModule::deleteNotificationCb(GtkWidget *widget,
   NotifFuncArgs *args = static_cast<NotifFuncArgs *>(user_data);
 
   args->dbManager->removeNotification(args->notifId);
+}
+
+void NotificationModule::handleDndToggle(GtkSwitch *widget, gboolean state,
+                                         gpointer user_data) {
+  NotificationModule *self = static_cast<NotificationModule *>(user_data);
+  self->notifInstance->dnd = state;
+
+  std::string msg =
+      "Do Not Disturb Mode " + std::string(state ? "Enabled" : "Disabled");
+  self->ctx->logger.LogInfo(TAG, msg);
+  self->ctx->showUpdateWindow(UpdateModule::NOTIFICATIONS,
+                              state ? "dnd_on" : "dnd_off", msg);
 }

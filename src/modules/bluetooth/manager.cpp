@@ -319,8 +319,7 @@ void BluetoothManager::handlePropertiesChanged(DBusMessage *msg,
   if (!path || std::strlen(path) < 21) {
     ctx->logger.LogWarning(TAG,
                            "Unable to Extract Device Address from Object Path. "
-                           "Unknown Format. Skipping." +
-                               std::string(path));
+                           "Unknown Format. Skipping.");
     return;
   }
 

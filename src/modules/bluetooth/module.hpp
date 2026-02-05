@@ -1,4 +1,5 @@
 #pragma once
+#include "glib.h"
 #include "gtk/gtk.h"
 #include "manager.hpp"
 
@@ -29,11 +30,11 @@ public:
   BluetoothModule(AppContext *ctx, BluetoothManager *manager);
   // UI Prep Functions
   void setupBT(GtkWidget *box);
-  void updateBTList();
+  void updateBTList(bool force = false);
 
   static void switchVisibilityBTMenu(GtkWidget *widget, GdkEvent *e,
                                      gpointer user_data);
   static void handleDiscovery(GtkWidget *widget, gpointer user_data);
-  static void handlePower(GtkWidget *widget, gpointer user_data);
+  static void handlePower(GtkSwitch *widget, gboolean state, gpointer user_data);
   static void handleDeviceConnect(GtkWidget *widget, gpointer user_data);
 };

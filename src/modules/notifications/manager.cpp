@@ -69,6 +69,7 @@ void NotificationManager::handleDbusMessage(
       args.notifications = &notifications;
       args.logger = &ctx->logger;
       args.dbManager = &ctx->dbManager;
+      args.dnd = dnd;
 
       showNotification(&args);
     }

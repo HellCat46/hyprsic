@@ -1,5 +1,6 @@
 #include "module.hpp"
 #include "glib-object.h"
+#include "glib.h"
 #include "gtk-layer-shell.h"
 #include "gtk/gtk.h"
 #include "manager.hpp"
@@ -50,10 +51,18 @@ void BluetoothModule::setupBT(GtkWidget *box) {
   GtkWidget *topBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
   gtk_box_pack_start(GTK_BOX(mainBox), topBox, FALSE, FALSE, 0);
 
-  powerBtn = gtk_check_button_new_with_label("Power");
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(powerBtn), btManager->power);
-  gtk_box_pack_start(GTK_BOX(topBox), powerBtn, FALSE, FALSE, 0);
-  g_signal_connect(powerBtn, "clicked", G_CALLBACK(handlePower), this);
+  // Power Toggle
+  GtkWidget *powerBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  GtkWidget *powerLbl = gtk_label_new(nullptr);
+  gtk_label_set_markup(GTK_LABEL(powerLbl), "<b>Power</b>");
+  gtk_widget_set_halign(powerLbl, GTK_ALIGN_START);
+  gtk_box_pack_start(GTK_BOX(powerBox), powerLbl, FALSE, FALSE, 0);
+
+  powerBtn = gtk_switch_new();
+  gtk_switch_set_state(GTK_SWITCH(powerBtn), btManager->power);
+  gtk_box_pack_end(GTK_BOX(topBox), powerBtn, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(topBox), powerBox, FALSE, FALSE, 0);
+  g_signal_connect(powerBtn, "state-set", G_CALLBACK(handlePower), this);
 
   devBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
   gtk_box_pack_start(GTK_BOX(mainBox), devBox, FALSE, FALSE, 0);
@@ -95,6 +104,8 @@ void BluetoothModule::setupBT(GtkWidget *box) {
                    G_CALLBACK(BluetoothModule::switchVisibilityBTMenu), this);
 
   gtk_grid_attach(GTK_GRID(box), scanEBox, 8, 0, 1, 1);
+
+  updateBTList(true);
 }
 
 void BluetoothModule::switchVisibilityBTMenu(GtkWidget *widget, GdkEvent *e,
@@ -108,8 +119,8 @@ void BluetoothModule::switchVisibilityBTMenu(GtkWidget *widget, GdkEvent *e,
     gtk_widget_hide(self->menuWin);
 }
 
-void BluetoothModule::updateBTList() {
-  if (!gtk_widget_get_visible(menuWin))
+void BluetoothModule::updateBTList(bool force) {
+  if (!gtk_widget_get_visible(menuWin) && !force)
     return;
 
   GList *children = gtk_container_get_children(GTK_CONTAINER(availDevList));
@@ -233,19 +244,17 @@ void BluetoothModule::handleDiscovery(GtkWidget *widget, gpointer user_data) {
                        self->btManager->discovering ? "Stop" : "Scan");
 }
 
-void BluetoothModule::handlePower(GtkWidget *widget, gpointer user_data) {
+void BluetoothModule::handlePower(GtkSwitch *widget, gboolean state,
+                                  gpointer user_data) {
   BluetoothModule *self = static_cast<BluetoothModule *>(user_data);
 
-  gboolean active = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-  if (!self->btManager->switchPower(active)) {
+  if (!self->btManager->switchPower(state)) {
     std::string msg = "Bluetooth Power Switched ";
-    msg += (active ? "ON" : "OFF");
+    msg += (state ? "ON" : "OFF");
     self->ctx->logger.LogInfo(TAG, msg);
-    self->ctx->showUpdateWindow(UpdateModule::BLUETOOTH, active ? "base" : "disabled", msg);
+    self->ctx->showUpdateWindow(UpdateModule::BLUETOOTH,
+                                state ? "base" : "disabled", msg);
   }
-
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget),
-                               self->btManager->power);
 }
 
 void BluetoothModule::handleDeviceConnect(GtkWidget *widget,

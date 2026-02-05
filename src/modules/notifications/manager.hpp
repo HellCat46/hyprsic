@@ -24,6 +24,7 @@ struct NotifFuncArgs {
   std::unordered_map<std::string, GtkWidget *> *notifications;
   LoggingManager *logger;
   DBManager *dbManager;
+  bool dnd;
 };
 
 class NotificationManager {
@@ -40,8 +41,10 @@ class NotificationManager {
   GdkPixbuf *parseImageData(DBusMessageIter *hintsIter);
 
 public:
+  bool dnd;
   NotificationManager(AppContext *ctx);
 
   void setupDBus();
-  void handleDbusMessage(DBusMessage* msg, std::function<void(NotifFuncArgs *)> showNotification);
+  void handleDbusMessage(DBusMessage *msg,
+                         std::function<void(NotifFuncArgs *)> showNotification);
 };
