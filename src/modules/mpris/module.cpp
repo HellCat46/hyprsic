@@ -6,6 +6,7 @@
 #include "gtk-layer-shell.h"
 #include "gtk/gtk.h"
 #include "manager.hpp"
+#include "pango/pango-layout.h"
 #include <cerrno>
 #include <cstdint>
 #include <string>
@@ -20,6 +21,7 @@ MprisModule::MprisModule(AppContext *ctx, MprisManager *mprisMgr) {
 void MprisModule::setup(GtkWidget *mainBox) {
 
   mainLabel = gtk_label_new(nullptr);
+  gtk_label_set_ellipsize(GTK_LABEL(mainLabel), PANGO_ELLIPSIZE_END);
   GtkWidget *labelAction = gtk_event_box_new();
   g_signal_connect(labelAction, "button-press-event",
                    G_CALLBACK(MprisModule::chgVisibilityMenu), this);
@@ -102,15 +104,8 @@ void MprisModule::update() {
   if (!mprisInstance->GetPlayerInfo())
     return;
 
-  std::string content;
-  if (mprisInstance->playingTrack.title.length() > 40) {
-    content = mprisInstance->playingTrack.title.substr(0, 37).append("...");
-  } else {
-    content = mprisInstance->playingTrack.title;
-  }
-  gchar *valiText = g_utf8_make_valid(content.c_str(), -1);
-  gchar *finalText = HelperFunc::ValidString(content);
-
+  
+  gchar *finalText = HelperFunc::ValidString(mprisInstance->playingTrack.title);
   std::string title = "<span foreground='green'><b>";
   title += finalText;
   title += "</b></span>";
