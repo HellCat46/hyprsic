@@ -101,7 +101,7 @@ void MprisModule::setup(GtkWidget *mainBox) {
 }
 
 void MprisModule::update() {
-  if (!mprisInstance->GetPlayerInfo())
+  if (!mprisInstance->hasPlayer)
     return;
 
   

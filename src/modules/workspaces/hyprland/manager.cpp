@@ -145,7 +145,7 @@ int HyprWSManager::parseWorkspaceId(char *stPoint) {
   if (stPoint == nullptr) {
     return -1;
   }
-  int id = -1;
+  int id = 0;
 
   for (int idx = 0; stPoint[idx] != '\n' && stPoint[idx] != '\0' &&
                     stPoint[idx] != ',' && idx < 1005;
@@ -154,7 +154,7 @@ int HyprWSManager::parseWorkspaceId(char *stPoint) {
       id = (id * 10) + (stPoint[idx] - 48);
     }
   }
-  return id;
+  return id == 0 ? -1 : id;
 }
 
 Json::Value HyprWSManager::executeQuery(const std::string &msg,

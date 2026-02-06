@@ -100,12 +100,12 @@ void AppContext::initUpdateWindow() {
   gtk_widget_set_margin_top(updateMsg, 10);
   gtk_label_set_line_wrap(GTK_LABEL(updateMsg), true);
   gtk_widget_set_size_request(updateMsg, 200, -1);
-  
+
   gtk_grid_attach(updateWinGrid, updateMsg, 0, 4, 1, 1);
 }
 
 bool AppContext::showUpdateWindow(UpdateModule module, std::string type,
-                                 std::string msg) {
+                                  std::string msg) {
   if (updateTimeoutId != 0) {
     g_source_remove(updateTimeoutId);
   }
@@ -138,12 +138,27 @@ bool AppContext::showUpdateWindow(UpdateModule module, std::string type,
     logger.LogError(TAG, error->message);
     return 1;
   }
-  gtk_image_set_from_pixbuf(GTK_IMAGE(updateIcon), pixBuf);
-  g_object_unref(pixBuf);
 
-  gtk_label_set_markup(GTK_LABEL(updateMsg), ("<b>" + msg + "</b>").c_str());
+  // Update the UI in the Main Thread
+  auto data =
+      new UpdateWindowData{module, type, msg, this, pixBuf};
+  g_idle_add_once(
+      [](gpointer data) {
+        UpdateWindowData *updateData = static_cast<UpdateWindowData *>(data);
+        AppContext *ctx = updateData->ctx;
 
-  gtk_widget_show_all(updateWindow);
+        gtk_image_set_from_pixbuf(GTK_IMAGE(ctx->updateIcon),
+                                  updateData->pixBuf);
+        g_object_unref(updateData->pixBuf);
+
+        gtk_label_set_markup(GTK_LABEL(ctx->updateMsg),
+                             ("<b>" + updateData->msg + "</b>").c_str());
+        gtk_widget_show_all(ctx->updateWindow);
+        
+        delete updateData;
+      },
+      data);
+
   updateTimeoutId = g_timeout_add_once(2000, hideUpdateWindow, this);
   return 0;
 }

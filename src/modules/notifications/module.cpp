@@ -251,14 +251,7 @@ void NotificationModule::closeNotificationCb(GtkWidget *widget,
 
   auto it = args->notifications->find(args->notifId);
   if (it != args->notifications->end()) {
-
-    g_idle_add(
-        [](gpointer data) -> gboolean {
-          GtkWidget *win = static_cast<GtkWidget *>(data);
-          gtk_widget_destroy(win);
-          return G_SOURCE_REMOVE;
-        },
-        it->second);
+    gtk_widget_destroy(it->second);
     args->notifications->erase(it->first);
   }
 }
@@ -267,9 +260,7 @@ void NotificationModule::autoCloseNotificationCb(gpointer user_data) {
   NotifFuncArgs *args = static_cast<NotifFuncArgs *>(user_data);
 
   args->logger->LogInfo(
-      TAG, "Auto-closing notification ID: " + std::string(args->notifId) +
-               " after timeout of " +
-               std::to_string(args->notif->expire_timeout) + " ms.");
+      TAG, "Auto-closing/Clearing Resources notification ID: " + std::string(args->notifId));
 
   // Save to DB that notification was closed due to timeout
   auto it = args->notifications->find(args->notifId);

@@ -9,6 +9,7 @@
 #include "gtk/gtk.h"
 #include <ctime>
 #include <memory>
+#include <thread>
 
 #define TAG "MainWindow"
 
@@ -31,10 +32,11 @@ MainWindow::MainWindow()
   btManager.setup();
   hyprInstance.liveEventListener();
   ssnDBusThread = std::thread(&MainWindow::captureSessionDBus, this);
+  dataUpdateThread = std::thread(&MainWindow::UpdateData, this);
 
   app = gtk_application_new("com.hellcat.hyprsic", G_APPLICATION_DEFAULT_FLAGS);
   g_signal_connect(app, "activate", G_CALLBACK(activate), this);
-  g_timeout_add(5000, UpdateData, this);
+  g_timeout_add(delay, UpdateUI, this);
 }
 
 void MainWindow::RunApp() {
@@ -102,10 +104,19 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
   }
 }
 
-gboolean MainWindow::UpdateData(gpointer data) {
+void MainWindow::UpdateData() {
+    while(true){
+        btManager.getDeviceList();
+        stat.UpdateData();
+        paManager.getDevices();
+        mprisManager.GetPlayerInfo();
+        std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+    }
+}
+
+gboolean MainWindow::UpdateUI(gpointer data) {
   MainWindow *self = static_cast<MainWindow *>(data);
 
-  self->btManager.getDeviceList();
   for (auto &window : self->mainWindows) {
     window->sysinfoModule.update();
     window->mprisModule.update();
@@ -114,8 +125,6 @@ gboolean MainWindow::UpdateData(gpointer data) {
     window->snModule.update();
     window->paModule.update();
   }
-  self->stat.UpdateData();
-  self->paManager.getDevices();
   
   return true;
 }

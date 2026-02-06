@@ -17,6 +17,7 @@ class MprisManager {
   AppContext *ctx;
 
 public:
+  bool hasPlayer = false;
   PlayerTrack playingTrack;
   MprisManager(AppContext *appCtx);
   void addPlayer(const std::string &playerName);
@@ -25,7 +26,7 @@ public:
   bool PlayPause();
   bool PlayPauseDbusCall(const char *player);
 
-  bool GetPlayerInfo();
+  void GetPlayerInfo();
   int GetPlayerInfoDbusCall(const char *player, PlayerTrack *track);
   
   bool GetPosition();

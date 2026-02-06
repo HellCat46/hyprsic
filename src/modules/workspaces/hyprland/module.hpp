@@ -9,6 +9,12 @@ struct ChgWSArgs {
   unsigned int wsId;
 };
 
+struct UpdateWSData {
+  unsigned int wsId;
+  HyprWSManager *wsInstance;
+  GtkWidget *SectionWid;
+};
+
 class HyprWSModule {
   HyprWSManager* hyprInstance;
   GtkWidget *SectionWid;

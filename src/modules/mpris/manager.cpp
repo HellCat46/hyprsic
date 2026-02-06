@@ -221,7 +221,7 @@ int MprisManager::GetCurrentPositionDbusCall() {
   return 0;
 }
 
-bool MprisManager::GetPlayerInfo() {
+void MprisManager::GetPlayerInfo() {
   bool titleFound = false;
   for (const auto &player : players) {
 
@@ -230,11 +230,12 @@ bool MprisManager::GetPlayerInfo() {
 
     if (res == 0 && !track.title.empty()) {
       playingTrack = track;
-      return 1;
+      hasPlayer = true;
+      return;
     }
   }
 
-  return 0;
+  hasPlayer = false;
 }
 
 bool MprisManager::GetPosition() {

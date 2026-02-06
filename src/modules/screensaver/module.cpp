@@ -4,11 +4,8 @@
 #define TAG "ScreenSaverModule"
 
 ScreenSaverModule::ScreenSaverModule(AppContext *ctx,
-                                     ScreenSaverManager *scrnsavrInstance) {
-  screenSaverMgr = scrnsavrInstance;
-  screenSaverMgr = new ScreenSaverManager(ctx);
-  logger = &ctx->logger;
-}
+                                     ScreenSaverManager *scrnsavrInstance)
+    : screenSaverMgr(scrnsavrInstance), logger(&ctx->logger) {}
 
 void ScreenSaverModule::setup(GtkWidget *grid) {
   // L is temprorary placeholder until i find suitable icons

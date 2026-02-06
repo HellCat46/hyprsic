@@ -2,6 +2,7 @@
 #include "../database/db_manager.hpp"
 #include "../logging/manager.hpp"
 #include "dbus/dbus.h"
+#include "gdk-pixbuf/gdk-pixbuf.h"
 #include "glib.h"
 #include "gtk/gtk.h"
 
@@ -45,4 +46,11 @@ public:
 
   void initUpdateWindow();
   bool showUpdateWindow(UpdateModule module, std::string type, std::string msg);
+};
+
+struct UpdateWindowData {
+    UpdateModule module;
+    std::string type, msg;
+    AppContext* ctx;
+    GdkPixbuf* pixBuf;
 };

@@ -40,6 +40,8 @@ class MainWindow {
   GtkApplication *app = nullptr;
   std::vector<std::unique_ptr<Window>> mainWindows;
   AppContext ctx;
+  
+  short delay = 5000;
 
   Stats stat;
   Memory mem;
@@ -54,12 +56,13 @@ class MainWindow {
   PulseAudioManager paManager;
   WifiManager wifiManager;
   
-  std::thread ssnDBusThread;
+  std::thread ssnDBusThread, dataUpdateThread;
   void captureSessionDBus();
 
 public:
   MainWindow();
   void RunApp();
-  static gboolean UpdateData(gpointer data);
+  void UpdateData();
+  static gboolean UpdateUI(gpointer data);
   static void activate(GtkApplication *app, gpointer user_data);
 };
