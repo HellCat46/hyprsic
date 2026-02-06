@@ -31,18 +31,25 @@ void NotificationModule::setup(GtkWidget *box) {
   gtk_layer_set_anchor(GTK_WINDOW(menuWin), GTK_LAYER_SHELL_EDGE_BOTTOM, TRUE);
   gtk_layer_set_anchor(GTK_WINDOW(menuWin), GTK_LAYER_SHELL_EDGE_RIGHT, TRUE);
 
-  GtkWidget *main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-  gtk_container_add(GTK_CONTAINER(menuWin), main_box);
-  gtk_widget_set_margin_start(main_box, 10);
-  gtk_widget_set_margin_end(main_box, 10);
-  gtk_widget_set_margin_top(main_box, 10);
-  gtk_widget_set_margin_bottom(main_box, 10);
+  GtkWidget *mainBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+  gtk_container_add(GTK_CONTAINER(menuWin), mainBox);
+  gtk_widget_set_margin_start(mainBox, 10);
+  gtk_widget_set_margin_end(mainBox, 10);
+  gtk_widget_set_margin_top(mainBox, 10);
+  gtk_widget_set_margin_bottom(mainBox, 10);
 
-  // Title Bar
+  // TopBar Box
+  GtkWidget *topBar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  gtk_box_pack_start(GTK_BOX(mainBox), topBar, FALSE, FALSE, 0);
+
   GtkWidget *notifTitle = gtk_label_new(nullptr);
   gtk_label_set_markup(GTK_LABEL(notifTitle),
                        "<big><b>Notifications</b></big>");
-  gtk_box_pack_start(GTK_BOX(main_box), notifTitle, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(topBar), notifTitle, FALSE, FALSE, 0);
+
+  GtkWidget *clearBtn = gtk_button_new_with_label("Clear All");
+  gtk_box_pack_end(GTK_BOX(topBar), clearBtn, FALSE, FALSE, 0);
+  g_signal_connect(clearBtn, "clicked", G_CALLBACK(handleClearAll), this);
 
   // Do Not Disturb Toggle
   GtkWidget *dndBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
@@ -57,7 +64,7 @@ void NotificationModule::setup(GtkWidget *box) {
 
   GtkWidget *dndSwitch = gtk_switch_new();
   gtk_box_pack_end(GTK_BOX(dndBox), dndSwitch, FALSE, FALSE, 0);
-  gtk_box_pack_start(GTK_BOX(main_box), dndBox, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(mainBox), dndBox, FALSE, FALSE, 0);
   g_signal_connect(dndSwitch, "state-set", G_CALLBACK(handleDndToggle), this);
 
   // Scrollable Window for Notifications
@@ -66,25 +73,26 @@ void NotificationModule::setup(GtkWidget *box) {
                                  GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
   gtk_widget_set_size_request(scrollWin, 400, 300);
 
-  gtk_box_pack_start(GTK_BOX(main_box), scrollWin, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(mainBox), scrollWin, TRUE, TRUE, 0);
 
   scrollWinBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
   gtk_container_add(GTK_CONTAINER(scrollWin), scrollWinBox);
 
-  gtk_widget_show_all(main_box);
+  gtk_widget_show_all(mainBox);
+  update(true);
 }
 
-void NotificationModule::update() {
-  if (!gtk_widget_get_visible(menuWin))
+void NotificationModule::update(bool force) {
+  if (!gtk_widget_get_visible(menuWin) && !force)
     return;
 
-  GList *children = gtk_container_get_children(GTK_CONTAINER(scrollWinBox));
-  for (GList *iter = children; iter != nullptr; iter = iter->next) {
-    gtk_widget_destroy(GTK_WIDGET(iter->data));
-  }
-  g_list_free(children);
+  for (auto notif = dbManager->notifList.begin();
+       notif != dbManager->notifList.end(); ++notif) {
+    // If we've already processed this notification, skip the whole list as they
+    // are ordered by timestamp
+    if (notifLookup.find(notif->id) != notifLookup.end())
+      break;
 
-  for (const auto &[notifId, notif] : dbManager->notificationCache) {
     GtkWidget *notifBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
     gtk_widget_set_margin_top(notifBox, 5);
     gtk_widget_set_margin_bottom(notifBox, 5);
@@ -99,13 +107,13 @@ void NotificationModule::update() {
 
     GtkWidget *appName = gtk_label_new(nullptr);
     gtk_label_set_markup(GTK_LABEL(appName),
-                         ("<b>" + notif.app_name + "</b> - ").c_str());
+                         ("<b>" + notif->app_name + "</b> - ").c_str());
     gtk_widget_set_halign(appName, GTK_ALIGN_START);
     gtk_box_pack_start(GTK_BOX(topContent), appName, FALSE, FALSE, 0);
 
     GtkWidget *timestampLbl = gtk_label_new(nullptr);
     gtk_label_set_markup(GTK_LABEL(timestampLbl),
-                         ("<i>" + notif.timestamp + "</i>").c_str());
+                         ("<i>" + notif->timestamp + "</i>").c_str());
     gtk_widget_set_halign(timestampLbl, GTK_ALIGN_END);
     gtk_box_pack_start(GTK_BOX(topContent), timestampLbl, FALSE, FALSE, 0);
 
@@ -113,16 +121,16 @@ void NotificationModule::update() {
     gtk_label_set_markup(
         GTK_LABEL(titleLbl),
         (std::string("<b>Summary:</b> ") +
-         (notif.summary.size() > 25
-              ? HelperFunc::ValidString(notif.summary.substr(0, 22) + "...")
-              : HelperFunc::ValidString(notif.summary)))
+         (notif->summary.size() > 25
+              ? HelperFunc::ValidString(notif->summary.substr(0, 22) + "...")
+              : HelperFunc::ValidString(notif->summary)))
             .c_str());
     gtk_label_set_line_wrap(GTK_LABEL(titleLbl), TRUE);
     gtk_widget_set_halign(titleLbl, GTK_ALIGN_START);
     gtk_box_pack_start(GTK_BOX(contentBox), titleLbl, FALSE, FALSE, 0);
 
     GtkWidget *bodyLbl = gtk_label_new(nullptr);
-    gtk_label_set_markup(GTK_LABEL(bodyLbl), (notif.body.c_str()));
+    gtk_label_set_markup(GTK_LABEL(bodyLbl), (notif->body.c_str()));
     gtk_label_set_line_wrap(GTK_LABEL(bodyLbl), TRUE);
     gtk_widget_set_halign(bodyLbl, GTK_ALIGN_START);
     gtk_box_pack_start(GTK_BOX(contentBox), bodyLbl, FALSE, FALSE, 0);
@@ -130,15 +138,17 @@ void NotificationModule::update() {
     GtkWidget *removeBtn = gtk_button_new_with_label("✖");
     gtk_box_pack_end(GTK_BOX(notifBox), removeBtn, FALSE, FALSE, 0);
     NotifFuncArgs *close_args = g_new0(NotifFuncArgs, 1);
-    close_args->notifId = g_strdup(notifId.c_str());
+    close_args->notifId = g_strdup(notif->id.c_str());
     close_args->dbManager = dbManager;
+    close_args->notifLookup = &notifLookup;
     g_signal_connect_data(removeBtn, "clicked",
                           G_CALLBACK(NotificationModule::deleteNotificationCb),
                           close_args, (GClosureNotify)g_free, (GConnectFlags)0);
 
     gtk_container_add(GTK_CONTAINER(scrollWinBox), notifBox);
-
     gtk_widget_show_all(notifBox);
+
+    notifLookup.insert({notif->id, {notif, notifBox}});
   }
 }
 
@@ -177,16 +187,15 @@ void NotificationModule::showNotification(NotifFuncArgs *args) {
   gtk_window_set_decorated(GTK_WINDOW(window), FALSE);
   gtk_widget_set_size_request(window, 400, -1);
 
-  GtkWidget *main_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-  gtk_widget_set_margin_top(main_box, 5);
-  gtk_widget_set_margin_bottom(main_box, 5);
-  gtk_widget_set_margin_start(main_box, 5);
-  gtk_widget_set_margin_end(main_box, 5);
-  gtk_container_add(GTK_CONTAINER(window), main_box);
+  GtkWidget *mainBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  gtk_widget_set_margin_top(mainBox, 5);
+  gtk_widget_set_margin_bottom(mainBox, 5);
+  gtk_widget_set_margin_start(mainBox, 5);
+  gtk_widget_set_margin_end(mainBox, 5);
+  gtk_container_add(GTK_CONTAINER(window), mainBox);
 
   // Set Expire Timeout
-  args->notif->expire_timeout =
-      args->notif->expire_timeout <= 0 ? 5000 : args->notif->expire_timeout;
+  args->notif->expire_timeout = 5000;
   g_timeout_add_once(
       args->notif->expire_timeout,
       (GSourceOnceFunc)NotificationModule::autoCloseNotificationCb, close_args);
@@ -197,11 +206,11 @@ void NotificationModule::showNotification(NotifFuncArgs *args) {
   GtkWidget *logo_box = gtk_image_new_from_pixbuf(scaled_pixbuf);
   g_object_ref(args->notif->icon_pixbuf);
   gtk_widget_set_size_request(logo_box, 5, 5);
-  gtk_box_pack_start(GTK_BOX(main_box), logo_box, FALSE, FALSE, 5);
+  gtk_box_pack_start(GTK_BOX(mainBox), logo_box, FALSE, FALSE, 5);
 
   // Action Buttons - Close
   GtkWidget *action_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
-  gtk_box_pack_end(GTK_BOX(main_box), action_box, TRUE, TRUE, 5);
+  gtk_box_pack_end(GTK_BOX(mainBox), action_box, TRUE, TRUE, 5);
   GtkWidget *close_btn = gtk_button_new_with_label("✖");
   gtk_box_pack_start(GTK_BOX(action_box), close_btn, FALSE, FALSE, 0);
   g_signal_connect(close_btn, "clicked",
@@ -210,7 +219,7 @@ void NotificationModule::showNotification(NotifFuncArgs *args) {
 
   // Notification Texts
   GtkWidget *text_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
-  gtk_box_pack_start(GTK_BOX(main_box), text_box, TRUE, TRUE, 5);
+  gtk_box_pack_start(GTK_BOX(mainBox), text_box, TRUE, TRUE, 5);
 
   GtkWidget *title_box = gtk_label_new(nullptr);
   gtk_label_set_markup(GTK_LABEL(title_box),
@@ -270,6 +279,7 @@ void NotificationModule::autoCloseNotificationCb(gpointer user_data) {
     record.app_name = args->notif->app_name;
     record.summary = args->notif->summary;
     record.body = args->notif->body;
+    record.timestamp = args->dbManager->getCurrentTimestamp();
 
     if (!args->dbManager->insertNotification(&record)) {
       args->logger->LogInfo(
@@ -304,7 +314,17 @@ void NotificationModule::deleteNotificationCb(GtkWidget *widget,
                                               gpointer user_data) {
   NotifFuncArgs *args = static_cast<NotifFuncArgs *>(user_data);
 
-  args->dbManager->removeNotification(args->notifId);
+  auto it = args->notifLookup->find(args->notifId);
+  if (it != args->notifLookup->end()) {
+
+    args->dbManager->removeNotification(args->notifId, it->second.it);
+    gtk_widget_destroy(it->second.widget);
+    args->notifLookup->erase(it);
+  }
+
+  // // Free the arguments
+  // g_free(args->notifId);
+  // g_free(args);
 }
 
 void NotificationModule::handleDndToggle(GtkSwitch *widget, gboolean state,
@@ -317,4 +337,14 @@ void NotificationModule::handleDndToggle(GtkSwitch *widget, gboolean state,
   self->ctx->logger.LogInfo(TAG, msg);
   self->ctx->showUpdateWindow(UpdateModule::NOTIFICATIONS,
                               state ? "dnd_on" : "dnd_off", msg);
+}
+
+void NotificationModule::handleClearAll(GtkWidget *widget, gpointer user_data) {
+  NotificationModule *self = static_cast<NotificationModule *>(user_data);
+  self->dbManager->clearAllNotifications();
+
+  for (auto &pair : self->notifLookup) {
+    gtk_widget_destroy(pair.second.widget);
+  }
+  self->notifLookup.clear();
 }

@@ -87,14 +87,11 @@ DBManager::DBManager(LoggingManager *logMgr) : localDB(nullptr) {
     notif.body = countStmt.getColumn(3).getString();
     notif.timestamp = countStmt.getColumn(4).getString();
 
-    notificationCache[notif.id] = notif;
+    notifList.push_back(notif);
   }
-
-  // logger->LogDebug(TAG, "Notifications Loaded: " +
-  //                           std::to_string(notificationCache.size()));
 }
 
-int DBManager::insertNotification(const NotificationRecord *notif) {
+bool DBManager::insertNotification(const NotificationRecord *notif) {
   try {
     insertStmt->bind(1, notif->id);
     insertStmt->bind(2, notif->app_name);
@@ -103,8 +100,9 @@ int DBManager::insertNotification(const NotificationRecord *notif) {
 
     insertStmt->exec();
     insertStmt->reset();
+    
 
-    notificationCache[notif->id] = *notif;
+    notifList.push_front(*notif);
     return 0;
   } catch (const std::exception &e) {
     logger->LogError(TAG, "Failed to insert notification ID: " + notif->id +
@@ -115,13 +113,14 @@ int DBManager::insertNotification(const NotificationRecord *notif) {
   }
 }
 
-int DBManager::removeNotification(const std::string &id) {
+bool DBManager::removeNotification(const std::string &id,
+                                  std::list<NotificationRecord>::iterator &it) {
   try {
     deleteStmt->bind(1, id);
     deleteStmt->exec();
     deleteStmt->reset();
 
-    notificationCache.erase(id);
+    notifList.erase(it);
     return 0;
   } catch (const std::exception &e) {
     logger->LogError(TAG, "Failed to delete notification ID: " + id +
@@ -130,4 +129,15 @@ int DBManager::removeNotification(const std::string &id) {
 
     return -1;
   }
+}
+
+bool DBManager::clearAllNotifications(){
+    try {
+        localDB->exec("DELETE FROM notifications;");
+        notifList.clear();
+        return 0;
+    } catch (const std::exception &e) {
+        logger->LogError(TAG, "Failed to clear notifications: " + std::string(e.what()));
+        return -1;
+    }
 }

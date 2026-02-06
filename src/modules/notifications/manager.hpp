@@ -18,11 +18,17 @@ struct Notification {
   int32_t expire_timeout;
 };
 
+struct NotifListItem {
+  std::list<NotificationRecord>::iterator it;
+  GtkWidget *widget;
+};
+
 struct NotifFuncArgs {
   char *notifId;
   Notification *notif;
   std::unordered_map<std::string, GtkWidget *> *notifications;
-  LoggingManager *logger;
+  std::unordered_map<std::string, NotifListItem> *notifLookup;
+  LoggingManager *logger; 
   DBManager *dbManager;
   bool dnd;
 };

@@ -9,7 +9,7 @@
 
 #define TAG "NotificationManager"
 
-NotificationManager::NotificationManager(AppContext *ctx) : ctx(ctx) {}
+NotificationManager::NotificationManager(AppContext *ctx) : ctx(ctx), dnd(false) {}
 
 void NotificationManager::setupDBus() {
   int ret = dbus_bus_request_name(
