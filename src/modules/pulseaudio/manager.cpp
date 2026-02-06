@@ -221,7 +221,7 @@ short PulseAudioManager::toggleMute(const std::string &devName, bool isOutput) {
     pa_threaded_mainloop_lock(mainLoop);
     auto op = pa_context_set_sink_mute_by_index(
         pulseContext, it->second.index, !it->second.mute, nullptr, nullptr);
-    pa_threaded_mainloop_lock(mainLoop);
+    pa_threaded_mainloop_unlock(mainLoop);
 
     if (!op)
       return -1;
@@ -237,7 +237,7 @@ short PulseAudioManager::toggleMute(const std::string &devName, bool isOutput) {
     pa_threaded_mainloop_lock(mainLoop);
     auto op = pa_context_set_source_mute_by_index(
         pulseContext, it->second.index, !it->second.mute, nullptr, nullptr);
-    pa_threaded_mainloop_lock(mainLoop);
+    pa_threaded_mainloop_unlock(mainLoop);
 
     if (!op)
       return -1;
@@ -257,7 +257,7 @@ bool PulseAudioManager::updateDefDevice(const std::string &devName,
       pa_threaded_mainloop_lock(mainLoop);
       auto op = pa_context_set_default_sink(pulseContext, devName.c_str(),
                                             nullptr, nullptr);
-      pa_threaded_mainloop_lock(mainLoop);
+      pa_threaded_mainloop_unlock(mainLoop);
 
       if (!op)
         return false;
@@ -274,7 +274,7 @@ bool PulseAudioManager::updateDefDevice(const std::string &devName,
       pa_threaded_mainloop_lock(mainLoop);
       auto op = pa_context_set_default_source(pulseContext, devName.c_str(),
                                               nullptr, nullptr);
-      pa_threaded_mainloop_lock(mainLoop);
+      pa_threaded_mainloop_unlock(mainLoop);
 
       if (!op)
         return false;
