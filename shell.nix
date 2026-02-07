@@ -10,6 +10,7 @@ pkgs.mkShell {
   buildInputs = with pkgs; [
     gdb
     valgrind
+    clang
     clang-tools
     dbus
     gtk3

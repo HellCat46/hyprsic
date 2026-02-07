@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.20)
 project(hyprsic)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMKAKE_UNITY_BUILD ON)
 
 find_package(PkgConfig REQUIRED)
 

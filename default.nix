@@ -9,6 +9,8 @@ pkgs.stdenv.mkDerivation {
   nativeBuildInputs = with pkgs; [
     pkg-config
     gcc
+    cmake
+    ninja
     wayland-scanner
   ];
 
