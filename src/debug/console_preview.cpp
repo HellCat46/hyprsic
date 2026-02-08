@@ -4,8 +4,8 @@
 #define TAG "Display"
 
 Display::Display()
-    : hyprWS(&logger), net(&logger), stat(&logger), load(&logger), mem(&logger),
-      disk("/home/hellcat", &logger), battery(&logger) {
+    : ctx(), hyprWS(&ctx.logger), net(&ctx.logger), stat(&ctx.logger), load(&ctx.logger), mem(&ctx.logger),
+      disk("/home/hellcat", &ctx.logger), battery(&ctx) {
   // Initiating The Network and It's Stats
   stat.rx = net.GetTotRx();
   stat.tx = net.GetTotTx();
@@ -38,7 +38,7 @@ std::string Display::DisplayBar() {
            Stats::ParseBytes(stat.diskTotal, 2) + "\t";
   }
 
-  str += std::to_string(battery.getTotPercent()) + "\t";
+  str += std::to_string(battery.getBatteryStats().percent) + "\t";
 
   if (hyprWS.activeWorkspaceId == 0) {
     auto wsEntry = hyprWS.workspaces.find(hyprWS.activeWorkspaceId);

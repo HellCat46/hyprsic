@@ -130,6 +130,9 @@ bool AppContext::showUpdateWindow(UpdateModule module, std::string type,
   case UpdateModule::WIFI:
     svgPath += "wifi/" + type + ".svg";
     break;
+  case UpdateModule::BATTERY:
+    svgPath += "battery/" + type + ".svg";
+    break;
   }
 
   GError *error = nullptr;
@@ -140,8 +143,7 @@ bool AppContext::showUpdateWindow(UpdateModule module, std::string type,
   }
 
   // Update the UI in the Main Thread
-  auto data =
-      new UpdateWindowData{module, type, msg, this, pixBuf};
+  auto data = new UpdateWindowData{module, type, msg, this, pixBuf};
   g_idle_add_once(
       [](gpointer data) {
         UpdateWindowData *updateData = static_cast<UpdateWindowData *>(data);
@@ -154,7 +156,7 @@ bool AppContext::showUpdateWindow(UpdateModule module, std::string type,
         gtk_label_set_markup(GTK_LABEL(ctx->updateMsg),
                              ("<b>" + updateData->msg + "</b>").c_str());
         gtk_widget_show_all(ctx->updateWindow);
-        
+
         delete updateData;
       },
       data);

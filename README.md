@@ -35,7 +35,7 @@ jsoncpp
 ```
 
 ## Credits
-- Icons from [Material Design Icons](https://fonts.google.com/icons)
+- Icons from [Material Design Icons](https://fonts.google.com/icons) and [Lucide](https://lucide.dev/)
 
 ## References
 - [Hyprland IPC](https://wiki.hyprland.org/IPC/)

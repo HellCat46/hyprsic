@@ -27,7 +27,8 @@ enum class UpdateModule {
   BLUETOOTH,
   SCREENSAVER,
   PULSEAUDIO,
-  WIFI
+  WIFI,
+  BATTERY
 };
 
 class AppContext {

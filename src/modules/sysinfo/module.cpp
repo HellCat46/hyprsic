@@ -1,5 +1,7 @@
 #include "module.hpp"
 #include "gtk/gtk.h"
+#include "manager/battery.hpp"
+#include "../../utils/helper_func.hpp"
 #include <iomanip>
 #include <sstream>
 #include <string>
@@ -75,8 +77,18 @@ void SysInfoModule::update() {
   gtk_widget_set_tooltip_markup(memWid, tooltipTxt.c_str());
 
   // Update battery
-  txt = " " + std::to_string(battery->getTotPercent()) + "%";
+  BatteryStats battStats = battery->getBatteryStats();
+  txt = " " + std::to_string(battStats.percent) + "%";
   gtk_label_set_label(GTK_LABEL(batteryWid), txt.c_str());
+  tooltipTxt = "<b>Charger:</b> ";
+  if(battery->isCharging()){
+    tooltipTxt += "Charging";
+    tooltipTxt += "\n<b>Time Till Full:</b> " + HelperFunc::convertToTime(battStats.timeTillFull);
+  } else {
+    tooltipTxt += "Not Charging";
+    tooltipTxt += "\n<b>Time Till Empty:</b> " + HelperFunc::convertToTime(battStats.timeTillEmpty);
+  }
+  gtk_widget_set_tooltip_markup(batteryWid, tooltipTxt.c_str());
 
   // Update time
   auto t = std::time(nullptr);

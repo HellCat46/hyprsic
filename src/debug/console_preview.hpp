@@ -1,5 +1,4 @@
 #pragma once
-#include "../logging/manager.hpp"
 #include "../modules/sysinfo/manager/battery.hpp"
 #include "../modules/sysinfo/manager/disk.hpp"
 #include "../modules/sysinfo/manager/memory.hpp"
@@ -10,14 +9,14 @@
 #include "math.h"
 
 class Display {
-  LoggingManager logger;
+  AppContext ctx;
   Stats stat;
   Network net;
   SysLoad load;
   Memory mem;
   Disk disk;
   BatteryInfo battery;
- // PlayingNow playing;
+  // PlayingNow playing;
   HyprWSManager hyprWS;
 
 public:
