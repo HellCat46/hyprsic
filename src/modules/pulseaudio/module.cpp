@@ -1,6 +1,8 @@
 #include "module.hpp"
+#include "gdk-pixbuf/gdk-pixbuf.h"
 #include "gdk/gdk.h"
 #include "glib-object.h"
+#include "glib.h"
 #include "glibconfig.h"
 #include "gtk-layer-shell.h"
 #include "gtk/gtk.h"
@@ -14,10 +16,53 @@ PulseAudioModule::PulseAudioModule(PulseAudioManager *paMgr,
     : logger(logMgr), paManager(paMgr) {}
 
 void PulseAudioModule::setup(GtkWidget *parent) {
-  GtkWidget *audioEvtBox = gtk_event_box_new();
-  GtkWidget *audio = gtk_label_new("A");
-  gtk_container_add(GTK_CONTAINER(audioEvtBox), audio);
-  gtk_grid_attach(GTK_GRID(parent), audioEvtBox, 10, 0, 1, 1);
+  // Load Svg Icons
+  GError *err = nullptr;
+  inMuteIcon = gdk_pixbuf_new_from_file_at_scale(
+      "resources/icons/audio/mic_mute.svg", 16, 16, TRUE, &err);
+  if (err) {
+    logger->LogError(TAG, "Failed to load mic mute icon: " +
+                              std::string(err->message));
+    g_error_free(err);
+    return;
+  }
+
+  inUnmuteIcon = gdk_pixbuf_new_from_file_at_scale(
+      "resources/icons/audio/mic_unmute.svg", 16, 16, TRUE, &err);
+  if (err) {
+    logger->LogError(TAG, "Failed to load mic unmute icon: " +
+                              std::string(err->message));
+    g_error_free(err);
+    return;
+  }
+
+  outMuteIcon = gdk_pixbuf_new_from_file_at_scale(
+      "resources/icons/audio/speaker_mute.svg", 16, 16, TRUE, &err);
+  if (err) {
+    logger->LogError(TAG, "Failed to load volume mute icon: " +
+                              std::string(err->message));
+    g_error_free(err);
+    return;
+  }
+
+  outUnmuteIcon = gdk_pixbuf_new_from_file_at_scale(
+      "resources/icons/audio/speaker_unmute.svg", 16, 16, TRUE, &err);
+  if (err) {
+    logger->LogError(TAG, "Failed to load volume unmute icon: " +
+                              std::string(err->message));
+    g_error_free(err);
+    return;
+  }
+
+  inEvtBox = gtk_event_box_new();
+  barInIcon = gtk_image_new_from_pixbuf(outUnmuteIcon);
+  gtk_container_add(GTK_CONTAINER(inEvtBox), barInIcon);
+  gtk_grid_attach(GTK_GRID(parent), inEvtBox, 10, 0, 1, 1);
+
+  outEvtBox = gtk_event_box_new();
+  barOutIcon = gtk_image_new_from_pixbuf(outUnmuteIcon);
+  gtk_container_add(GTK_CONTAINER(outEvtBox), barOutIcon);
+  gtk_grid_attach(GTK_GRID(parent), outEvtBox, 11, 0, 1, 1);
 
   audioWin = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   gtk_layer_init_for_window(GTK_WINDOW(audioWin));
@@ -41,9 +86,11 @@ void PulseAudioModule::setup(GtkWidget *parent) {
   GtkWidget *outBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
   gtk_box_pack_start(GTK_BOX(mainBox), outBox, FALSE, FALSE, 0);
 
-  outMuteBtn = gtk_button_new_with_label("M");
+  outMuteBtn = gtk_event_box_new();
   gtk_box_pack_start(GTK_BOX(outBox), outMuteBtn, FALSE, FALSE, 0);
-  g_signal_connect(outMuteBtn, "clicked", G_CALLBACK(handleToggleMute), this);
+  g_signal_connect(outMuteBtn, "button-press-event", G_CALLBACK(handleToggleMute), this);
+  outIcon = gtk_image_new_from_pixbuf(outUnmuteIcon);
+  gtk_container_add(GTK_CONTAINER(outMuteBtn), outIcon);
 
   outScale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 100, 1);
   gtk_box_pack_start(GTK_BOX(outBox), outScale, TRUE, TRUE, 0);
@@ -51,7 +98,7 @@ void PulseAudioModule::setup(GtkWidget *parent) {
 
   outStore = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_STRING);
   outDropdown = gtk_combo_box_new_with_model(GTK_TREE_MODEL(outStore));
-  g_signal_connect(outDropdown, "changed", G_CALLBACK(chgeDevice), this);
+  g_signal_connect(outDropdown, "changed", G_CALLBACK(chgDevice), this);
   gtk_box_pack_start(GTK_BOX(mainBox), outDropdown, FALSE, FALSE, 0);
 
   GtkCellRenderer *outRenderer = gtk_cell_renderer_text_new();
@@ -69,9 +116,11 @@ void PulseAudioModule::setup(GtkWidget *parent) {
   GtkWidget *inBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
   gtk_box_pack_start(GTK_BOX(mainBox), inBox, TRUE, TRUE, 0);
 
-  inMuteBtn = gtk_button_new_with_label("M");
+  inMuteBtn = gtk_event_box_new();
   gtk_box_pack_start(GTK_BOX(inBox), inMuteBtn, FALSE, FALSE, 0);
-  g_signal_connect(outMuteBtn, "clicked", G_CALLBACK(handleToggleMute), this);
+  g_signal_connect(inMuteBtn, "button-press-event", G_CALLBACK(handleToggleMute), this);
+  inIcon = gtk_image_new_from_pixbuf(inUnmuteIcon);
+  gtk_container_add(GTK_CONTAINER(inMuteBtn), inIcon);
 
   inScale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 100, 1);
   gtk_box_pack_start(GTK_BOX(inBox), inScale, TRUE, TRUE, 0);
@@ -79,7 +128,7 @@ void PulseAudioModule::setup(GtkWidget *parent) {
 
   inStore = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_STRING);
   inDropdown = gtk_combo_box_new_with_model(GTK_TREE_MODEL(inStore));
-  g_signal_connect(outDropdown, "changed", G_CALLBACK(chgeDevice), this);
+  g_signal_connect(outDropdown, "changed", G_CALLBACK(chgDevice), this);
   gtk_box_pack_start(GTK_BOX(mainBox), inDropdown, FALSE, FALSE, 0);
 
   GtkCellRenderer *inRenderer = gtk_cell_renderer_text_new();
@@ -88,10 +137,14 @@ void PulseAudioModule::setup(GtkWidget *parent) {
                                  "text", 1, nullptr);
 
   gtk_widget_set_size_request(audioWin, 400, -1);
-  gtk_widget_show_all(audioEvtBox);
+  gtk_widget_show_all(inEvtBox);
+  gtk_widget_show_all(outEvtBox);
   gtk_widget_show_all(mainBox);
-  g_signal_connect(audioEvtBox, "button-press-event",
-                   G_CALLBACK(handleOpenWindow), this);
+
+  g_signal_connect(inEvtBox, "button-press-event", G_CALLBACK(handleIconClick),
+                   this);
+  g_signal_connect(outEvtBox, "button-press-event", G_CALLBACK(handleIconClick),
+                   this);
 
   update();
 }
@@ -112,7 +165,8 @@ void PulseAudioModule::update() {
       foundActive = true;
 
       // Using Default Output Device for Control Widgets
-      updateControls(devInfo.mute, devInfo.volume, outMuteBtn, outScale);
+      updateControls(devInfo.mute, devInfo.volume, outIcon, outScale);
+      updateControls(devInfo.mute, devInfo.volume, barOutIcon, outScale);
     }
   }
   if (foundActive) {
@@ -123,7 +177,7 @@ void PulseAudioModule::update() {
   gtk_list_store_clear(inStore);
   for (const auto &[devName, devInfo] : paManager->inDevs) {
     gtk_list_store_append(inStore, &iter);
-    
+
     gtk_list_store_set(inStore, &iter, 0, devName.c_str(), 1,
                        devInfo.description.c_str(), -1);
 
@@ -132,7 +186,8 @@ void PulseAudioModule::update() {
       foundActive = true;
 
       // Using Default Input Device for Control Widgets
-      updateControls(devInfo.mute, devInfo.volume, inMuteBtn, inScale);
+      updateControls(devInfo.mute, devInfo.volume, inIcon, inScale);
+      updateControls(devInfo.mute, devInfo.volume, barInIcon, inScale);
     }
   }
 
@@ -143,8 +198,14 @@ void PulseAudioModule::update() {
 
 void PulseAudioModule::updateControls(bool mute,
                                       const std::vector<uint32_t> &volume,
-                                      GtkWidget *muteBtn, GtkWidget *scale) {
-  gtk_button_set_label(GTK_BUTTON(muteBtn), mute ? "U" : "M");
+                                      GtkWidget *icon, GtkWidget *scale) {
+  if (icon == outIcon || icon == barOutIcon) {
+    gtk_image_set_from_pixbuf(GTK_IMAGE(icon),
+                              mute ? outUnmuteIcon : outMuteIcon);
+  } else {
+    gtk_image_set_from_pixbuf(GTK_IMAGE(icon),
+                              mute ? inUnmuteIcon : inMuteIcon);
+  }
 
   uint32_t avgVol = 0;
   for (const auto &vol : volume) {
@@ -155,16 +216,19 @@ void PulseAudioModule::updateControls(bool mute,
                       (uint32_t)(((float)avgVol / 65535) * 100));
 }
 
-void PulseAudioModule::handleOpenWindow(GtkWidget *widget,
-                                        GdkEventButton *evtBtn, gpointer data) {
+void PulseAudioModule::handleIconClick(GtkWidget *widget,
+                                       GdkEventButton *evtBtn, gpointer data) {
   PulseAudioModule *self = static_cast<PulseAudioModule *>(data);
 
-  if (gtk_widget_get_visible(self->audioWin)) {
+  if (!gtk_widget_get_visible(self->audioWin)) {
+    if (evtBtn->button == 3) {
+      gtk_widget_show(self->audioWin);
+    } else {
+      handleToggleMute(widget, data);
+    }
+  } else {
     gtk_widget_hide(self->audioWin);
-    return;
   }
-
-  gtk_widget_show(self->audioWin);
 }
 
 void PulseAudioModule::handleChgVolume(GtkRange *range, GtkScrollType *scroll,
@@ -182,21 +246,28 @@ void PulseAudioModule::handleChgVolume(GtkRange *range, GtkScrollType *scroll,
 
 void PulseAudioModule::handleToggleMute(GtkWidget *widget, gpointer data) {
   PulseAudioModule *self = static_cast<PulseAudioModule *>(data);
+  
 
-  if (widget == self->outMuteBtn) {
+  if (widget == self->outMuteBtn || widget == self->outEvtBox) {
     short res = self->paManager->toggleMute(self->paManager->defOutput, true);
     if (res != -1) {
-      gtk_button_set_label(GTK_BUTTON(self->outMuteBtn), res ? "U" : "M");
+      gtk_image_set_from_pixbuf(GTK_IMAGE(self->outIcon),
+                                res ? self->outUnmuteIcon : self->outMuteIcon);
+      gtk_image_set_from_pixbuf(GTK_IMAGE(self->barOutIcon),
+                                res ? self->outUnmuteIcon : self->outMuteIcon);
     }
-  } else if (widget == self->inMuteBtn) {
+  } else if (widget == self->inMuteBtn || widget == self->inEvtBox) {
     short res = self->paManager->toggleMute(self->paManager->defInput, false);
     if (res != -1) {
-      gtk_button_set_label(GTK_BUTTON(self->inMuteBtn), res ? "U" : "M");
+      gtk_image_set_from_pixbuf(GTK_IMAGE(self->inIcon),
+                                res ? self->inUnmuteIcon : self->inMuteIcon);
+      gtk_image_set_from_pixbuf(GTK_IMAGE(self->barInIcon),
+                                res ? self->inUnmuteIcon : self->inMuteIcon);
     }
   }
 }
 
-void PulseAudioModule::chgeDevice(GtkComboBox *combo, gpointer data) {
+void PulseAudioModule::chgDevice(GtkComboBox *combo, gpointer data) {
   PulseAudioModule *self = static_cast<PulseAudioModule *>(data);
 
   GtkTreeIter iter;
