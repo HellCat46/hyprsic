@@ -125,7 +125,7 @@ bool AppContext::showUpdateWindow(UpdateModule module, std::string type,
     svgPath += "screensaver/" + type + ".svg";
     break;
   case UpdateModule::PULSEAUDIO:
-    svgPath += "pulseaudio/" + type + ".svg";
+    svgPath += "audio/" + type + ".svg";
     break;
   case UpdateModule::WIFI:
     svgPath += "wifi/" + type + ".svg";

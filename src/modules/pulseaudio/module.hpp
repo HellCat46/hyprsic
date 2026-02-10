@@ -2,11 +2,12 @@
 
 #include "gdk-pixbuf/gdk-pixbuf.h"
 #include "gtk/gtk.h"
+#include "../../app/context.hpp"
 #include "manager.hpp"
 
 class PulseAudioModule {
   PulseAudioManager *paManager;
-  LoggingManager *logger;
+  AppContext *ctx;
   GtkWidget *audioWin;
 
   GtkWidget *inEvtBox;
@@ -32,7 +33,7 @@ class PulseAudioModule {
   GtkListStore *inStore;
 
 public:
-  PulseAudioModule(PulseAudioManager *paManager, LoggingManager *logMgr);
+  PulseAudioModule(PulseAudioManager *paManager, AppContext *ctx);
   void setup(GtkWidget *parent);
   void update();
 

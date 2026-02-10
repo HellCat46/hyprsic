@@ -12,8 +12,8 @@
 #define TAG "PulseAudioModule"
 
 PulseAudioModule::PulseAudioModule(PulseAudioManager *paMgr,
-                                   LoggingManager *logMgr)
-    : logger(logMgr), paManager(paMgr) {}
+                                   AppContext* ctx)
+    : ctx(ctx), paManager(paMgr) {}
 
 void PulseAudioModule::setup(GtkWidget *parent) {
   // Load Svg Icons
@@ -21,7 +21,7 @@ void PulseAudioModule::setup(GtkWidget *parent) {
   inMuteIcon = gdk_pixbuf_new_from_file_at_scale(
       "resources/icons/audio/mic_mute.svg", 16, 16, TRUE, &err);
   if (err) {
-    logger->LogError(TAG, "Failed to load mic mute icon: " +
+    ctx->logger.LogError(TAG, "Failed to load mic mute icon: " +
                               std::string(err->message));
     g_error_free(err);
     return;
@@ -30,7 +30,7 @@ void PulseAudioModule::setup(GtkWidget *parent) {
   inUnmuteIcon = gdk_pixbuf_new_from_file_at_scale(
       "resources/icons/audio/mic_unmute.svg", 16, 16, TRUE, &err);
   if (err) {
-    logger->LogError(TAG, "Failed to load mic unmute icon: " +
+    ctx->logger.LogError(TAG, "Failed to load mic unmute icon: " +
                               std::string(err->message));
     g_error_free(err);
     return;
@@ -39,7 +39,7 @@ void PulseAudioModule::setup(GtkWidget *parent) {
   outMuteIcon = gdk_pixbuf_new_from_file_at_scale(
       "resources/icons/audio/speaker_mute.svg", 16, 16, TRUE, &err);
   if (err) {
-    logger->LogError(TAG, "Failed to load volume mute icon: " +
+    ctx->logger.LogError(TAG, "Failed to load volume mute icon: " +
                               std::string(err->message));
     g_error_free(err);
     return;
@@ -48,7 +48,7 @@ void PulseAudioModule::setup(GtkWidget *parent) {
   outUnmuteIcon = gdk_pixbuf_new_from_file_at_scale(
       "resources/icons/audio/speaker_unmute.svg", 16, 16, TRUE, &err);
   if (err) {
-    logger->LogError(TAG, "Failed to load volume unmute icon: " +
+    ctx->logger.LogError(TAG, "Failed to load volume unmute icon: " +
                               std::string(err->message));
     g_error_free(err);
     return;
@@ -88,7 +88,8 @@ void PulseAudioModule::setup(GtkWidget *parent) {
 
   outMuteBtn = gtk_event_box_new();
   gtk_box_pack_start(GTK_BOX(outBox), outMuteBtn, FALSE, FALSE, 0);
-  g_signal_connect(outMuteBtn, "button-press-event", G_CALLBACK(handleToggleMute), this);
+  g_signal_connect(outMuteBtn, "button-press-event",
+                   G_CALLBACK(handleToggleMute), this);
   outIcon = gtk_image_new_from_pixbuf(outUnmuteIcon);
   gtk_container_add(GTK_CONTAINER(outMuteBtn), outIcon);
 
@@ -118,7 +119,8 @@ void PulseAudioModule::setup(GtkWidget *parent) {
 
   inMuteBtn = gtk_event_box_new();
   gtk_box_pack_start(GTK_BOX(inBox), inMuteBtn, FALSE, FALSE, 0);
-  g_signal_connect(inMuteBtn, "button-press-event", G_CALLBACK(handleToggleMute), this);
+  g_signal_connect(inMuteBtn, "button-press-event",
+                   G_CALLBACK(handleToggleMute), this);
   inIcon = gtk_image_new_from_pixbuf(inUnmuteIcon);
   gtk_container_add(GTK_CONTAINER(inMuteBtn), inIcon);
 
@@ -246,23 +248,33 @@ void PulseAudioModule::handleChgVolume(GtkRange *range, GtkScrollType *scroll,
 
 void PulseAudioModule::handleToggleMute(GtkWidget *widget, gpointer data) {
   PulseAudioModule *self = static_cast<PulseAudioModule *>(data);
-  
 
   if (widget == self->outMuteBtn || widget == self->outEvtBox) {
     short res = self->paManager->toggleMute(self->paManager->defOutput, true);
-    if (res != -1) {
-      gtk_image_set_from_pixbuf(GTK_IMAGE(self->outIcon),
-                                res ? self->outUnmuteIcon : self->outMuteIcon);
+    if (res == 1) {
+      gtk_image_set_from_pixbuf(GTK_IMAGE(self->outIcon), self->outUnmuteIcon);
       gtk_image_set_from_pixbuf(GTK_IMAGE(self->barOutIcon),
-                                res ? self->outUnmuteIcon : self->outMuteIcon);
+                                self->outUnmuteIcon);
+      self->ctx->showUpdateWindow(UpdateModule::PULSEAUDIO, "speaker_mute",
+                                  "Output Device Muted");
+    } else if (res == 0) {
+      gtk_image_set_from_pixbuf(GTK_IMAGE(self->outIcon), self->outMuteIcon);
+      gtk_image_set_from_pixbuf(GTK_IMAGE(self->barOutIcon), self->outMuteIcon);
+      self->ctx->showUpdateWindow(UpdateModule::PULSEAUDIO, "speaker_unmute",
+                                  "Output Device Unmuted");
     }
   } else if (widget == self->inMuteBtn || widget == self->inEvtBox) {
     short res = self->paManager->toggleMute(self->paManager->defInput, false);
-    if (res != -1) {
-      gtk_image_set_from_pixbuf(GTK_IMAGE(self->inIcon),
-                                res ? self->inUnmuteIcon : self->inMuteIcon);
-      gtk_image_set_from_pixbuf(GTK_IMAGE(self->barInIcon),
-                                res ? self->inUnmuteIcon : self->inMuteIcon);
+    if (res == 1) {
+      gtk_image_set_from_pixbuf(GTK_IMAGE(self->inIcon), self->inUnmuteIcon);
+      gtk_image_set_from_pixbuf(GTK_IMAGE(self->barInIcon), self->inUnmuteIcon);
+      self->ctx->showUpdateWindow(UpdateModule::PULSEAUDIO, "mic_mute",
+                                  "Input Device Muted");
+    } else if (res == 0) {
+      gtk_image_set_from_pixbuf(GTK_IMAGE(self->inIcon), self->inMuteIcon);
+      gtk_image_set_from_pixbuf(GTK_IMAGE(self->barInIcon), self->inMuteIcon);
+      self->ctx->showUpdateWindow(UpdateModule::PULSEAUDIO, "mic_unmute",
+                                  "Input Device Unmuted");
     }
   }
 }

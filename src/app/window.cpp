@@ -21,7 +21,7 @@ Window::Window(AppContext *ctx, MprisManager *mprisMgr,
     : mprisModule(ctx, mprisMgr), hyprModule(ctx, hyprMgr),
       scrnsavrModule(ctx, scrnsavrMgr), btModule(ctx, btMgr),
       notifModule(ctx, notifInstance), snModule(ctx, snManager),
-      sysinfoModule(stat, mem, load, battery), paModule(paMgr, &ctx->logger) {}
+      sysinfoModule(stat, mem, load, battery), paModule(paMgr, ctx) {}
 
 MainWindow::MainWindow()
     : notifManager(&ctx), btManager(&ctx), mprisManager(&ctx),
