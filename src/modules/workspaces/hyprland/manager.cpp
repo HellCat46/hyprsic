@@ -1,14 +1,14 @@
 #include "manager.hpp"
-#include "../../../utils/helper_func.hpp"
 #include "cstdlib"
-#include "cstring"
 #include "sstream"
 #include "sys/poll.h"
 #include "sys/socket.h"
 #include "sys/un.h"
 #include "thread"
 #include "unistd.h"
+#include <cstddef>
 #include <string>
+#include <string_view>
 
 #define TAG "HyprWorkspaces"
 
@@ -80,70 +80,87 @@ void HyprWSManager::liveEventListener() {
         }
 
         chngMade = false;
+        std::string_view buffView(buffer);
 
         // Update the String Length Too If Event name is being updated
-        if (HelperFunc::saferStrNCmp(buffer, "createworkspace", 15)) {
-          char *ptr = std::strstr(buffer, "createworkspacev2>>");
-          int wsId = parseWorkspaceId(ptr + 19);
-          if (wsId == 0) {
-            logger->LogError(TAG, "Failed to Parse Workspace ID from Event "
-                                  "Info - Create Workspace");
-            continue;
-          }
+        if (buffView.starts_with("createworkspace")) {
+          size_t pos = buffView.find("createworkspacev2>>");
 
-          chngMade = true;
-          logger->LogInfo(TAG, "Workspace Created: " + std::to_string(wsId));
+          if (pos != std::string_view::npos) {
+            buffView = buffView.substr(pos + 19);
+
+            long wsId = parseWorkspaceId(buffView);
+            if (wsId == 0) {
+              logger->LogError(TAG, "Failed to Parse Workspace ID from Event "
+                                    "Info - Create Workspace");
+              continue;
+            }
+
+            chngMade = true;
+            logger->LogInfo(TAG, "Workspace Created: " + std::to_string(wsId));
+          }
         }
 
-        if (HelperFunc::saferStrNCmp(buffer, "workspace", 9)) {
-          char *ptr = std::strstr(buffer, "workspacev2>>");
-          int wsId = parseWorkspaceId(ptr + 13);
-          if (wsId == 0) {
-            logger->LogError(TAG, "Failed to Parse Workspace ID from Event "
-                                  "Info - Switch Workspace");
-            continue;
-          }
+        if (buffView.starts_with("workspace")) {
+          size_t pos = buffView.find("workspacev2>>");
+          if (pos != std::string_view::npos) {
+            buffView = buffView.substr(pos + 13);
 
-          chngMade = true;
-          activeWorkspaceId = wsId;
-          // logger->LogInfo(TAG,
-          //                 "Active Workspace Changed: " +
-          //                 std::to_string(wsId));
+            long wsId = parseWorkspaceId(buffView);
+            if (wsId == 0) {
+              logger->LogError(TAG, "Failed to Parse Workspace ID from Event "
+                                    "Info - Switch Workspace");
+              continue;
+            }
+
+            chngMade = true;
+            activeWorkspaceId = wsId;
+            // logger->LogInfo(TAG,
+            //                 "Active Workspace Changed: " +
+            //                 std::to_string(wsId));
+          }
         }
 
-        if (HelperFunc::saferStrNCmp(buffer, "focusedmon", 10)) {
-          char *ptr = std::strstr(buffer, "focusedmonv2>>");
-          if (ptr == nullptr) {
-            continue;
-          }
+        if (buffView.starts_with("focusedmon")) {
+          size_t pos = buffView.find("focusedmonv2>>");
+          if (pos != std::string_view::npos) {
+            buffView = buffView.substr(pos + 14);
 
-          char *wsPtr = std::strstr(ptr + 14, ",");
-          int wsId = parseWorkspaceId(wsPtr + 1);
-          if (wsId == 0) {
-            logger->LogError(TAG, "Failed to Parse Workspace ID from Event "
-                                  "Info - Focused Monitor Changed");
-            continue;
-          }
+            pos = buffView.find(",");
+            if (pos != std::string_view::npos) {
+              buffView = buffView.substr(pos + 1);
+              long wsId = parseWorkspaceId(buffView);
+              if (wsId == 0) {
+                logger->LogError(TAG, "Failed to Parse Workspace ID from Event "
+                                      "Info - Focused Monitor Changed");
+                continue;
+              }
 
-          chngMade = true;
-          activeWorkspaceId = wsId;
-          // logger->LogInfo(TAG,
-          //                 "Focused Monitor Changed: " +
-          //                 std::to_string(wsId));
+              chngMade = true;
+              activeWorkspaceId = wsId;
+              // logger->LogInfo(TAG,
+              //                 "Focused Monitor Changed: " +
+              //                 std::to_string(wsId));
+            }
+          }
         }
 
-        if (std::strstr(buffer, "destroyworkspace") != nullptr) {
-          char *ptr = std::strstr(buffer, "destroyworkspacev2>>");
-          int wsId = parseWorkspaceId(ptr + 20);
-          if (wsId == 0) {
-            logger->LogError(TAG, "Failed to Parse Workspace ID from Event "
-                                  "Info - Destroy Workspace");
-            continue;
-          }
+        if (buffView.starts_with("destroyworkspace")) {
+          size_t pos = buffView.find("destroyworkspacev2>>");
+          if (pos != std::string_view::npos) {
+            buffView = buffView.substr(pos + 20);
 
-          chngMade = true;
-          workspaces.erase(wsId);
-          logger->LogInfo(TAG, "Workspace Deleted: " + std::to_string(wsId));
+            int wsId = parseWorkspaceId(buffView);
+            if (wsId == 0) {
+              logger->LogError(TAG, "Failed to Parse Workspace ID from Event "
+                                    "Info - Destroy Workspace");
+              continue;
+            }
+
+            chngMade = true;
+            workspaces.erase(wsId);
+            logger->LogInfo(TAG, "Workspace Deleted: " + std::to_string(wsId));
+          }
         }
 
         if (chngMade) {
@@ -157,15 +174,16 @@ void HyprWSManager::liveEventListener() {
   });
 }
 
-int HyprWSManager::parseWorkspaceId(char *stPoint) {
-  if (stPoint == nullptr) {
+long HyprWSManager::parseWorkspaceId(std::string_view stPoint) {
+  if (stPoint.empty()) {
     return 0;
   }
-  int id = 0;
+
+  long id = 0;
   bool neg = false;
 
   for (int idx = 0; stPoint[idx] != '\n' && stPoint[idx] != '\0' &&
-                    stPoint[idx] != ',' && idx < 1005;
+                    stPoint[idx] != ',' && idx < stPoint.size();
        idx++) {
     if (stPoint[idx] >= 48 && stPoint[idx] <= 57) {
       id = (id * 10) + (stPoint[idx] - 48);

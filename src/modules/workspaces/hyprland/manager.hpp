@@ -7,6 +7,7 @@
 #include <functional>
 #include <json/reader.h>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <vector>
 #include "../../../logging/manager.hpp"
@@ -35,7 +36,7 @@ class HyprWSManager {
 
   int getPath();
 
-  int parseWorkspaceId(char *);
+  long parseWorkspaceId(std::string_view);
   Json::Value executeQuery(const std::string &, std::string &);
 
 public:
