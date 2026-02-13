@@ -6,6 +6,8 @@
 #include "dbus/dbus.h"
 #include "thread"
 #include "unordered_map"
+#include <algorithm>
+#include <cstddef>
 #include <string>
 
 #define TAG "BluetoothManager"
@@ -388,7 +390,10 @@ void BluetoothManager::handlePropertiesChanged(DBusMessage *msg,
     dev->second.connected = newDevData.connected;
 
     if (newDevData.connected) {
-      ctx->showUpdateWindow(UpdateModule::BLUETOOTH, dev->second.deviceType == "audio-headset"? "headset_mic" : "connected",
+      ctx->showUpdateWindow(UpdateModule::BLUETOOTH,
+                            dev->second.deviceType == "audio-headset"
+                                ? "headset_mic"
+                                : "connected",
                             "Connected to Device: " + dev->second.name);
     } else {
       ctx->showUpdateWindow(UpdateModule::BLUETOOTH, "base",
@@ -556,15 +561,15 @@ int BluetoothManager::getPropertyVal(const char *prop) {
   return -1;
 }
 
-int BluetoothManager::connectDevice(bool state, const char *devPath) {
+int BluetoothManager::connectDevice(bool state, std::string_view devPath) {
   std::string logMsg = state ? "Connecting" : "Disconnecting";
   logMsg += " to Device: ";
   logMsg += devPath;
   ctx->logger.LogInfo(TAG, logMsg);
 
-  DBusMessage *msg =
-      dbus_message_new_method_call("org.bluez", devPath, "org.bluez.Device1",
-                                   state ? "Connect" : "Disconnect");
+  DBusMessage *msg = dbus_message_new_method_call(
+      "org.bluez", devPath.data(), "org.bluez.Device1",
+      state ? "Connect" : "Disconnect");
   if (!msg) {
     ctx->logger.LogError(TAG, "Failed to create a message.");
     return 1;
@@ -587,6 +592,104 @@ int BluetoothManager::connectDevice(bool state, const char *devPath) {
   successMsg += " to Device: ";
   successMsg += devPath;
   ctx->logger.LogInfo(TAG, successMsg);
+
+  return 0;
+}
+
+int BluetoothManager::trustDevice(bool state, std::string_view devPath) {
+  std::string logMsg = "Trying to ";
+  logMsg += state ? "Trust" : "Untrust";
+  logMsg += " Device: ";
+  logMsg += devPath;
+  ctx->logger.LogInfo(TAG, logMsg);
+
+  size_t pos = devPath.find('_');
+  if (pos == std::string_view::npos) {
+    std::string errMsg = "Invalid Device Path Format: ";
+    errMsg += devPath;
+    ctx->logger.LogError(TAG, errMsg);
+    return 1;
+  }
+
+  std::string path = std::string(devPath.substr(pos + 1));
+  std::replace(path.begin(), path.end(), '_', ':');
+
+  const auto &devIt = devices.find(path.c_str());
+  if (devIt == devices.end()) {
+    std::string errMsg = "Device not found in Device List: ";
+    errMsg += devPath;
+    ctx->logger.LogError(TAG, errMsg);
+    return 1;
+  }
+
+  DBusMessage *msg = dbus_message_new_method_call(
+      "org.bluez", devPath.data(), "org.freedesktop.DBus.Properties", "Set");
+  if (!msg) {
+    ctx->logger.LogError(TAG, "Failed to create a message.");
+    return 1;
+  }
+
+  const char *iface = "org.bluez.Device1";
+  const char *prop = "Trusted";
+  dbus_bool_t value = !devIt->second.trusted;
+  DBusMessageIter args, subargs;
+
+  dbus_message_iter_init_append(msg, &args);
+  dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &iface);
+  dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &prop);
+
+  dbus_message_iter_open_container(&args, DBUS_TYPE_VARIANT,
+                                   DBUS_TYPE_BOOLEAN_AS_STRING, &subargs);
+  dbus_message_iter_append_basic(&subargs, DBUS_TYPE_BOOLEAN, &value);
+  dbus_message_iter_close_container(&args, &subargs);
+
+  DBusMessage *reply = dbus_connection_send_with_reply_and_block(
+      ctx->dbus.sysConn, msg, -1, &(ctx->dbus.sysErr));
+  if (!reply && dbus_error_is_set(&(ctx->dbus.sysErr))) {
+    std::string errMsg = "Failed to get a reply. ";
+    errMsg += ctx->dbus.sysErr.message;
+    ctx->logger.LogError(TAG, errMsg);
+    dbus_error_free(&ctx->dbus.sysErr);
+    return 1;
+  }
+
+  dbus_message_unref(msg);
+  dbus_message_ref(reply);
+  std::string successMsg = state ? "Trusted" : "Untrusted";
+  successMsg += " Device: ";
+  successMsg += devPath;
+  ctx->logger.LogInfo(TAG, successMsg);
+
+  return 0;
+}
+
+int BluetoothManager::removeDevice(std::string_view devPath) {
+  ctx->logger.LogInfo(TAG, "Trying to Remove Device: " + std::string(devPath));
+
+  DBusMessage *msg = dbus_message_new_method_call(
+      "org.bluez", "/org/bluez/hci0", "org.bluez.Adapter1", "RemoveDevice");
+  if (!msg) {
+    ctx->logger.LogError(TAG, "Failed to create a message.");
+    return 1;
+  }
+
+  DBusMessageIter args;
+  dbus_message_iter_init_append(msg, &args);
+  const char *path = devPath.data();
+  dbus_message_iter_append_basic(&args, DBUS_TYPE_OBJECT_PATH, &path);
+
+  DBusMessage *reply = dbus_connection_send_with_reply_and_block(
+      ctx->dbus.sysConn, msg, -1, &(ctx->dbus.sysErr));
+  if (!reply && dbus_error_is_set(&(ctx->dbus.sysErr))) {
+    std::string errMsg = "Failed to get a reply. ";
+    errMsg += ctx->dbus.sysErr.message;
+    ctx->logger.LogError(TAG, errMsg);
+    dbus_error_free(&ctx->dbus.sysErr);
+    return 1;
+  }
+
+  dbus_message_unref(msg);
+  dbus_message_ref(reply);
 
   return 0;
 }
@@ -666,7 +769,6 @@ unsigned char BluetoothManager::setDeviceProps(Device &dev,
     dev.deviceType = value;
 
     propFlags |= DevicePropFlags::DEVICE_TYPE;
-    
   }
 
   return propFlags;

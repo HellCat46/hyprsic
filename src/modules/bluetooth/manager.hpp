@@ -7,6 +7,7 @@
 #include "thread"
 #include "unordered_map"
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
 struct Device {
@@ -49,9 +50,9 @@ public:
   int getDeviceList();
 
   // Device Operations
-  int connectDevice(bool state, const char *devPath);
-  int removeDevice(bool state, const char *devPath);
-  int trustDevice(bool state, const char *devPath);
+  int connectDevice(bool state, std::string_view devPath);
+  int trustDevice(bool state, std::string_view devPath);
+  int removeDevice(std::string_view devPath);
 
   int switchDiscovery(bool on);
   int switchPower(bool on);

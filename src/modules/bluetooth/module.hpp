@@ -35,6 +35,9 @@ public:
   static void switchVisibilityBTMenu(GtkWidget *widget, GdkEvent *e,
                                      gpointer user_data);
   static void handleDiscovery(GtkWidget *widget, gpointer user_data);
-  static void handlePower(GtkSwitch *widget, gboolean state, gpointer user_data);
+  static void handlePower(GtkSwitch *widget, gboolean state,
+                          gpointer user_data);
   static void handleDeviceConnect(GtkWidget *widget, gpointer user_data);
+  static void handleDeviceTrust(GtkWidget *widget, gpointer user_data);
+  static void handleDeviceRemove(GtkWidget *widget, gpointer user_data);
 };

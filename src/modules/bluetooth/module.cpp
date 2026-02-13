@@ -197,17 +197,41 @@ void BluetoothModule::addDeviceEntry(const Device &dev, GtkWidget *parentBox,
   // Only Shown for Paired Devices
   if (dev.paired) {
     // Device Unpair Button
-    GtkWidget *devUnpairBtn = gtk_button_new_with_label("✖");
-    gtk_box_pack_end(GTK_BOX(devSection), devUnpairBtn, FALSE, FALSE, 2);
+    GtkWidget *devRemoveBtn = gtk_button_new_with_label("✖");
+    gtk_box_pack_end(GTK_BOX(devSection), devRemoveBtn, FALSE, FALSE, 2);
+    gtk_widget_set_tooltip_text(devRemoveBtn, "Remove Device");
+
+    // Connect Signal
+    FuncArgs *rmvArgs = g_new0(FuncArgs, 1);
+    rmvArgs->devIfacePath = g_strdup(dev.path.c_str());
+    rmvArgs->btManager = btManager;
+    rmvArgs->ctx = ctx;
+    g_signal_connect_data(devRemoveBtn, "clicked",
+                          G_CALLBACK(BluetoothModule::handleDeviceRemove),
+                          rmvArgs, (GClosureNotify)FreeArgs, (GConnectFlags)0);
 
     // Device Trust Button
     GtkWidget *devTrustBtn = gtk_button_new_with_label("");
     gtk_box_pack_end(GTK_BOX(devSection), devTrustBtn, FALSE, FALSE, 2);
+    gtk_widget_set_tooltip_text(devTrustBtn, dev.trusted ? "Untrust Device"
+                                                         : "Trust Device");
+
+    // Connect Signal
+    FuncArgs *trustArgs = g_new0(FuncArgs, 1);
+    trustArgs->devIfacePath = g_strdup(dev.path.c_str());
+    trustArgs->state = !dev.trusted;
+    trustArgs->btManager = btManager;
+    trustArgs->ctx = ctx;
+    g_signal_connect_data(
+        devTrustBtn, "clicked", G_CALLBACK(BluetoothModule::handleDeviceTrust),
+        trustArgs, (GClosureNotify)FreeArgs, (GConnectFlags)0);
   }
 
   // Device Connect Button Connect Icon
   GtkWidget *devConnBtn = gtk_button_new_with_label("");
   gtk_box_pack_end(GTK_BOX(devSection), devConnBtn, FALSE, FALSE, 2);
+  gtk_widget_set_tooltip_text(devConnBtn, dev.connected ? "Disconnect Device"
+                                                        : "Connect Device");
 
   // Connect Signal
   FuncArgs *args = g_new0(FuncArgs, 1);
@@ -255,6 +279,19 @@ void BluetoothModule::handlePower(GtkSwitch *widget, gboolean state,
     self->ctx->showUpdateWindow(UpdateModule::BLUETOOTH,
                                 state ? "base" : "disabled", msg);
   }
+}
+
+void BluetoothModule::handleDeviceTrust(GtkWidget *widget, gpointer user_data) {
+  FuncArgs *args = static_cast<FuncArgs *>(user_data);
+
+  args->btManager->trustDevice(args->state, args->devIfacePath);
+}
+
+void BluetoothModule::handleDeviceRemove(GtkWidget *widget,
+                                         gpointer user_data) {
+  FuncArgs *args = static_cast<FuncArgs *>(user_data);
+
+  args->btManager->removeDevice(args->devIfacePath);
 }
 
 void BluetoothModule::handleDeviceConnect(GtkWidget *widget,
