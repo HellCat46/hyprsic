@@ -9,7 +9,8 @@
 
 #define TAG "AppContext"
 
-AppContext::AppContext() : dbus(), logger(true), dbManager(&logger) {}
+AppContext::AppContext()
+    : dbus(), logger(true), dbManager(&logger), rbWindow(nullptr) {}
 
 DbusSystem::DbusSystem() {
   dbus_error_init(&sysErr);
@@ -170,4 +171,12 @@ void AppContext::hideUpdateWindow(gpointer user_data) {
   gtk_widget_hide(self->updateWindow);
 
   self->updateTimeoutId = 0;
+}
+
+void AppContext::switchRBWindow(GtkWidget *win) {
+  if (rbWindow && gtk_widget_get_visible(rbWindow)) {
+    gtk_widget_hide(rbWindow);
+  }
+
+  rbWindow = win;
 }

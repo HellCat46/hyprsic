@@ -296,6 +296,7 @@ void NotificationModule::chgVisibiltyWin(GtkWidget *widget, GdkEvent *e,
   if (!gtk_widget_get_visible(self->menuWin)) {
     self->update();
     gtk_widget_show(self->menuWin);
+    self->ctx->switchRBWindow(self->menuWin);
   } else {
     gtk_widget_hide(self->menuWin);
   }

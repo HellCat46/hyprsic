@@ -8,7 +8,7 @@
 class PulseAudioModule {
   PulseAudioManager *paManager;
   AppContext *ctx;
-  GtkWidget *audioWin;
+  GtkWidget *menuWin;
 
   GtkWidget *inEvtBox;
   GtkWidget *barInIcon;

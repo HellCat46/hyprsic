@@ -38,6 +38,8 @@ class AppContext {
   GtkWidget *updateMsg;
   guint updateTimeoutId;
   
+  GtkWidget* rbWindow; // Right bottom window, but right now more like ragebait window
+  
   static void hideUpdateWindow(gpointer user_data);
 public:
   DbusSystem dbus;
@@ -47,6 +49,7 @@ public:
 
   void initUpdateWindow();
   bool showUpdateWindow(UpdateModule module, std::string type, std::string msg);
+  void switchRBWindow(GtkWidget* win);
 };
 
 struct UpdateWindowData {

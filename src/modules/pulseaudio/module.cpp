@@ -64,14 +64,14 @@ void PulseAudioModule::setup(GtkWidget *parent) {
   gtk_container_add(GTK_CONTAINER(outEvtBox), barOutIcon);
   gtk_grid_attach(GTK_GRID(parent), outEvtBox, 11, 0, 1, 1);
 
-  audioWin = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-  gtk_layer_init_for_window(GTK_WINDOW(audioWin));
-  gtk_layer_set_layer(GTK_WINDOW(audioWin), GTK_LAYER_SHELL_LAYER_OVERLAY);
-  gtk_layer_set_anchor(GTK_WINDOW(audioWin), GTK_LAYER_SHELL_EDGE_BOTTOM, TRUE);
-  gtk_layer_set_anchor(GTK_WINDOW(audioWin), GTK_LAYER_SHELL_EDGE_RIGHT, TRUE);
+  menuWin = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+  gtk_layer_init_for_window(GTK_WINDOW(menuWin));
+  gtk_layer_set_layer(GTK_WINDOW(menuWin), GTK_LAYER_SHELL_LAYER_OVERLAY);
+  gtk_layer_set_anchor(GTK_WINDOW(menuWin), GTK_LAYER_SHELL_EDGE_BOTTOM, TRUE);
+  gtk_layer_set_anchor(GTK_WINDOW(menuWin), GTK_LAYER_SHELL_EDGE_RIGHT, TRUE);
 
   GtkWidget *mainBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-  gtk_container_add(GTK_CONTAINER(audioWin), mainBox);
+  gtk_container_add(GTK_CONTAINER(menuWin), mainBox);
   gtk_widget_set_margin_start(mainBox, 15);
   gtk_widget_set_margin_end(mainBox, 15);
   gtk_widget_set_margin_top(mainBox, 15);
@@ -138,7 +138,7 @@ void PulseAudioModule::setup(GtkWidget *parent) {
   gtk_cell_layout_set_attributes(GTK_CELL_LAYOUT(inDropdown), inRenderer,
                                  "text", 1, nullptr);
 
-  gtk_widget_set_size_request(audioWin, 400, -1);
+  gtk_widget_set_size_request(menuWin, 400, -1);
   gtk_widget_show_all(inEvtBox);
   gtk_widget_show_all(outEvtBox);
   gtk_widget_show_all(mainBox);
@@ -222,14 +222,15 @@ void PulseAudioModule::handleIconClick(GtkWidget *widget,
                                        GdkEventButton *evtBtn, gpointer data) {
   PulseAudioModule *self = static_cast<PulseAudioModule *>(data);
 
-  if (!gtk_widget_get_visible(self->audioWin)) {
+  if (!gtk_widget_get_visible(self->menuWin)) {
     if (evtBtn->button == 3) {
-      gtk_widget_show(self->audioWin);
+      gtk_widget_show(self->menuWin);
+      self->ctx->switchRBWindow(self->menuWin);
     } else {
       handleToggleMute(widget, data);
     }
   } else {
-    gtk_widget_hide(self->audioWin);
+    gtk_widget_hide(self->menuWin);
   }
 }
 
