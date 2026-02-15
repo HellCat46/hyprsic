@@ -148,7 +148,6 @@ BatteryInfo::BatteryInfo(AppContext *ctx) : ctx(ctx), charger(ctx) {
   char folderStr[] = "BAT";
 
   dir = opendir(basePath.c_str());
-
   if (dir == nullptr) {
     return;
   }

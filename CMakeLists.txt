@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.20)
 project(hyprsic)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 find_package(PkgConfig REQUIRED)
 
 option(ENABLE_NVIDIA_NVML "Enable NVIDIA GPU monitoring via NVML" ON)
 
-
+pkg_check_modules(WAYLAND REQUIRED wayland-client)
 pkg_check_modules(GTK REQUIRED gtk+-3.0)
 pkg_check_modules(GTK_LAYER_SHELL REQUIRED gtk-layer-shell-0)
 pkg_check_modules(JSONCPP REQUIRED jsoncpp)
@@ -61,6 +61,8 @@ set(MODULES_SOURCES
     src/modules/statusnotifier/module.cpp
     
     src/modules/wifi/manager.cpp
+    
+    src/modules/clipboard/manager.cpp
 )
 
 set(DATABASE_SOURCES
@@ -93,6 +95,7 @@ include_directories(
         ${CMAKE_CURRENT_BINARY_DIR}
         ${GTK_INCLUDE_DIRS}
         ${GTK_LAYER_SHELL_INCLUDE_DIRS}
+        ${WAYLAND_INCLUDE_DIRS}
 )
 
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/thirdparty/SQLiteCpp)
@@ -121,4 +124,5 @@ target_link_libraries(hyprsic
         ${LIBPULSE_LIBRARIES}
         ${GTK_LIBRARIES}
         ${GTK_LAYER_SHELL_LIBRARIES}
+        ${WAYLAND_LIBRARIES}
 )

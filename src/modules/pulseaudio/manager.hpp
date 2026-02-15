@@ -37,6 +37,7 @@ public:
   std::string defOutput, defInput;
   std::map<std::string, PulseAudioDevice> outDevs, inDevs;
   PulseAudioManager(LoggingManager *logMgr);
+  ~PulseAudioManager();
   void getDevices();
   
   void setVolume(const std::string &devName, bool isOutput, uint32_t volume);

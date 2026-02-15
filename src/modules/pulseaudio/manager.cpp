@@ -3,6 +3,7 @@
 #include <pulse/introspect.h>
 #include <pulse/operation.h>
 #include <pulse/subscribe.h>
+#include <pulse/thread-mainloop.h>
 #include <string>
 
 #define TAG "PulseAudioManager"
@@ -55,7 +56,6 @@ void PulseAudioManager::contextStateHandler(pa_context *pulseCtx, void *data) {
                                     PA_SUBSCRIPTION_EVENT_SINK),
         nullptr, nullptr);
     self->logger->LogInfo(TAG, "Successfully Subscribed to Pulseaudio Events.");
-    self->getDevices();
     break;
   case PA_CONTEXT_TERMINATED:
     self->logger->LogInfo(TAG, "Connection Terminated");
@@ -171,8 +171,10 @@ void PulseAudioManager::sourceInfoCallBack(pa_context *pulseCtx,
 }
 
 void PulseAudioManager::getDevices() {
+  pa_threaded_mainloop_lock(mainLoop);
   pa_context_get_sink_info_list(pulseContext, sinkInfoCallBack, this);
   pa_context_get_source_info_list(pulseContext, sourceInfoCallBack, this);
+  pa_threaded_mainloop_unlock(mainLoop);
 }
 
 void PulseAudioManager::setVolume(const std::string &devName, bool isOutput,
@@ -180,109 +182,125 @@ void PulseAudioManager::setVolume(const std::string &devName, bool isOutput,
   pa_cvolume paVolume;
   pa_cvolume_set(&paVolume, 2, (uint32_t)((float)volume / 100 * 65535));
 
+  pa_threaded_mainloop_lock(mainLoop);
+
   if (isOutput) {
     auto it = outDevs.find(devName);
-    if (it == outDevs.end())
+    if (it == outDevs.end()) {
+      pa_threaded_mainloop_unlock(mainLoop);
       return;
+    }
 
-    pa_threaded_mainloop_lock(mainLoop);
     auto op = pa_context_set_sink_volume_by_index(
         pulseContext, it->second.index, &paVolume, nullptr, nullptr);
-    pa_threaded_mainloop_unlock(mainLoop);
 
-    if (!op)
-      return;
+    if (op)
+      pa_operation_unref(op);
 
-    pa_operation_unref(op);
   } else {
     auto it = inDevs.find(devName);
-    if (it == inDevs.end())
+    if (it == inDevs.end()) {
+      pa_threaded_mainloop_unlock(mainLoop);
       return;
+    }
 
-    pa_threaded_mainloop_lock(mainLoop);
     auto op = pa_context_set_source_volume_by_index(
         pulseContext, it->second.index, &paVolume, nullptr, nullptr);
-    pa_threaded_mainloop_unlock(mainLoop);
 
-    if (!op)
-      return;
-
-    pa_operation_unref(op);
+    if (op)
+      pa_operation_unref(op);
   }
+
+  pa_threaded_mainloop_unlock(mainLoop);
 }
 
 short PulseAudioManager::toggleMute(const std::string &devName, bool isOutput) {
+  pa_threaded_mainloop_lock(mainLoop);
+  bool ret = -1;
 
   if (isOutput) {
     auto it = outDevs.find(devName);
-    if (it == outDevs.end())
+    if (it == outDevs.end()) {
+      pa_threaded_mainloop_unlock(mainLoop);
       return -1;
+    }
 
-    pa_threaded_mainloop_lock(mainLoop);
     auto op = pa_context_set_sink_mute_by_index(
         pulseContext, it->second.index, !it->second.mute, nullptr, nullptr);
-    pa_threaded_mainloop_unlock(mainLoop);
 
-    if (!op)
-      return -1;
-
-    it->second.mute = !it->second.mute;
-    pa_operation_unref(op);
-    return it->second.mute;
+    if (op) {
+      it->second.mute = !it->second.mute;
+      pa_operation_unref(op);
+      ret = it->second.mute;
+    }
   } else {
     auto it = inDevs.find(devName);
-    if (it == inDevs.end())
+    if (it == inDevs.end()) {
+      pa_threaded_mainloop_unlock(mainLoop);
       return -1;
+    }
 
-    pa_threaded_mainloop_lock(mainLoop);
     auto op = pa_context_set_source_mute_by_index(
         pulseContext, it->second.index, !it->second.mute, nullptr, nullptr);
-    pa_threaded_mainloop_unlock(mainLoop);
 
-    if (!op)
-      return -1;
-
-    it->second.mute = !it->second.mute;
-    pa_operation_unref(op);
-    return it->second.mute;
+    if (op) {
+      it->second.mute = !it->second.mute;
+      pa_operation_unref(op);
+      ret = it->second.mute;
+    }
   }
+
+  pa_threaded_mainloop_unlock(mainLoop);
+  return ret;
 }
 
 bool PulseAudioManager::updateDefDevice(const std::string &devName,
                                         bool isOutput) {
+  pa_threaded_mainloop_lock(mainLoop);
+  bool ret = false;
+
   if (isOutput) {
     auto it = outDevs.find(devName);
     if (it != outDevs.end()) {
 
-      pa_threaded_mainloop_lock(mainLoop);
       auto op = pa_context_set_default_sink(pulseContext, devName.c_str(),
                                             nullptr, nullptr);
-      pa_threaded_mainloop_unlock(mainLoop);
-
-      if (!op)
-        return false;
-
-      pa_operation_unref(op);
-      defOutput = devName;
-      return true;
+      if (op) {
+        pa_operation_unref(op);
+        defOutput = devName;
+        ret = true;
+      }
     }
   } else {
 
     auto it = inDevs.find(devName);
     if (it != inDevs.end()) {
 
-      pa_threaded_mainloop_lock(mainLoop);
       auto op = pa_context_set_default_source(pulseContext, devName.c_str(),
                                               nullptr, nullptr);
-      pa_threaded_mainloop_unlock(mainLoop);
-
-      if (!op)
-        return false;
-
-      pa_operation_unref(op);
-      defInput = devName;
-      return true;
+      if (op) {
+        pa_operation_unref(op);
+        defInput = devName;
+        ret = true;
+      }
     }
   }
-  return false;
+
+  pa_threaded_mainloop_unlock(mainLoop);
+  return ret;
+}
+
+PulseAudioManager::~PulseAudioManager() {
+  if (mainLoop) {
+    pa_threaded_mainloop_stop(mainLoop);
+  }
+
+  if (pulseContext) {
+    pa_context_disconnect(pulseContext);
+    pa_context_unref(pulseContext);
+  }
+
+  if (mainLoop) {
+    pa_threaded_mainloop_free(mainLoop);
+  }
 }
