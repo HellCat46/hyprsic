@@ -77,8 +77,8 @@ NetInterface::~NetInterface() {
   tx.close();
 }
 
-double Network::GetTotRx() {
-  double bytes = 0;
+unsigned long Network::GetTotRx() {
+  unsigned long bytes = 0;
 
   for (int idx = 0; idx < ifaceSize; idx++) {
     if (activeIfaces[idx]->up && activeIfaces[idx]->err.length() == 0)
@@ -88,8 +88,8 @@ double Network::GetTotRx() {
   return bytes;
 }
 
-double Network::GetTotTx() {
-  double bytes = 0;
+unsigned long Network::GetTotTx() {
+  unsigned long bytes = 0;
 
   for (int idx = 0; idx < ifaceSize; idx++) {
     if (activeIfaces[idx]->up && activeIfaces[idx]->err.length() == 0)

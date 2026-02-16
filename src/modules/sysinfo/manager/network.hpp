@@ -31,7 +31,7 @@ private:
 
 public:
   Network(LoggingManager *logMgr);
-  double GetTotRx();
-  double GetTotTx();
+  unsigned long GetTotRx();
+  unsigned long GetTotTx();
   std::string GetIfaces();
 };

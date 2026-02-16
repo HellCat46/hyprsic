@@ -29,19 +29,25 @@ void Stats::UpdateData() {
 }
 
 std::string Stats::GetNetRx() {
-  double trx = net.GetTotRx();
+  unsigned long trx = net.GetTotRx();
   auto curTime = std::chrono::steady_clock::now();
   auto sec =
       std::chrono::duration_cast<std::chrono::seconds>(curTime - time).count();
+       
+  if(sec == 0)
+    sec = 1;
 
   return ParseBytes((trx - rx) / sec, 1);
 }
 
 std::string Stats::GetNetTx() {
-  double ttx = net.GetTotTx();
+  unsigned long ttx = net.GetTotTx();
   auto curTime = std::chrono::steady_clock::now();
   auto sec =
       std::chrono::duration_cast<std::chrono::seconds>(curTime - time).count();
+      
+  if (sec == 0)
+    sec = 1;
 
   return ParseBytes((ttx - tx) / sec, 1);
 }
@@ -52,7 +58,7 @@ std::string Stats::GetDiskAvail() {
 
 std::string Stats::GetDiskTotal() { return ParseBytes(diskTotal, 2); }
 
-std::string Stats::ParseBytes(double bytes, int precision) {
+std::string Stats::ParseBytes(unsigned long bytes, int precision) {
   std::string str;
   precision++;
 
@@ -78,6 +84,4 @@ std::string Stats::ParseBytes(double bytes, int precision) {
   return str;
 }
 
-std::string Stats::GetIfaces() {
-  return net.GetIfaces();
-}
+std::string Stats::GetIfaces() { return net.GetIfaces(); }

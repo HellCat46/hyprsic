@@ -12,7 +12,7 @@ class Stats {
   LoggingManager *logger;
 
 public:
-  double rx, tx;
+  unsigned long rx, tx;
   unsigned long diskAvail, diskTotal;
   std::chrono::time_point<std::chrono::steady_clock> time;
 
@@ -25,5 +25,5 @@ public:
   std::string GetDiskAvail();
   std::string GetDiskTotal();
 
-  static std::string ParseBytes(double bytes, int precision);
+  static std::string ParseBytes(unsigned long bytes, int precision);
 };
