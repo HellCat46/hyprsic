@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../../../logging/manager.hpp"
 #include "cstdlib"
 #include "cstring"
 #include "gtk/gtk.h"
@@ -10,7 +11,6 @@
 #include <string_view>
 #include <thread>
 #include <vector>
-#include "../../../logging/manager.hpp"
 
 struct Workspace {
   long int id;
@@ -20,8 +20,9 @@ struct Workspace {
 };
 
 struct WSListenerData {
-    GtkWidget* wsBox; 
-    GtkWidget* spWSBox;
+  GtkWidget *wsBox;
+  GtkWidget *spWSBox;
+  unsigned char windowId;
 };
 
 class HyprWSManager {
@@ -31,8 +32,12 @@ class HyprWSManager {
   Json::CharReaderBuilder jsonReader;
   LoggingManager *logger;
   bool failed;
-  
-  std::vector<std::pair<std::function<void(HyprWSManager *wsInstance, GtkWidget* wsBox, GtkWidget* spWSBox)>, WSListenerData>> listeners;
+
+  std::vector<
+      std::pair<std::function<void(HyprWSManager *wsInstance, GtkWidget *wsBox,
+                                   GtkWidget *spWSBox, unsigned char windowId)>,
+                WSListenerData>>
+      listeners;
 
   int getPath();
 
@@ -42,15 +47,19 @@ class HyprWSManager {
 public:
   long activeWorkspaceId;
   std::map<long, Workspace> workspaces;
-  
+
   HyprWSManager(LoggingManager *logMgr);
   ~HyprWSManager();
+
+  void subscribe(std::function<void(HyprWSManager *wsInstance, GtkWidget *wsBox,
+                                    GtkWidget *spWSBox, unsigned char windowId)>
+                     updateFunc,
+                 GtkWidget *wsBox, GtkWidget *spWSBox, unsigned char windowId);
   
-  void subscribe(std::function<void(HyprWSManager* wsInstance, GtkWidget* wsBox, GtkWidget* spWSBox)> updateFunc, GtkWidget* wsBox, GtkWidget* spWSBox);
   void liveEventListener();
   int GetWorkspaces();
-  static int SwitchToWS(HyprWSManager* wsInstance, int wsId);
-  // 
-  static int SwitchSPWS(HyprWSManager* wsInstance, int wsId, std::string name);
-
+  
+  int SwitchToWS(int wsId);
+  int MoveToWS(int wsId, unsigned char monitorId, bool forw);
+  int SwitchSPWS(int wsId, std::string name);
 };

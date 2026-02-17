@@ -88,7 +88,7 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
     gtk_grid_set_column_spacing(GTK_GRID(rightGrid), 10);
     gtk_widget_set_margin_end(right_box, 5);
 
-    winInstance->hyprModule.setup(main_box);
+    winInstance->hyprModule.setup(main_box, i);
 
     winInstance->mprisModule.setup(main_box);
 

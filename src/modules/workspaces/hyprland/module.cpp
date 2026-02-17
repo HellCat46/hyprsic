@@ -1,38 +1,47 @@
 #include "module.hpp"
+#include "gdk/gdk.h"
+#include "glib-object.h"
 #include "glib.h"
 #include "gtk/gtk.h"
 #include "manager.hpp"
 #include <algorithm>
 #include <functional>
-#include <iostream>
+#include <string>
 
 HyprWSModule::HyprWSModule(AppContext *ctx, HyprWSManager *hyprInstance)
     : logger(&ctx->logger), hyprInstance(hyprInstance) {}
 
-void HyprWSModule::setup(GtkWidget *mainGrid) {
+void HyprWSModule::setup(GtkWidget *mainGrid, unsigned char monitorId) {
   GtkWidget *mainBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
   gtk_grid_attach(GTK_GRID(mainGrid), mainBox, 0, 0, 2, 1);
   gtk_widget_set_hexpand(mainBox, TRUE);
 
   wsWid = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
-  gtk_widget_set_margin_start(wsWid, 15);
-  gtk_box_pack_start(GTK_BOX(mainBox), wsWid, false, false, 0);
+  GtkWidget *wdEvtBox = gtk_event_box_new();
+  gtk_container_add(GTK_CONTAINER(wdEvtBox), wsWid);
+  gtk_widget_set_margin_start(wdEvtBox, 15);
+  gtk_box_pack_start(GTK_BOX(mainBox), wdEvtBox, false, false, 0);
+  gtk_widget_add_events(wdEvtBox, GDK_SCROLL_MASK);
+  g_signal_connect(wdEvtBox, "scroll-event",
+                   G_CALLBACK(HyprWSModule::handleWSScroll), this);
 
   spWSWid = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
   gtk_widget_set_margin_start(spWSWid, 15);
   gtk_box_pack_start(GTK_BOX(mainBox), spWSWid, false, false, 0);
 
-  updateWorkspaces(hyprInstance, wsWid, spWSWid);
-
-  hyprInstance->subscribe(HyprWSModule::updateWorkspaces, wsWid, spWSWid);
+  this->monitorId = monitorId;
+  updateWorkspaces(hyprInstance, wsWid, spWSWid, monitorId);
+  hyprInstance->subscribe(HyprWSModule::updateWorkspaces, wsWid, spWSWid,
+                          monitorId);
 }
 
 void HyprWSModule::updateWorkspaces(HyprWSManager *hyprInstance,
-                                    GtkWidget *wsBox, GtkWidget *spWSBox) {
+                                    GtkWidget *wsBox, GtkWidget *spWSBox,
+                                    unsigned char monitorId) {
 
   if (!hyprInstance->GetWorkspaces()) {
 
-    auto data = new UpdateWSData{hyprInstance, wsBox, spWSBox};
+    auto data = new UpdateWSData{hyprInstance, wsBox, spWSBox, monitorId};
     g_idle_add_full(G_PRIORITY_HIGH_IDLE, updateWorkspaceUI, data,
                     (GDestroyNotify) nullptr);
   }
@@ -56,6 +65,9 @@ gboolean HyprWSModule::updateWorkspaceUI(gpointer data) {
 
   for (auto workspace : upData->wsInstance->workspaces) {
     txt = workspace.second.name;
+
+    if (upData->monitorId != workspace.second.monitorId)
+      continue;
 
     if (upData->wsInstance->activeWorkspaceId == workspace.first &&
         workspace.first >= 0) {
@@ -103,15 +115,23 @@ gboolean HyprWSModule::updateWorkspaceUI(gpointer data) {
 void HyprWSModule::chgWS(GtkWidget *widget, GdkEvent *e, gpointer user_data) {
   ChgWSArgs *args = static_cast<ChgWSArgs *>(user_data);
 
-  if (args->wsInstance->SwitchToWS(args->wsInstance, args->wsId)) {
-    std::cerr << "[Error] Failed to Switch Workspace" << std::endl;
+  args->wsInstance->SwitchToWS(args->wsId);
+}
+
+void HyprWSModule::handleWSScroll(GtkWidget *widget, GdkEventScroll *e,
+                                  gpointer user_data) {
+  HyprWSModule *self = static_cast<HyprWSModule *>(user_data);
+
+  if (e->direction == GDK_SCROLL_UP) {
+    self->hyprInstance->MoveToWS(self->hyprInstance->activeWorkspaceId - 1,
+                                 self->monitorId, false);
+  } else if (e->direction == GDK_SCROLL_DOWN) {
+    self->hyprInstance->MoveToWS(self->hyprInstance->activeWorkspaceId + 1,
+                                 self->monitorId, true);
   }
 }
 
 void HyprWSModule::chgSPWS(GtkWidget *widget, GdkEvent *e, gpointer user_data) {
   ChgWSArgs *args = static_cast<ChgWSArgs *>(user_data);
-
-  if (args->wsInstance->SwitchSPWS(args->wsInstance, args->wsId, args->name)) {
-    std::cerr << "[Error] Failed to Switch to Special Workspace" << std::endl;
-  }
+  args->wsInstance->SwitchSPWS(args->wsId, args->name);
 }

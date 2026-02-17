@@ -6,7 +6,6 @@
 #include "gdk-pixbuf/gdk-pixbuf.h"
 #include <algorithm>
 #include <cstring>
-#include <iostream>
 #include <ostream>
 #include <sstream>
 #include <string>
