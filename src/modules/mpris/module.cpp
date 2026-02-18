@@ -18,7 +18,7 @@ MprisModule::MprisModule(AppContext *ctx, MprisManager *mprisMgr) {
   logger = &ctx->logger;
 }
 
-void MprisModule::setup(GtkWidget *mainBox) {
+GtkWidget * MprisModule::setup() {
 
   mainLabel = gtk_label_new(nullptr);
   gtk_label_set_ellipsize(GTK_LABEL(mainLabel), PANGO_ELLIPSIZE_END);
@@ -27,7 +27,6 @@ void MprisModule::setup(GtkWidget *mainBox) {
                    G_CALLBACK(MprisModule::chgVisibilityMenu), this);
 
   gtk_container_add(GTK_CONTAINER(labelAction), mainLabel);
-  gtk_grid_attach(GTK_GRID(mainBox), labelAction, 2, 0, 1, 1);
   gtk_widget_set_hexpand(labelAction, FALSE);
 
   // Popover Menu
@@ -98,6 +97,8 @@ void MprisModule::setup(GtkWidget *mainBox) {
   gtk_widget_show_all(progBox);
 
   update();
+  
+  return labelAction;
 }
 
 void MprisModule::update() {

@@ -11,7 +11,7 @@ class ScreenSaverModule {
 
 public:
   ScreenSaverModule(AppContext *ctx, ScreenSaverManager *scrnsavrInstance);
-  void setup(GtkWidget *box);
+  GtkWidget* setup();
 
   static void switchScreenSaverCb(GtkWidget *widget, GdkEvent *e, gpointer user_data);
 };

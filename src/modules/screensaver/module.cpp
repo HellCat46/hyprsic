@@ -7,7 +7,7 @@ ScreenSaverModule::ScreenSaverModule(AppContext *ctx,
                                      ScreenSaverManager *scrnsavrInstance)
     : screenSaverMgr(scrnsavrInstance), logger(&ctx->logger) {}
 
-void ScreenSaverModule::setup(GtkWidget *grid) {
+GtkWidget* ScreenSaverModule::setup() {
   // L is temprorary placeholder until i find suitable icons
   GtkWidget *scrnSvrEBox = gtk_event_box_new();
   btnWid = gtk_label_new("L");
@@ -18,7 +18,7 @@ void ScreenSaverModule::setup(GtkWidget *grid) {
   g_signal_connect(scrnSvrEBox, "button-press-event",
                    G_CALLBACK(switchScreenSaverCb), this);
 
-  gtk_grid_attach(GTK_GRID(grid), scrnSvrEBox, 9, 0, 1, 1);
+  return scrnSvrEBox;
 }
 
 void ScreenSaverModule::switchScreenSaverCb(GtkWidget *widget, GdkEvent *e,

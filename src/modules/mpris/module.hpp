@@ -24,7 +24,7 @@ class MprisModule {
 public:
   MprisModule(AppContext *ctx, MprisManager* mprisMgr);
 
-  void setup(GtkWidget *mainBox);
+  GtkWidget* setup();
   void update();
 
   static void chgVisibilityMenu(GtkWidget *widget, GdkEvent *e,

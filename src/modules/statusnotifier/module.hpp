@@ -31,7 +31,7 @@ class StatusNotifierModule {
   public:
     StatusNotifierModule(AppContext *ctx, StatusNotifierManager *snManagerInstance);
     
-    void setup(GtkWidget *box);
+    GtkWidget* setup();
     void update();
     static void remove(std::string servicePath, std::map<std::string, SNIApp>* sniApps, GtkWidget* sniBox);
     

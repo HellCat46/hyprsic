@@ -17,7 +17,8 @@ Window::Window(AppContext *ctx, MprisManager *mprisMgr,
                ScreenSaverManager *scrnsavrMgr,
                NotificationManager *notifInstance, BluetoothManager *btMgr,
                HyprWSManager *hyprMgr, StatusNotifierManager *snManager,
-               Stats *stat, Memory *mem, SysLoad *load, BatteryInfo *battery, PulseAudioManager* paMgr)
+               Stats *stat, Memory *mem, SysLoad *load, BatteryInfo *battery,
+               PulseAudioManager *paMgr)
     : mprisModule(ctx, mprisMgr), hyprModule(ctx, hyprMgr),
       scrnsavrModule(ctx, scrnsavrMgr), btModule(ctx, btMgr),
       notifModule(ctx, notifInstance), snModule(ctx, snManager),
@@ -26,8 +27,8 @@ Window::Window(AppContext *ctx, MprisManager *mprisMgr,
 MainWindow::MainWindow()
     : notifManager(&ctx), btManager(&ctx), mprisManager(&ctx),
       scrnsavrManager(&ctx), hyprInstance(&ctx.logger), snManager(&ctx),
-      load(&ctx.logger), mem(&ctx.logger), stat(&ctx.logger),
-      battery(&ctx), paManager(&ctx.logger), wifiManager(&ctx) {
+      load(&ctx.logger), mem(&ctx.logger), stat(&ctx.logger), battery(&ctx),
+      paManager(&ctx.logger), wifiManager(&ctx) {
 
   btManager.setup();
   hyprInstance.liveEventListener();
@@ -48,7 +49,7 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
   MainWindow *self = static_cast<MainWindow *>(user_data);
   GdkDisplay *display = gdk_display_get_default();
   self->ctx.initUpdateWindow();
-  
+
   int mCount = gdk_display_get_n_monitors(display);
   for (int i = 0; i < mCount; i++) {
     std::unique_ptr<Window> winInstance = std::unique_ptr<Window>(
@@ -74,30 +75,55 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
     gtk_layer_set_exclusive_zone(GTK_WINDOW(winInstance->window), 25);
     gtk_widget_set_size_request(winInstance->window, -1, 25);
 
-    GtkWidget *main_box = gtk_grid_new();
-    gtk_grid_set_column_homogeneous(GTK_GRID(main_box), TRUE);
-    gtk_container_add(GTK_CONTAINER(winInstance->window), main_box);
+    GtkWidget *mainGrid = gtk_grid_new();
+    gtk_grid_set_column_homogeneous(GTK_GRID(mainGrid), TRUE);
+    gtk_container_add(GTK_CONTAINER(winInstance->window), mainGrid);
 
+    GtkWidget* wid = winInstance->hyprModule.setup(i);
+    gtk_grid_attach(GTK_GRID(mainGrid), wid, 0, 0,
+                    2, 1);
+
+    
+    wid = winInstance->mprisModule.setup();
+    gtk_grid_attach(GTK_GRID(mainGrid), wid, 2, 0, 1, 1);
+    
+    
     // Right Box to Show System Stats
     GtkWidget *right_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-    gtk_grid_attach(GTK_GRID(main_box), right_box, 3, 0, 2, 1);
+    gtk_grid_attach(GTK_GRID(mainGrid), right_box, 3, 0, 2, 1);
     gtk_widget_set_hexpand(right_box, TRUE);
-    
+
     GtkWidget *rightGrid = gtk_grid_new();
     gtk_box_pack_end(GTK_BOX(right_box), rightGrid, FALSE, FALSE, 0);
     gtk_grid_set_column_spacing(GTK_GRID(rightGrid), 10);
     gtk_widget_set_margin_end(right_box, 5);
 
-    winInstance->hyprModule.setup(main_box, i);
-
-    winInstance->mprisModule.setup(main_box);
-
-    winInstance->sysinfoModule.setup(rightGrid);
-    winInstance->notifModule.setup(rightGrid);
-    winInstance->btModule.setupBT(rightGrid);
-    winInstance->scrnsavrModule.setup(rightGrid);
-    winInstance->snModule.setup(rightGrid);
-    winInstance->paModule.setup(rightGrid);
+    // System Info Widgets
+    auto wids = winInstance->sysinfoModule.setup();
+    for (int i = 0; i < wids.size(); i++) {
+      gtk_grid_attach(GTK_GRID(rightGrid), wids[i], i, 0, 1, 1);
+    }
+    
+    int loc = wids.size();
+    wid = winInstance->notifModule.setup();
+    gtk_grid_attach(GTK_GRID(rightGrid), wid, loc, 0, 1, 1);
+    
+    wid = winInstance->btModule.setup();
+    gtk_grid_attach(GTK_GRID(rightGrid), wid, loc + 1, 0, 1, 1);
+    
+    wid = winInstance->scrnsavrModule.setup();
+    gtk_grid_attach(GTK_GRID(rightGrid), wid, loc + 2, 0, 1, 1);
+    
+    
+    loc += 3;
+    wids = winInstance->paModule.setup();
+    for (int i = 0; i < wids.size(); i++) {
+        gtk_grid_attach(GTK_GRID(rightGrid), wids[i], loc + i, 0, 1, 1);
+        }
+    
+    loc += wids.size();
+    wid = winInstance->snModule.setup();
+    gtk_grid_attach(GTK_GRID(rightGrid), wid, loc, 0, 1, 1);
 
     gtk_widget_show_all(winInstance->window);
     self->mainWindows.push_back(std::move(winInstance));
@@ -105,13 +131,13 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
 }
 
 void MainWindow::UpdateData() {
-    while(true){
-        btManager.getDeviceList();
-        stat.UpdateData();
-        paManager.getDevices();
-        mprisManager.GetPlayerInfo();
-        std::this_thread::sleep_for(std::chrono::milliseconds(delay));
-    }
+  while (true) {
+    btManager.getDeviceList();
+    stat.UpdateData();
+    paManager.getDevices();
+    mprisManager.GetPlayerInfo();
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+  }
 }
 
 gboolean MainWindow::UpdateUI(gpointer data) {
@@ -125,7 +151,7 @@ gboolean MainWindow::UpdateUI(gpointer data) {
     window->snModule.update();
     window->paModule.update();
   }
-  
+
   return true;
 }
 
@@ -166,7 +192,6 @@ void MainWindow::captureSessionDBus() {
       dbus_message_iter_get_basic(&args, &oldOwner);
       dbus_message_iter_next(&args);
       dbus_message_iter_get_basic(&args, &newOwner);
-
 
       if (HelperFunc::saferStrNCmp(name, "org.mpris.MediaPlayer2", 22)) {
         if (std::strlen(newOwner) != 0) {

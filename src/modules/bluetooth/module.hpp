@@ -29,7 +29,7 @@ class BluetoothModule {
 public:
   BluetoothModule(AppContext *ctx, BluetoothManager *manager);
   // UI Prep Functions
-  void setupBT(GtkWidget *box);
+  GtkWidget* setup();
   void updateBTList(bool force = false);
 
   static void switchVisibilityBTMenu(GtkWidget *widget, GdkEvent *e,

@@ -22,6 +22,6 @@ class SysInfoModule {
     public:
     SysInfoModule(Stats* stats, Memory* memory, SysLoad* sysLoad, BatteryInfo* batteryInfo);
     
-    void setup(GtkWidget* gridBox);
+    std::vector<GtkWidget *> setup();
     void update();
 };

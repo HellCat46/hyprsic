@@ -18,7 +18,7 @@ public:
   NotificationModule(AppContext *ctx, NotificationManager *notifInstance);
 
   // Notification List Functions
-  void setup(GtkWidget *box);
+  GtkWidget* setup();
   void update(bool force = false);
 
   static void chgVisibiltyWin(GtkWidget *widget, GdkEvent *e,

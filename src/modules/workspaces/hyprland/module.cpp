@@ -11,9 +11,8 @@
 HyprWSModule::HyprWSModule(AppContext *ctx, HyprWSManager *hyprInstance)
     : logger(&ctx->logger), hyprInstance(hyprInstance) {}
 
-void HyprWSModule::setup(GtkWidget *mainGrid, unsigned char monitorId) {
+GtkWidget* HyprWSModule::setup(unsigned char monitorId) {
   GtkWidget *mainBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
-  gtk_grid_attach(GTK_GRID(mainGrid), mainBox, 0, 0, 2, 1);
   gtk_widget_set_hexpand(mainBox, TRUE);
 
   wsWid = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
@@ -33,6 +32,8 @@ void HyprWSModule::setup(GtkWidget *mainGrid, unsigned char monitorId) {
   updateWorkspaces(hyprInstance, wsWid, spWSWid, monitorId);
   hyprInstance->subscribe(HyprWSModule::updateWorkspaces, wsWid, spWSWid,
                           monitorId);
+  
+  return mainBox;
 }
 
 void HyprWSModule::updateWorkspaces(HyprWSManager *hyprInstance,

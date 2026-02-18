@@ -4,6 +4,7 @@
 #include "gtk/gtk.h"
 #include "../../app/context.hpp"
 #include "manager.hpp"
+#include <vector>
 
 class PulseAudioModule {
   PulseAudioManager *paManager;
@@ -34,7 +35,7 @@ class PulseAudioModule {
 
 public:
   PulseAudioModule(PulseAudioManager *paManager, AppContext *ctx);
-  void setup(GtkWidget *parent);
+  std::vector<GtkWidget*> setup();
   void update();
 
   void updateControls(bool mute, const std::vector<uint32_t> &volume,

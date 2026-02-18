@@ -8,61 +8,63 @@
 #include "gtk/gtk.h"
 #include "manager.hpp"
 #include <cstdint>
+#include <vector>
 
 #define TAG "PulseAudioModule"
 
-PulseAudioModule::PulseAudioModule(PulseAudioManager *paMgr,
-                                   AppContext* ctx)
+PulseAudioModule::PulseAudioModule(PulseAudioManager *paMgr, AppContext *ctx)
     : ctx(ctx), paManager(paMgr) {}
 
-void PulseAudioModule::setup(GtkWidget *parent) {
+std::vector<GtkWidget *> PulseAudioModule::setup() {
+  std::vector<GtkWidget *> widgets;
+
   // Load Svg Icons
   GError *err = nullptr;
   inMuteIcon = gdk_pixbuf_new_from_file_at_scale(
       "resources/icons/audio/mic_mute.svg", 16, 16, TRUE, &err);
   if (err) {
     ctx->logger.LogError(TAG, "Failed to load mic mute icon: " +
-                              std::string(err->message));
+                                  std::string(err->message));
     g_error_free(err);
-    return;
+    return widgets;
   }
 
   inUnmuteIcon = gdk_pixbuf_new_from_file_at_scale(
       "resources/icons/audio/mic_unmute.svg", 16, 16, TRUE, &err);
   if (err) {
     ctx->logger.LogError(TAG, "Failed to load mic unmute icon: " +
-                              std::string(err->message));
+                                  std::string(err->message));
     g_error_free(err);
-    return;
+    return widgets;
   }
 
   outMuteIcon = gdk_pixbuf_new_from_file_at_scale(
       "resources/icons/audio/speaker_mute.svg", 16, 16, TRUE, &err);
   if (err) {
     ctx->logger.LogError(TAG, "Failed to load volume mute icon: " +
-                              std::string(err->message));
+                                  std::string(err->message));
     g_error_free(err);
-    return;
+    return widgets;
   }
 
   outUnmuteIcon = gdk_pixbuf_new_from_file_at_scale(
       "resources/icons/audio/speaker_unmute.svg", 16, 16, TRUE, &err);
   if (err) {
     ctx->logger.LogError(TAG, "Failed to load volume unmute icon: " +
-                              std::string(err->message));
+                                  std::string(err->message));
     g_error_free(err);
-    return;
+    return widgets;
   }
 
   inEvtBox = gtk_event_box_new();
   barInIcon = gtk_image_new_from_pixbuf(outUnmuteIcon);
   gtk_container_add(GTK_CONTAINER(inEvtBox), barInIcon);
-  gtk_grid_attach(GTK_GRID(parent), inEvtBox, 10, 0, 1, 1);
+  widgets.push_back(inEvtBox);
 
   outEvtBox = gtk_event_box_new();
   barOutIcon = gtk_image_new_from_pixbuf(outUnmuteIcon);
   gtk_container_add(GTK_CONTAINER(outEvtBox), barOutIcon);
-  gtk_grid_attach(GTK_GRID(parent), outEvtBox, 11, 0, 1, 1);
+  widgets.push_back(outEvtBox);
 
   menuWin = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   gtk_layer_init_for_window(GTK_WINDOW(menuWin));
@@ -149,6 +151,7 @@ void PulseAudioModule::setup(GtkWidget *parent) {
                    this);
 
   update();
+  return widgets;
 }
 
 void PulseAudioModule::update() {

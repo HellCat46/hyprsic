@@ -15,12 +15,13 @@ StatusNotifierModule::StatusNotifierModule(
   logger = &ctx->logger;
 }
 
-void StatusNotifierModule::setup(GtkWidget *box) {
+GtkWidget* StatusNotifierModule::setup() {
   sniBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
-  gtk_grid_attach(GTK_GRID(box), sniBox, 11, 0, 1, 1);
 
   snManager->removeCallbacks.push_back(
       {StatusNotifierModule::remove, sniBox, &sniApps});
+  
+  return sniBox;
 }
 
 void StatusNotifierModule::update() {

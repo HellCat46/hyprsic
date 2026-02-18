@@ -30,7 +30,7 @@ class HyprWSModule {
 public:
   HyprWSModule(AppContext *ctx, HyprWSManager *hyprInstance);
 
-  void setup(GtkWidget *main_box, unsigned char monitorId);
+  GtkWidget* setup(unsigned char monitorId);
   static void updateWorkspaces(HyprWSManager *hyprInstance, GtkWidget *wsBox,
                                GtkWidget *spWSBox, unsigned char monitorId);
   static void chgWS(GtkWidget *widget, GdkEvent *e, gpointer user_data);

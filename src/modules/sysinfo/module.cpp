@@ -1,7 +1,7 @@
 #include "module.hpp"
+#include "../../utils/helper_func.hpp"
 #include "gtk/gtk.h"
 #include "manager/battery.hpp"
-#include "../../utils/helper_func.hpp"
 #include <iomanip>
 #include <sstream>
 #include <string>
@@ -10,30 +10,31 @@ SysInfoModule::SysInfoModule(Stats *stats, Memory *memory, SysLoad *sysLoad,
                              BatteryInfo *batteryInfo)
     : stat(stats), mem(memory), load(sysLoad), battery(batteryInfo) {}
 
-void SysInfoModule::setup(GtkWidget *gridBox) {
-
+std::vector<GtkWidget *> SysInfoModule::setup() {
   stat->UpdateData();
   std::string txt = "";
+  std::vector<GtkWidget *> widgets;
 
   netWid = gtk_label_new(nullptr);
-  gtk_grid_attach(GTK_GRID(gridBox), netWid, 1, 0, 1, 1);
+  widgets.push_back(netWid);
 
   diskWid = gtk_label_new(nullptr);
-  gtk_grid_attach(GTK_GRID(gridBox), diskWid, 2, 0, 1, 1);
+  widgets.push_back(diskWid);
 
   loadWid = gtk_label_new(nullptr);
-  gtk_grid_attach(GTK_GRID(gridBox), loadWid, 3, 0, 1, 1);
+  widgets.push_back(loadWid);
 
   memWid = gtk_label_new(nullptr);
-  gtk_grid_attach(GTK_GRID(gridBox), memWid, 4, 0, 1, 1);
+  widgets.push_back(memWid);
 
   batteryWid = gtk_label_new(nullptr);
-  gtk_grid_attach(GTK_GRID(gridBox), batteryWid, 5, 0, 1, 1);
+  widgets.push_back(batteryWid);
 
   timeWid = gtk_label_new(nullptr);
-  gtk_grid_attach(GTK_GRID(gridBox), timeWid, 6, 0, 1, 1);
+  widgets.push_back(timeWid);
 
   update();
+  return widgets;
 }
 
 void SysInfoModule::update() {
@@ -81,12 +82,14 @@ void SysInfoModule::update() {
   txt = " " + std::to_string(battStats.percent) + "%";
   gtk_label_set_label(GTK_LABEL(batteryWid), txt.c_str());
   tooltipTxt = "<b>Charger:</b> ";
-  if(battery->isCharging()){
+  if (battery->isCharging()) {
     tooltipTxt += "Charging";
-    tooltipTxt += "\n<b>Time Till Full:</b> " + HelperFunc::convertToTime(battStats.timeTillFull);
+    tooltipTxt += "\n<b>Time Till Full:</b> " +
+                  HelperFunc::convertToTime(battStats.timeTillFull);
   } else {
     tooltipTxt += "Not Charging";
-    tooltipTxt += "\n<b>Time Till Empty:</b> " + HelperFunc::convertToTime(battStats.timeTillEmpty);
+    tooltipTxt += "\n<b>Time Till Empty:</b> " +
+                  HelperFunc::convertToTime(battStats.timeTillEmpty);
   }
   gtk_widget_set_tooltip_markup(batteryWid, tooltipTxt.c_str());
 

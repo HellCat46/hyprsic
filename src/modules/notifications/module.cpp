@@ -15,11 +15,10 @@ NotificationModule::NotificationModule(AppContext *ctx,
                                        NotificationManager *notifInstance)
     : notifInstance(notifInstance), ctx(ctx), dbManager(&ctx->dbManager) {}
 
-void NotificationModule::setup(GtkWidget *box) {
+GtkWidget* NotificationModule::setup() {
   GtkWidget *notifEBox = gtk_event_box_new();
   GtkWidget *notif = gtk_label_new("");
   gtk_container_add(GTK_CONTAINER(notifEBox), notif);
-  gtk_grid_attach(GTK_GRID(box), notifEBox, 7, 0, 1, 1);
   gtk_widget_set_margin_start(notifEBox, 10);
 
   g_signal_connect(notifEBox, "button-press-event",
@@ -80,6 +79,8 @@ void NotificationModule::setup(GtkWidget *box) {
 
   gtk_widget_show_all(mainBox);
   update(true);
+  
+  return notifEBox;
 }
 
 void NotificationModule::update(bool force) {
