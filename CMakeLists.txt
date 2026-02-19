@@ -29,6 +29,9 @@ if(ENABLE_NVIDIA_NVML)
     endif()
 endif()
 
+set(WAYLAND_PROTOCOLS_SOURCES
+    src/wayland/ext-data-control-v1.c
+)
 
 set(MODULES_SOURCES
     src/modules/workspaces/hyprland/manager.cpp
@@ -104,6 +107,7 @@ add_executable(hyprsic
         src/app/main.cpp
         ${APP_SOURCES}
         ${DATABASE_SOURCES}
+        ${WAYLAND_PROTOCOLS_SOURCES}
         ${DEBUG_SOURCES}
         ${MODULES_SOURCES}
         ${UTIL_SOURCES}
