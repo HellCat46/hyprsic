@@ -39,6 +39,7 @@ HyprWSManager::HyprWSManager(LoggingManager *logMgr) : logger(logMgr) {
   }
 
   GetWorkspaces();
+  GetMonitors();
 
   return;
 }
@@ -84,83 +85,113 @@ void HyprWSManager::liveEventListener() {
         std::string_view buffView(buffer);
 
         // Update the String Length Too If Event name is being updated
-        if (buffView.starts_with("createworkspace")) {
-          size_t pos = buffView.find("createworkspacev2>>");
+        size_t pos = buffView.find("createworkspacev2>>");
+        if (pos != std::string_view::npos) {
+          buffView = buffView.substr(pos + 19);
 
-          if (pos != std::string_view::npos) {
-            buffView = buffView.substr(pos + 19);
+          long wsId = parseWorkspaceId(buffView);
+          if (wsId == 0) {
+            logger->LogError(TAG, "Failed to Parse Workspace ID from Event "
+                                  "Info - Create Workspace");
+            continue;
+          }
 
-            long wsId = parseWorkspaceId(buffView);
-            if (wsId == 0) {
-              logger->LogError(TAG, "Failed to Parse Workspace ID from Event "
-                                    "Info - Create Workspace");
-              continue;
+          chngMade = true;
+          logger->LogInfo(TAG, "Workspace Created: " + std::to_string(wsId));
+        }
+
+        pos = buffView.find("destroyworkspacev2>>");
+        if (pos != std::string_view::npos) {
+          buffView = buffView.substr(pos + 20);
+
+          int wsId = parseWorkspaceId(buffView);
+          if (wsId == 0) {
+            logger->LogError(TAG, "Failed to Parse Workspace ID from Event "
+                                  "Info - Destroy Workspace");
+            continue;
+          }
+
+          chngMade = true;
+          workspaces.erase(wsId);
+          logger->LogInfo(TAG, "Workspace Deleted: " + std::to_string(wsId));
+        }
+
+        pos = buffView.find("moveworkspacev2>>");
+        if (pos != std::string_view::npos) {
+          buffView = buffView.substr(pos + 17);
+
+          int wsId = parseWorkspaceId(buffView);
+          if (wsId == 0) {
+            logger->LogError(TAG, "Failed to Parse Workspace ID from Event "
+                                  "Info - Move Workspace");
+            continue;
+          }
+
+          // Parse Monitor Name
+          pos = buffView.rfind(",");
+          if (pos == std::string_view::npos) {
+            logger->LogError(TAG, "Failed to Parse Monitor Name from Event "
+                                  "Info - Move Workspace");
+            continue;
+          }
+          
+          buffView = buffView.substr(pos + 1);
+          if (buffView.size() < 2) {
+            logger->LogError(TAG, "Failed to Parse Monitor Name from Event "
+                                  "Info - Move Workspace");
+            continue;
+          }
+          buffView.remove_suffix(1);
+
+          auto it = workspaces.find(wsId);
+          if (it != workspaces.end()) {
+            auto monIt = monitors.find(std::string(buffView));
+            if (monIt != monitors.end()) {
+
+              it->second.monitorId = monIt->second;
+              chngMade = true;
+              logger->LogInfo(TAG, "Workspace Moved: " + std::to_string(wsId));
             }
-
-            chngMade = true;
-            logger->LogInfo(TAG, "Workspace Created: " + std::to_string(wsId));
           }
         }
 
-        if (buffView.starts_with("workspace")) {
-          size_t pos = buffView.find("workspacev2>>");
-          if (pos != std::string_view::npos) {
-            buffView = buffView.substr(pos + 13);
+        pos = buffView.find("workspacev2>>");
+        if (pos != std::string_view::npos) {
+          buffView = buffView.substr(pos + 13);
 
+          long wsId = parseWorkspaceId(buffView);
+          if (wsId == 0) {
+            logger->LogError(TAG, "Failed to Parse Workspace ID from Event "
+                                  "Info - Switch Workspace");
+            continue;
+          }
+
+          chngMade = true;
+          activeWorkspaceId = wsId;
+          // logger->LogInfo(TAG,
+          //                 "Active Workspace Changed: " +
+          //                 std::to_string(wsId));
+        }
+
+        pos = buffView.find("focusedmonv2>>");
+        if (pos != std::string_view::npos) {
+          buffView = buffView.substr(pos + 14);
+
+          pos = buffView.find(",");
+          if (pos != std::string_view::npos) {
+            buffView = buffView.substr(pos + 1);
             long wsId = parseWorkspaceId(buffView);
             if (wsId == 0) {
               logger->LogError(TAG, "Failed to Parse Workspace ID from Event "
-                                    "Info - Switch Workspace");
+                                    "Info - Focused Monitor Changed");
               continue;
             }
 
             chngMade = true;
             activeWorkspaceId = wsId;
             // logger->LogInfo(TAG,
-            //                 "Active Workspace Changed: " +
+            //                 "Focused Monitor Changed: " +
             //                 std::to_string(wsId));
-          }
-        }
-
-        if (buffView.starts_with("focusedmon")) {
-          size_t pos = buffView.find("focusedmonv2>>");
-          if (pos != std::string_view::npos) {
-            buffView = buffView.substr(pos + 14);
-
-            pos = buffView.find(",");
-            if (pos != std::string_view::npos) {
-              buffView = buffView.substr(pos + 1);
-              long wsId = parseWorkspaceId(buffView);
-              if (wsId == 0) {
-                logger->LogError(TAG, "Failed to Parse Workspace ID from Event "
-                                      "Info - Focused Monitor Changed");
-                continue;
-              }
-
-              chngMade = true;
-              activeWorkspaceId = wsId;
-              // logger->LogInfo(TAG,
-              //                 "Focused Monitor Changed: " +
-              //                 std::to_string(wsId));
-            }
-          }
-        }
-
-        if (buffView.starts_with("destroyworkspace")) {
-          size_t pos = buffView.find("destroyworkspacev2>>");
-          if (pos != std::string_view::npos) {
-            buffView = buffView.substr(pos + 20);
-
-            int wsId = parseWorkspaceId(buffView);
-            if (wsId == 0) {
-              logger->LogError(TAG, "Failed to Parse Workspace ID from Event "
-                                    "Info - Destroy Workspace");
-              continue;
-            }
-
-            chngMade = true;
-            workspaces.erase(wsId);
-            logger->LogInfo(TAG, "Workspace Deleted: " + std::to_string(wsId));
           }
         }
 
@@ -210,8 +241,8 @@ Json::Value HyprWSManager::executeQuery(const std::string &msg,
 
   addr.sun_family = AF_UNIX;
 
-  // Establish Connection With Hyprland's UNIX Socket for Performing Workspace
-  // Related Action
+  // Establish Connection With Hyprland's UNIX Socket for Performing
+  // Workspace Related Action
   sockPath += ".socket.sock";
   strcpy(addr.sun_path, sockPath.c_str());
   sockPath = sockPath.substr(0, sockPath.rfind('/') + 1);
@@ -284,99 +315,122 @@ int HyprWSManager::MoveToWS(int wsId, unsigned char monitorId, bool forward) {
     }
   }
 
-    if (wsId == -1) {
-      logger->LogError(TAG, "No Workspace Found on the Target Monitor");
-      return 1;
-    }
-
-    std::string err;
-    Json::Value res =
-        executeQuery("s/dispatch workspace " + std::to_string(wsId), err);
-    if (res == -2) {
-
-      logger->LogError(TAG, "Failed to Switch to Workspace: " + err);
-      return 1;
-    }
-
-    if (res) {
-      logger->LogInfo(TAG, "Switched to Workspace: " + std::to_string(wsId));
-      activeWorkspaceId = wsId;
-    }
-
-    return 0;
+  if (wsId == -1) {
+    logger->LogError(TAG, "No Workspace Found on the Target Monitor");
+    return 1;
   }
 
-  int HyprWSManager::SwitchSPWS(int wsId, std::string name) {
-    if (workspaces.find(wsId) == workspaces.end()) {
-      logger->LogError(TAG, "Workspace Not Found");
-      return 1;
-    }
+  std::string err;
+  Json::Value res =
+      executeQuery("s/dispatch workspace " + std::to_string(wsId), err);
+  if (res == -2) {
 
-    std::string err;
-    if (executeQuery("s/dispatch togglespecialworkspace " + name, err) == -2) {
-
-      logger->LogError(TAG, "Failed to Switch to Special Workspace: " + err);
-      return 1;
-    }
-    return 0;
+    logger->LogError(TAG, "Failed to Switch to Workspace: " + err);
+    return 1;
   }
 
-  int HyprWSManager::GetWorkspaces() {
-    std::string err;
-    Json::Value workspacesJson = executeQuery("j/workspaces", err);
-    if (workspacesJson == -1) {
-      std::string errMsg = "Failed to parse Workspaces Query Response (";
-      errMsg += err;
-      errMsg += ")";
-      logger->LogError(TAG, errMsg);
-      return -1;
-    } else if (workspacesJson == -2) {
-      std::string errMsg = "In Workspaces Query (";
-      errMsg += err;
-      errMsg += ")";
-      logger->LogError(TAG, errMsg);
-      return -1;
-    }
+  if (res) {
+    logger->LogInfo(TAG, "Switched to Workspace: " + std::to_string(wsId));
+    activeWorkspaceId = wsId;
+  }
 
-    for (Json::Value workspace : workspacesJson) {
-      Workspace wSpace = {
-          workspace["id"].asLargestInt(),      workspace["monitorID"].asUInt(),
-          workspace["name"].asString(),        workspace["monitor"].asString(),
-          workspace["hasfullscreen"].asBool(),
-      };
+  return 0;
+}
 
-      if (wSpace.id < 0) {
-        auto pos = wSpace.name.find(':');
-        if (pos != std::string::npos) {
-          wSpace.name = wSpace.name.substr(pos + 1);
-        }
+int HyprWSManager::SwitchSPWS(int wsId, std::string name) {
+  if (workspaces.find(wsId) == workspaces.end()) {
+    logger->LogError(TAG, "Workspace Not Found");
+    return 1;
+  }
+
+  std::string err;
+  if (executeQuery("s/dispatch togglespecialworkspace " + name, err) == -2) {
+
+    logger->LogError(TAG, "Failed to Switch to Special Workspace: " + err);
+    return 1;
+  }
+  return 0;
+}
+
+int HyprWSManager::GetWorkspaces() {
+  std::string err;
+  Json::Value workspacesJson = executeQuery("j/workspaces", err);
+  if (workspacesJson == -1) {
+    std::string errMsg = "Failed to parse Workspaces Query Response (";
+    errMsg += err;
+    errMsg += ")";
+    logger->LogError(TAG, errMsg);
+    return -1;
+  } else if (workspacesJson == -2) {
+    std::string errMsg = "In Workspaces Query (";
+    errMsg += err;
+    errMsg += ")";
+    logger->LogError(TAG, errMsg);
+    return -1;
+  }
+
+  for (Json::Value workspace : workspacesJson) {
+    Workspace wSpace = {
+        workspace["id"].asLargestInt(),      workspace["monitorID"].asUInt(),
+        workspace["name"].asString(),        workspace["monitor"].asString(),
+        workspace["hasfullscreen"].asBool(),
+    };
+
+    if (wSpace.id < 0) {
+      auto pos = wSpace.name.find(':');
+      if (pos != std::string::npos) {
+        wSpace.name = wSpace.name.substr(pos + 1);
       }
-
-      workspaces.insert({wSpace.id, wSpace});
     }
 
-    Json::Value activeWsJson = executeQuery("j/activeworkspace", err);
-    if (activeWsJson == -1) {
-      std::string errMsg = "Failed to parse Active Workspace Query Response (";
-      errMsg += err;
-      errMsg += ")";
-      logger->LogError(TAG, errMsg);
-      return -1;
-    } else if (activeWsJson == -2) {
-      std::string errMsg = "In Active Workspace Query (";
-      errMsg += err;
-      errMsg += ")";
-      logger->LogError(TAG, errMsg);
-      return -1;
-    }
-    activeWorkspaceId = activeWsJson["id"].asUInt();
-    return 0;
+    workspaces.insert({wSpace.id, wSpace});
   }
 
-  void HyprWSManager::subscribe(
-      std::function<void(HyprWSManager * wsInstance, GtkWidget * wsBox,
-                         GtkWidget * spWSBox, unsigned char monitorId)>
-          updateFunc,
-      GtkWidget * wsBox, GtkWidget * spWSBox, unsigned char windowId) {
-    listeners.push_back({updateFunc, WSListenerData{wsBox, spWSBox, windowId}});
+  Json::Value activeWsJson = executeQuery("j/activeworkspace", err);
+  if (activeWsJson == -1) {
+    std::string errMsg = "Failed to parse Active Workspace Query Response (";
+    errMsg += err;
+    errMsg += ")";
+    logger->LogError(TAG, errMsg);
+    return -1;
+  } else if (activeWsJson == -2) {
+    std::string errMsg = "In Active Workspace Query (";
+    errMsg += err;
+    errMsg += ")";
+    logger->LogError(TAG, errMsg);
+    return -1;
   }
+  activeWorkspaceId = activeWsJson["id"].asUInt();
+  return 0;
+}
+
+int HyprWSManager::GetMonitors() {
+  std::string err;
+  Json::Value monitorsJson = executeQuery("j/monitors", err);
+  if (monitorsJson == -1) {
+    std::string errMsg = "Failed to parse Monitors Query Response (";
+    errMsg += err;
+    errMsg += ")";
+    logger->LogError(TAG, errMsg);
+    return -1;
+  } else if (monitorsJson == -2) {
+    std::string errMsg = "In Monitors Query (";
+    errMsg += err;
+    errMsg += ")";
+    logger->LogError(TAG, errMsg);
+    return -1;
+  }
+
+  for (Json::Value monitor : monitorsJson) {
+    monitors.insert({monitor["name"].asString(), monitor["id"].asUInt()});
+  }
+  return 0;
+}
+
+void HyprWSManager::subscribe(
+    std::function<void(HyprWSManager *wsInstance, GtkWidget *wsBox,
+                       GtkWidget *spWSBox, unsigned char monitorId)>
+        updateFunc,
+    GtkWidget *wsBox, GtkWidget *spWSBox, unsigned char windowId) {
+  listeners.push_back({updateFunc, WSListenerData{wsBox, spWSBox, windowId}});
+}

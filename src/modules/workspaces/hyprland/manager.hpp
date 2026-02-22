@@ -47,6 +47,7 @@ class HyprWSManager {
 public:
   long activeWorkspaceId;
   std::map<long, Workspace> workspaces;
+  std::map<std::string, unsigned int> monitors;
 
   HyprWSManager(LoggingManager *logMgr);
   ~HyprWSManager();
@@ -58,6 +59,7 @@ public:
   
   void liveEventListener();
   int GetWorkspaces();
+  int GetMonitors();
   
   int SwitchToWS(int wsId);
   int MoveToWS(int wsId, unsigned char monitorId, bool forw);
