@@ -7,9 +7,11 @@
 #include "thread"
 #include "unistd.h"
 #include <cstddef>
+#include <cstring>
 #include <json/value.h>
 #include <string>
 #include <string_view>
+#include <sys/types.h>
 
 #define TAG "HyprWorkspaces"
 
@@ -239,25 +241,31 @@ Json::Value HyprWSManager::executeQuery(const std::string &msg,
   workSockfd = socket(AF_UNIX, SOCK_STREAM, 0);
   sockaddr_un addr;
 
+  memset(&addr, 0, sizeof(addr));
   addr.sun_family = AF_UNIX;
 
   // Establish Connection With Hyprland's UNIX Socket for Performing
   // Workspace Related Action
-  sockPath += ".socket.sock";
-  strcpy(addr.sun_path, sockPath.c_str());
-  sockPath = sockPath.substr(0, sockPath.rfind('/') + 1);
+  std::string propSockPath = sockPath + ".socket.sock";
+  strncpy(addr.sun_path, propSockPath.c_str(), sizeof(addr.sun_path) - 1);
+  
   if (connect(workSockfd, (sockaddr *)&addr, sizeof(addr)) == -1) {
     logger->LogError(TAG,
                      "Unable to Establish Connection with hyprctl UNIX Socket");
+    close(workSockfd);
     return -1;
   }
 
   if (write(workSockfd, msg.c_str(), msg.size()) == -1) {
     err = "Failed to Send Query";
+    close(workSockfd);
     return -2;
   }
-  if (read(workSockfd, buffer, sizeof(buffer)) <= 0) {
+  
+  ssize_t readBytes = read(workSockfd, buffer, sizeof(buffer));
+  if (readBytes <= 0) {
     err = "Failed to Read Query Response";
+    close(workSockfd);
     return -3;
   }
 
@@ -270,7 +278,8 @@ Json::Value HyprWSManager::executeQuery(const std::string &msg,
 
   // Parsing the json response
   Json::Value root;
-  std::istringstream jsonStream(buffer);
+  std::string resp(buffer, readBytes);
+  std::istringstream jsonStream(resp);
   if (!Json::parseFromStream(jsonReader, jsonStream, &root, &err)) {
     return -1;
   }

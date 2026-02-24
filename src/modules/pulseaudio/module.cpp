@@ -13,12 +13,13 @@
 #define TAG "PulseAudioModule"
 
 PulseAudioModule::PulseAudioModule(PulseAudioManager *paMgr, AppContext *ctx)
-    : ctx(ctx), paManager(paMgr) {}
+    : ctx(ctx), paManager(paMgr), setupComp(false) {}
 
 std::vector<GtkWidget *> PulseAudioModule::setup() {
   std::vector<GtkWidget *> widgets;
 
   // Load Svg Icons
+  // TODO: Better Handling of these SVGS
   GError *err = nullptr;
   inMuteIcon = gdk_pixbuf_new_from_file_at_scale(
       "resources/icons/audio/mic_mute.svg", 16, 16, TRUE, &err);
@@ -132,7 +133,7 @@ std::vector<GtkWidget *> PulseAudioModule::setup() {
 
   inStore = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_STRING);
   inDropdown = gtk_combo_box_new_with_model(GTK_TREE_MODEL(inStore));
-  g_signal_connect(outDropdown, "changed", G_CALLBACK(chgDevice), this);
+  g_signal_connect(inDropdown, "changed", G_CALLBACK(chgDevice), this);
   gtk_box_pack_start(GTK_BOX(mainBox), inDropdown, FALSE, FALSE, 0);
 
   GtkCellRenderer *inRenderer = gtk_cell_renderer_text_new();
@@ -150,11 +151,14 @@ std::vector<GtkWidget *> PulseAudioModule::setup() {
   g_signal_connect(outEvtBox, "button-press-event", G_CALLBACK(handleIconClick),
                    this);
 
+  setupComp = true; 
   update();
   return widgets;
 }
 
 void PulseAudioModule::update() {
+  if (!setupComp)
+    return;
   // Adding Items to Output Selector
   gtk_list_store_clear(outStore);
   GtkTreeIter iter, activeIter;

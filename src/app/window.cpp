@@ -28,7 +28,7 @@ MainWindow::MainWindow()
     : notifManager(&ctx), btManager(&ctx), mprisManager(&ctx),
       scrnsavrManager(&ctx), hyprInstance(&ctx.logger), snManager(&ctx),
       load(&ctx.logger), mem(&ctx.logger), stat(&ctx.logger), battery(&ctx),
-      paManager(&ctx.logger), wifiManager(&ctx) {
+      paManager(&ctx.logger), wifiManager(&ctx), clipboardManager(&ctx) {
 
   btManager.setup();
   hyprInstance.liveEventListener();
@@ -37,7 +37,6 @@ MainWindow::MainWindow()
 
   app = gtk_application_new("com.hellcat.hyprsic", G_APPLICATION_DEFAULT_FLAGS);
   g_signal_connect(app, "activate", G_CALLBACK(activate), this);
-  g_timeout_add(delay, UpdateUI, this);
 }
 
 void MainWindow::RunApp() {
@@ -49,15 +48,19 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
   MainWindow *self = static_cast<MainWindow *>(user_data);
   GdkDisplay *display = gdk_display_get_default();
   self->ctx.initUpdateWindow();
+  // self->clipboardManager.init(display);
 
   int mCount = gdk_display_get_n_monitors(display);
   for (int i = 0; i < mCount; i++) {
-    std::unique_ptr<Window> winInstance = std::unique_ptr<Window>(
+    
+      self->mainWindows.push_back(std::unique_ptr<Window>(
         new Window(&self->ctx, &self->mprisManager, &self->scrnsavrManager,
                    &self->notifManager, &self->btManager, &self->hyprInstance,
                    &self->snManager, &self->stat, &self->mem, &self->load,
-                   &self->battery, &self->paManager));
+                   &self->battery, &self->paManager)));
     GdkMonitor *monitor = gdk_display_get_monitor(display, i);
+    
+    auto &winInstance = self->mainWindows.back();
 
     winInstance->window = gtk_application_window_new(app);
 
@@ -79,15 +82,12 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
     gtk_grid_set_column_homogeneous(GTK_GRID(mainGrid), TRUE);
     gtk_container_add(GTK_CONTAINER(winInstance->window), mainGrid);
 
-    GtkWidget* wid = winInstance->hyprModule.setup(i);
-    gtk_grid_attach(GTK_GRID(mainGrid), wid, 0, 0,
-                    2, 1);
+    GtkWidget *wid = winInstance->hyprModule.setup(i);
+    gtk_grid_attach(GTK_GRID(mainGrid), wid, 0, 0, 2, 1);
 
-    
     wid = winInstance->mprisModule.setup();
     gtk_grid_attach(GTK_GRID(mainGrid), wid, 2, 0, 1, 1);
-    
-    
+
     // Right Box to Show System Stats
     GtkWidget *right_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_grid_attach(GTK_GRID(mainGrid), right_box, 3, 0, 2, 1);
@@ -103,31 +103,31 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
     for (int i = 0; i < wids.size(); i++) {
       gtk_grid_attach(GTK_GRID(rightGrid), wids[i], i, 0, 1, 1);
     }
-    
+
     int loc = wids.size();
     wid = winInstance->notifModule.setup();
     gtk_grid_attach(GTK_GRID(rightGrid), wid, loc, 0, 1, 1);
-    
+
     wid = winInstance->btModule.setup();
     gtk_grid_attach(GTK_GRID(rightGrid), wid, loc + 1, 0, 1, 1);
-    
+
     wid = winInstance->scrnsavrModule.setup();
     gtk_grid_attach(GTK_GRID(rightGrid), wid, loc + 2, 0, 1, 1);
-    
-    
+
     loc += 3;
     wids = winInstance->paModule.setup();
     for (int i = 0; i < wids.size(); i++) {
-        gtk_grid_attach(GTK_GRID(rightGrid), wids[i], loc + i, 0, 1, 1);
-        }
-    
+      gtk_grid_attach(GTK_GRID(rightGrid), wids[i], loc + i, 0, 1, 1);
+    }
+
     loc += wids.size();
     wid = winInstance->snModule.setup();
     gtk_grid_attach(GTK_GRID(rightGrid), wid, loc, 0, 1, 1);
 
     gtk_widget_show_all(winInstance->window);
-    self->mainWindows.push_back(std::move(winInstance));
   }
+  
+  g_timeout_add(self->delay, UpdateUI, self);
 }
 
 void MainWindow::UpdateData() {

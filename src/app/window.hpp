@@ -18,6 +18,7 @@
 #include "../modules/statusnotifier/manager.hpp"
 #include "../modules/statusnotifier/module.hpp"
 #include "../modules/wifi/manager.hpp"
+#include "../modules/clipboard/manager.hpp"
 
 struct Window {
   GtkWidget *window = nullptr;
@@ -55,6 +56,7 @@ class MainWindow {
   StatusNotifierManager snManager;
   PulseAudioManager paManager;
   WifiManager wifiManager;
+  ClipboardManager clipboardManager;
   
   std::thread ssnDBusThread, dataUpdateThread;
   void captureSessionDBus();

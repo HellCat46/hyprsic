@@ -10,7 +10,7 @@
 #define TAG "AppContext"
 
 AppContext::AppContext()
-    : dbus(), logger(true), dbManager(&logger), rbWindow(nullptr) {}
+    : dbus(), logger(true), dbManager(&logger), rbWindow(nullptr), updateTimeoutId(0) {}
 
 DbusSystem::DbusSystem() {
   dbus_error_init(&sysErr);

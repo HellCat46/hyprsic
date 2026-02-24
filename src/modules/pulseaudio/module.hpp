@@ -32,6 +32,8 @@ class PulseAudioModule {
   GtkWidget *inScale;
   GtkWidget *inDropdown;
   GtkListStore *inStore;
+  
+  bool setupComp;
 
 public:
   PulseAudioModule(PulseAudioManager *paManager, AppContext *ctx);
