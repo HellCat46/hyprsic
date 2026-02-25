@@ -14,6 +14,21 @@ else
 	fi
 fi
 
+# Checking for all the icons and adding them to the resources/icons.h
+
+cd resources/icons || exit
+for file in $(find ./ -type f -name "*.svg"); do
+    constName=$(sed -e "s/\//_/g" -e "s/\./_/g" <<< "${file:2:-4}")
+    if grep -q $constName ../../src/resources/icons.h; then
+        continue
+    fi
+    
+    echo "Adding $file as $constName to icons.h"
+    xxd -i -n "$constName" "$file"  | sed 's/unsigned char/const unsigned char/g; s/unsigned int/const unsigned int/g' >> ../../src/resources/icons.h
+
+done
+cd ../.. || exit
+
 # Building All the Wayland Protocol Definitions
 for file in $(find ./resources/wayland -name "*.xml"); do
     if [ ! -f "src/wayland/$(basename "${file%.xml}.h")" ] || [ "$file" -nt "src/wayland/$(basename "${file%.xml}.h")" ]; then
