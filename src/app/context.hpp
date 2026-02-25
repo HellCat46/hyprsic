@@ -5,6 +5,7 @@
 #include "gdk-pixbuf/gdk-pixbuf.h"
 #include "glib.h"
 #include "gtk/gtk.h"
+#include "../resources/store.hpp"
 
 class DbusSystem {
 public:
@@ -45,6 +46,7 @@ public:
   DbusSystem dbus;
   DBManager dbManager;
   LoggingManager logger;
+  ResourceStore resStore;
   AppContext();
 
   void initUpdateWindow();

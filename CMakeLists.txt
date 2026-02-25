@@ -105,6 +105,7 @@ add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/thirdparty/SQLiteCpp)
 
 add_executable(hyprsic
         src/app/main.cpp
+        src/resources/store.cpp
         ${APP_SOURCES}
         ${DATABASE_SOURCES}
         ${WAYLAND_PROTOCOLS_SOURCES}

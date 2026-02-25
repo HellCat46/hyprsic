@@ -2,6 +2,8 @@
 #include "cstring"
 #include "dbus/dbus.h"
 #include "gdk-pixbuf/gdk-pixbuf.h"
+#include "gio/gio.h"
+#include "glib-object.h"
 #include "glib.h"
 #include "gtk-layer-shell.h"
 #include "gtk/gtk.h"
@@ -111,37 +113,51 @@ bool AppContext::showUpdateWindow(UpdateModule module, std::string type,
     g_source_remove(updateTimeoutId);
   }
 
-  std::string svgPath = "resources/icons/";
+  std::string iconPath;
   switch (module) {
   case UpdateModule::MPRIS:
-    svgPath += "mpris/" + type + ".svg";
+    iconPath += "mpris_" + type;
     break;
   case UpdateModule::NOTIFICATIONS:
-    svgPath += "notifications/" + type + ".svg";
+    iconPath += "notifications_" + type ;
     break;
   case UpdateModule::BLUETOOTH:
-    svgPath += "bluetooth/" + type + ".svg";
+    iconPath += "bluetooth_" + type ;
     break;
   case UpdateModule::SCREENSAVER:
-    svgPath += "screensaver/" + type + ".svg";
+    iconPath += "screensaver_" + type ;
     break;
   case UpdateModule::PULSEAUDIO:
-    svgPath += "audio/" + type + ".svg";
+    iconPath += "audio_" + type ;
     break;
   case UpdateModule::WIFI:
-    svgPath += "wifi/" + type + ".svg";
+    iconPath += "wifi_" + type ;
     break;
   case UpdateModule::BATTERY:
-    svgPath += "battery/" + type + ".svg";
+    iconPath += "battery_" + type ;
     break;
+  }
+  
+  auto icon = resStore.icons.find(iconPath);
+  if (icon == resStore.icons.end()) {
+    logger.LogError(TAG, "Icon Not Found for Update Window: " + iconPath);
+    return 1;
+  }
+  
+  GInputStream* stream = g_memory_input_stream_new_from_data(icon->second.data(), icon->second.size(), nullptr);
+  if(stream == nullptr) {
+    logger.LogError(TAG, "Failed to Create GInputStream for Update Window Icon: " + iconPath);
+    return 1;
   }
 
   GError *error = nullptr;
-  GdkPixbuf *pixBuf = gdk_pixbuf_new_from_file(svgPath.c_str(), &error);
+  GdkPixbuf *pixBuf = gdk_pixbuf_new_from_stream(stream, nullptr, &error);
   if (!pixBuf) {
     logger.LogError(TAG, error->message);
     return 1;
   }
+  
+  g_object_unref(stream);
 
   // Update the UI in the Main Thread
   auto data = new UpdateWindowData{module, type, msg, this, pixBuf};

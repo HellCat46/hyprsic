@@ -1,12 +1,14 @@
 #include "module.hpp"
 #include "gdk-pixbuf/gdk-pixbuf.h"
 #include "gdk/gdk.h"
+#include "gio/gio.h"
 #include "glib-object.h"
 #include "glib.h"
 #include "glibconfig.h"
 #include "gtk-layer-shell.h"
 #include "gtk/gtk.h"
 #include "manager.hpp"
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -19,43 +21,105 @@ std::vector<GtkWidget *> PulseAudioModule::setup() {
   std::vector<GtkWidget *> widgets;
 
   // Load Svg Icons
-  // TODO: Better Handling of these SVGS
+  auto icon = ctx->resStore.icons.find("audio_mic_mute");
+  if (icon == ctx->resStore.icons.end()) {
+    ctx->logger.LogError(TAG, "Mic Mute Icon Not Found in Resource Store");
+    return widgets;
+  }
+
+  GInputStream *stream = g_memory_input_stream_new_from_data(
+      icon->second.data(), icon->second.size(), nullptr);
+  if (stream == nullptr) {
+    ctx->logger.LogError(TAG,
+                         "Failed to Create GInputStream for Mic Mute Icon");
+    return widgets;
+  }
+
   GError *err = nullptr;
-  inMuteIcon = gdk_pixbuf_new_from_file_at_scale(
-      "resources/icons/audio/mic_mute.svg", 16, 16, TRUE, &err);
+  inMuteIcon =
+      gdk_pixbuf_new_from_stream_at_scale(stream, 16, 16, TRUE, nullptr, &err);
   if (err) {
     ctx->logger.LogError(TAG, "Failed to load mic mute icon: " +
                                   std::string(err->message));
     g_error_free(err);
     return widgets;
   }
+  g_object_unref(stream);
 
-  inUnmuteIcon = gdk_pixbuf_new_from_file_at_scale(
-      "resources/icons/audio/mic_unmute.svg", 16, 16, TRUE, &err);
+  // Unmute Icon
+  icon = ctx->resStore.icons.find("audio_mic_unmute");
+  if (icon == ctx->resStore.icons.end()) {
+    ctx->logger.LogError(TAG, "Mic Unmute Icon Not Found in Resource Store");
+    return widgets;
+  }
+
+  stream = g_memory_input_stream_new_from_data(
+      icon->second.data(), icon->second.size(), nullptr);
+  if (stream == nullptr) {
+    ctx->logger.LogError(TAG,
+                         "Failed to Create GInputStream for Mic Unmute Icon");
+    return widgets;
+  }
+
+  inUnmuteIcon =
+      gdk_pixbuf_new_from_stream_at_scale(stream, 16, 16, TRUE, nullptr, &err);
   if (err) {
     ctx->logger.LogError(TAG, "Failed to load mic unmute icon: " +
                                   std::string(err->message));
     g_error_free(err);
     return widgets;
   }
+  g_object_unref(stream);
 
-  outMuteIcon = gdk_pixbuf_new_from_file_at_scale(
-      "resources/icons/audio/speaker_mute.svg", 16, 16, TRUE, &err);
+  outMuteIcon = nullptr;
+  icon = ctx->resStore.icons.find("audio_speaker_mute");
+  if (icon == ctx->resStore.icons.end()) {
+    ctx->logger.LogError(TAG, "Speaker Mute Icon Not Found in Resource Store");
+    return widgets;
+  }
+
+  stream = g_memory_input_stream_new_from_data(
+      icon->second.data(), icon->second.size(), nullptr);
+  if (stream == nullptr) {
+    ctx->logger.LogError(TAG,
+                         "Failed to Create GInputStream for Speaker Mute Icon");
+    return widgets;
+  }
+
+  outMuteIcon =
+      gdk_pixbuf_new_from_stream_at_scale(stream, 16, 16, TRUE, nullptr, &err);
   if (err) {
     ctx->logger.LogError(TAG, "Failed to load volume mute icon: " +
                                   std::string(err->message));
     g_error_free(err);
     return widgets;
   }
+  g_object_unref(stream);
 
-  outUnmuteIcon = gdk_pixbuf_new_from_file_at_scale(
-      "resources/icons/audio/speaker_unmute.svg", 16, 16, TRUE, &err);
+  outUnmuteIcon = nullptr;
+  icon = ctx->resStore.icons.find("audio_speaker_unmute");
+  if (icon == ctx->resStore.icons.end()) {
+    ctx->logger.LogError(TAG, "Speaker Unmute Icon Not Found in Resource Store");
+    return widgets;
+  }
+
+  stream = g_memory_input_stream_new_from_data(
+      icon->second.data(), icon->second.size(), nullptr);
+  if (stream == nullptr) {
+    ctx->logger.LogError(TAG,
+                         "Failed to Create GInputStream for Speaker Unmute Icon");
+    return widgets;
+  }
+
+  outUnmuteIcon =
+      gdk_pixbuf_new_from_stream_at_scale(stream, 16, 16, TRUE, nullptr, &err);
   if (err) {
     ctx->logger.LogError(TAG, "Failed to load volume unmute icon: " +
                                   std::string(err->message));
     g_error_free(err);
     return widgets;
   }
+  g_object_unref(stream);
 
   inEvtBox = gtk_event_box_new();
   barInIcon = gtk_image_new_from_pixbuf(outUnmuteIcon);
@@ -151,7 +215,7 @@ std::vector<GtkWidget *> PulseAudioModule::setup() {
   g_signal_connect(outEvtBox, "button-press-event", G_CALLBACK(handleIconClick),
                    this);
 
-  setupComp = true; 
+  setupComp = true;
   update();
   return widgets;
 }
