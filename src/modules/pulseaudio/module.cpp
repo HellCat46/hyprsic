@@ -8,7 +8,6 @@
 #include "gtk-layer-shell.h"
 #include "gtk/gtk.h"
 #include "manager.hpp"
-#include <cstddef>
 #include <cstdint>
 #include <vector>
 

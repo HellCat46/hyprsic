@@ -7,18 +7,20 @@
 #include <memory>
 #include <vector>
 
-#include "../modules/pulseaudio/manager.hpp"
-#include "../modules/pulseaudio/module.hpp"
 #include "../modules/bluetooth/module.hpp"
+#include "../modules/brightness/manager.hpp"
+#include "../modules/brightness/module.hpp"
+#include "../modules/clipboard/manager.hpp"
 #include "../modules/mpris/module.hpp"
 #include "../modules/notifications/module.hpp"
+#include "../modules/pulseaudio/manager.hpp"
+#include "../modules/pulseaudio/module.hpp"
 #include "../modules/screensaver/module.hpp"
-#include "../modules/sysinfo/module.hpp"
-#include "../modules/workspaces/hyprland/module.hpp"
 #include "../modules/statusnotifier/manager.hpp"
 #include "../modules/statusnotifier/module.hpp"
+#include "../modules/sysinfo/module.hpp"
 #include "../modules/wifi/manager.hpp"
-#include "../modules/clipboard/manager.hpp"
+#include "../modules/workspaces/hyprland/module.hpp"
 
 struct Window {
   GtkWidget *window = nullptr;
@@ -31,17 +33,20 @@ struct Window {
   NotificationModule notifModule;
   StatusNotifierModule snModule;
   PulseAudioModule paModule;
+  BrightnessModule brightnessModule;
 
   Window(AppContext *ctx, MprisManager *mprisMgr,
          ScreenSaverManager *scrnsavrMgr, NotificationManager *notifInstance,
-         BluetoothManager *btMgr, HyprWSManager *hyprMgr, StatusNotifierManager *snManager, Stats* stat, Memory* mem, SysLoad* load, BatteryInfo* battery, PulseAudioManager* paMgr);
+         BluetoothManager *btMgr, HyprWSManager *hyprMgr,
+         StatusNotifierManager *snManager, Stats *stat, Memory *mem,
+         SysLoad *load, BatteryInfo *battery, PulseAudioManager *paMgr, BrightnessManager *brightnessMgr);
 };
 
 class MainWindow {
   GtkApplication *app = nullptr;
   std::vector<std::unique_ptr<Window>> mainWindows;
   AppContext ctx;
-  
+
   short delay = 5000;
 
   Stats stat;
@@ -57,7 +62,8 @@ class MainWindow {
   PulseAudioManager paManager;
   WifiManager wifiManager;
   ClipboardManager clipboardManager;
-  
+  BrightnessManager brightnessManager;
+
   std::thread ssnDBusThread, dataUpdateThread;
   void captureSessionDBus();
 

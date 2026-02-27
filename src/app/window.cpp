@@ -18,17 +18,17 @@ Window::Window(AppContext *ctx, MprisManager *mprisMgr,
                NotificationManager *notifInstance, BluetoothManager *btMgr,
                HyprWSManager *hyprMgr, StatusNotifierManager *snManager,
                Stats *stat, Memory *mem, SysLoad *load, BatteryInfo *battery,
-               PulseAudioManager *paMgr)
+               PulseAudioManager *paMgr, BrightnessManager *brightnessMgr)
     : mprisModule(ctx, mprisMgr), hyprModule(ctx, hyprMgr),
       scrnsavrModule(ctx, scrnsavrMgr), btModule(ctx, btMgr),
       notifModule(ctx, notifInstance), snModule(ctx, snManager),
-      sysinfoModule(stat, mem, load, battery), paModule(paMgr, ctx) {}
+      sysinfoModule(stat, mem, load, battery), paModule(paMgr, ctx), brightnessModule(brightnessMgr, ctx) {}
 
 MainWindow::MainWindow()
     : notifManager(&ctx), btManager(&ctx), mprisManager(&ctx),
       scrnsavrManager(&ctx), hyprInstance(&ctx.logger), snManager(&ctx),
       load(&ctx.logger), mem(&ctx.logger), stat(&ctx.logger), battery(&ctx),
-      paManager(&ctx.logger), wifiManager(&ctx), clipboardManager(&ctx) {
+      paManager(&ctx.logger), wifiManager(&ctx), clipboardManager(&ctx), brightnessManager(&ctx) {
 
   btManager.setup();
   hyprInstance.liveEventListener();
@@ -57,7 +57,7 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
         new Window(&self->ctx, &self->mprisManager, &self->scrnsavrManager,
                    &self->notifManager, &self->btManager, &self->hyprInstance,
                    &self->snManager, &self->stat, &self->mem, &self->load,
-                   &self->battery, &self->paManager)));
+                   &self->battery, &self->paManager, &self->brightnessManager)));
     GdkMonitor *monitor = gdk_display_get_monitor(display, i);
     
     auto &winInstance = self->mainWindows.back();
@@ -103,18 +103,22 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
     for (int i = 0; i < wids.size(); i++) {
       gtk_grid_attach(GTK_GRID(rightGrid), wids[i], i, 0, 1, 1);
     }
-
+    
+    
     int loc = wids.size();
+    wid = winInstance->brightnessModule.setup();
+    gtk_grid_attach(GTK_GRID(rightGrid), wid, loc++, 0,
+                            1, 1);
+
     wid = winInstance->notifModule.setup();
-    gtk_grid_attach(GTK_GRID(rightGrid), wid, loc, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(rightGrid), wid, loc++, 0, 1, 1);
 
     wid = winInstance->btModule.setup();
-    gtk_grid_attach(GTK_GRID(rightGrid), wid, loc + 1, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(rightGrid), wid, loc++, 0, 1, 1);
 
     wid = winInstance->scrnsavrModule.setup();
-    gtk_grid_attach(GTK_GRID(rightGrid), wid, loc + 2, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(rightGrid), wid, loc++, 0, 1, 1);
 
-    loc += 3;
     wids = winInstance->paModule.setup();
     for (int i = 0; i < wids.size(); i++) {
       gtk_grid_attach(GTK_GRID(rightGrid), wids[i], loc + i, 0, 1, 1);
@@ -150,6 +154,7 @@ gboolean MainWindow::UpdateUI(gpointer data) {
     window->btModule.updateBTList();
     window->snModule.update();
     window->paModule.update();
+    window->brightnessModule.update();
   }
 
   return true;

@@ -66,6 +66,9 @@ set(MODULES_SOURCES
     src/modules/wifi/manager.cpp
     
     src/modules/clipboard/manager.cpp
+    
+    src/modules/brightness/manager.cpp
+    src/modules/brightness/module.cpp
 )
 
 set(DATABASE_SOURCES

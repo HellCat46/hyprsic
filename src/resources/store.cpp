@@ -19,4 +19,5 @@ ResourceStore::ResourceStore() {
     icons.insert({"bluetooth_headset_mic", std::span<const unsigned char>(bluetooth_headset_mic, bluetooth_headset_mic_len)});
     icons.insert({"bluetooth_searching", std::span<const unsigned char>(bluetooth_searching, bluetooth_searching_len)});
     icons.insert({"bluetooth_disabled", std::span<const unsigned char>(bluetooth_disabled, bluetooth_disabled_len)});
+    icons.insert({"brightness_base", std::span<const unsigned char>(brightness_base, brightness_base_len)});
 }
