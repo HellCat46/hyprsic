@@ -46,16 +46,20 @@ set(MODULES_SOURCES
     src/modules/sysinfo/module.cpp
     
     src/modules/pulseaudio/manager.cpp
+    src/modules/pulseaudio/window.cpp
     src/modules/pulseaudio/module.cpp
     
     src/modules/mpris/manager.cpp
     src/modules/mpris/module.cpp
+    src/modules/mpris/window.cpp
     
     src/modules/bluetooth/manager.cpp
     src/modules/bluetooth/module.cpp
+    src/modules/bluetooth/window.cpp
     
     src/modules/notifications/manager.cpp
     src/modules/notifications/module.cpp
+    src/modules/notifications/window.cpp
     
     src/modules/screensaver/manager.cpp
     src/modules/screensaver/module.cpp
@@ -69,6 +73,7 @@ set(MODULES_SOURCES
     
     src/modules/brightness/manager.cpp
     src/modules/brightness/module.cpp
+    src/modules/brightness/window.cpp
 )
 
 set(DATABASE_SOURCES

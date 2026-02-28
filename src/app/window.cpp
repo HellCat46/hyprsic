@@ -18,22 +18,28 @@ Window::Window(AppContext *ctx, MprisManager *mprisMgr,
                NotificationManager *notifInstance, BluetoothManager *btMgr,
                HyprWSManager *hyprMgr, StatusNotifierManager *snManager,
                Stats *stat, Memory *mem, SysLoad *load, BatteryInfo *battery,
-               PulseAudioManager *paMgr, BrightnessManager *brightnessMgr)
-    : mprisModule(ctx, mprisMgr), hyprModule(ctx, hyprMgr),
-      scrnsavrModule(ctx, scrnsavrMgr), btModule(ctx, btMgr),
-      notifModule(ctx, notifInstance), snModule(ctx, snManager),
-      sysinfoModule(stat, mem, load, battery), paModule(paMgr, ctx), brightnessModule(brightnessMgr, ctx) {}
+               PulseAudioManager *paMgr, BrightnessManager *brtMgr,
+               BluetoothWindow *btWindow, BrightnessWindow *brtWindow,
+               MprisWindow *mprisWindow, NotificationWindow *notifWindow,
+               PulseAudioWindow *paWindow)
+    : mprisModule(ctx, mprisMgr, mprisWindow), hyprModule(ctx, hyprMgr),
+      scrnsavrModule(ctx, scrnsavrMgr), btModule(ctx, btMgr, btWindow),
+      notifModule(ctx, notifInstance, notifWindow), snModule(ctx, snManager),
+      sysinfoModule(stat, mem, load, battery), paModule(paMgr, ctx, paWindow),
+      brtModule(ctx, brtMgr, brtWindow) {}
 
 MainWindow::MainWindow()
-    : notifManager(&ctx), btManager(&ctx), mprisManager(&ctx),
-      scrnsavrManager(&ctx), hyprInstance(&ctx.logger), snManager(&ctx),
-      load(&ctx.logger), mem(&ctx.logger), stat(&ctx.logger), battery(&ctx),
-      paManager(&ctx.logger), wifiManager(&ctx), clipboardManager(&ctx), brightnessManager(&ctx) {
+    : notifManager(&ctx), notifWindow(&ctx, &notifManager), btManager(&ctx),
+      btWindow(&ctx, &btManager), mprisManager(&ctx),
+      mprisWindow(&ctx, &mprisManager), scrnsavrManager(&ctx),
+      hyprInstance(&ctx.logger), snManager(&ctx), load(&ctx.logger),
+      mem(&ctx.logger), stat(&ctx.logger), battery(&ctx),
+      paManager(&ctx.logger), paWindow(&ctx, &paManager), wifiManager(&ctx),
+      clipboardManager(&ctx), brtManager(&ctx), brtWindow(&ctx, &brtManager) {
 
   btManager.setup();
   hyprInstance.liveEventListener();
   ssnDBusThread = std::thread(&MainWindow::captureSessionDBus, this);
-  dataUpdateThread = std::thread(&MainWindow::UpdateData, this);
 
   app = gtk_application_new("com.hellcat.hyprsic", G_APPLICATION_DEFAULT_FLAGS);
   g_signal_connect(app, "activate", G_CALLBACK(activate), this);
@@ -47,19 +53,26 @@ void MainWindow::RunApp() {
 void MainWindow::activate(GtkApplication *app, gpointer user_data) {
   MainWindow *self = static_cast<MainWindow *>(user_data);
   GdkDisplay *display = gdk_display_get_default();
-  self->ctx.initUpdateWindow();
-  // self->clipboardManager.init(display);
+  self->ctx.initWindows();
+  self->paWindow.setupIcons();
+  self->paWindow.init();
+  self->btWindow.init();
+  self->mprisWindow.init();
+  self->notifWindow.init();
+  self->brtWindow.init();
+  // clipboardManager.init(display);
 
   int mCount = gdk_display_get_n_monitors(display);
   for (int i = 0; i < mCount; i++) {
-    
-      self->mainWindows.push_back(std::unique_ptr<Window>(
-        new Window(&self->ctx, &self->mprisManager, &self->scrnsavrManager,
-                   &self->notifManager, &self->btManager, &self->hyprInstance,
-                   &self->snManager, &self->stat, &self->mem, &self->load,
-                   &self->battery, &self->paManager, &self->brightnessManager)));
+
+    self->mainWindows.push_back(std::unique_ptr<Window>(new Window(
+        &self->ctx, &self->mprisManager, &self->scrnsavrManager,
+        &self->notifManager, &self->btManager, &self->hyprInstance,
+        &self->snManager, &self->stat, &self->mem, &self->load, &self->battery,
+        &self->paManager, &self->brtManager, &self->btWindow, &self->brtWindow,
+        &self->mprisWindow, &self->notifWindow, &self->paWindow)));
     GdkMonitor *monitor = gdk_display_get_monitor(display, i);
-    
+
     auto &winInstance = self->mainWindows.back();
 
     winInstance->window = gtk_application_window_new(app);
@@ -103,12 +116,10 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
     for (int i = 0; i < wids.size(); i++) {
       gtk_grid_attach(GTK_GRID(rightGrid), wids[i], i, 0, 1, 1);
     }
-    
-    
+
     int loc = wids.size();
-    wid = winInstance->brightnessModule.setup();
-    gtk_grid_attach(GTK_GRID(rightGrid), wid, loc++, 0,
-                            1, 1);
+    wid = winInstance->brtModule.setup();
+    gtk_grid_attach(GTK_GRID(rightGrid), wid, loc++, 0, 1, 1);
 
     wid = winInstance->notifModule.setup();
     gtk_grid_attach(GTK_GRID(rightGrid), wid, loc++, 0, 1, 1);
@@ -130,8 +141,9 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
 
     gtk_widget_show_all(winInstance->window);
   }
-  
+
   g_timeout_add(self->delay, UpdateUI, self);
+  self->dataUpdateThread = std::thread(&MainWindow::UpdateData, self);
 }
 
 void MainWindow::UpdateData() {
@@ -140,6 +152,14 @@ void MainWindow::UpdateData() {
     stat.UpdateData();
     paManager.getDevices();
     mprisManager.GetPlayerInfo();
+    brtManager.update();
+    
+    notifWindow.update();
+    btWindow.update();
+    mprisWindow.update();
+    brtWindow.update();
+    paWindow.update();
+    
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
   }
 }
@@ -147,14 +167,14 @@ void MainWindow::UpdateData() {
 gboolean MainWindow::UpdateUI(gpointer data) {
   MainWindow *self = static_cast<MainWindow *>(data);
 
+
+
   for (auto &window : self->mainWindows) {
     window->sysinfoModule.update();
     window->mprisModule.update();
-    window->notifModule.update();
-    window->btModule.updateBTList();
     window->snModule.update();
     window->paModule.update();
-    window->brightnessModule.update();
+    window->brtModule.update();
   }
 
   return true;
@@ -183,7 +203,7 @@ void MainWindow::captureSessionDBus() {
     const char *member = dbus_message_get_member(msg);
 
     if (HelperFunc::saferStrCmp(interface, "org.freedesktop.Notifications")) {
-      notifManager.handleDbusMessage(msg, NotificationModule::showNotification);
+      notifManager.handleDbusMessage(msg, NotificationWindow::showNotification);
     } else if (HelperFunc::saferStrCmp(interface, "org.freedesktop.DBus") &&
                HelperFunc::saferStrCmp(member, "NameOwnerChanged") &&
                HelperFunc::saferStrCmp(path, "/org/freedesktop/DBus")) {

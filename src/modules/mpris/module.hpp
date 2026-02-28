@@ -4,43 +4,22 @@
 #include "glib.h"
 #include "gtk/gtk.h"
 #include "manager.hpp"
+#include "window.hpp"
 
 class MprisModule {
-  MprisManager* mprisInstance;
-  LoggingManager *logger;
+  MprisManager* manager;
+  MprisWindow* window;
+  AppContext *ctx;
 
-  GtkWidget *mainLabel;
-  GtkWidget *menuWindow;
-  GtkWidget *progTitle;
-  GtkWidget *progLength;
-  
-  GtkWidget* progBarBox;
-  GtkWidget* progScaleMin;
-  GtkWidget* progScale;
-  GtkWidget* progScaleMax;
-  
-  GtkAdjustment *progScaleAdj;
+  GtkWidget *mainLbl;
+
 
 public:
-  MprisModule(AppContext *ctx, MprisManager* mprisMgr);
+  MprisModule(AppContext *ctx, MprisManager* mprisMgr, MprisWindow* mprisWindow);
 
   GtkWidget* setup();
   void update();
 
   static void chgVisibilityMenu(GtkWidget *widget, GdkEvent *e,
                               gpointer user_data);
-
-  // Gtk Scale Signal Callbacks
-  static gchar *handleFormatValue(GtkScale *scale, gdouble value,
-                                  gpointer user_data);
-  static gboolean handleScaleChange(GtkRange *range, GtkScrollType *scroll,
-                                    gdouble value, gpointer user_data);
-
-  // Track Control Buttons
-  static void handlePlayPause(GtkWidget *widget, GdkEvent *e,
-                              gpointer user_data);
-  static void handleNextTrack(GtkWidget *widget, gpointer user_data);
-  static void handlePrevTrack(GtkWidget *widget, gpointer user_data);
-  
-  static std::string timeToStr(uint64_t totalSeconds);
 };

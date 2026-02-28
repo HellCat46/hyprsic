@@ -1,11 +1,11 @@
 #pragma once
 #include "../database/db_manager.hpp"
 #include "../logging/manager.hpp"
+#include "../resources/store.hpp"
 #include "dbus/dbus.h"
 #include "gdk-pixbuf/gdk-pixbuf.h"
 #include "glib.h"
 #include "gtk/gtk.h"
-#include "../resources/store.hpp"
 
 class DbusSystem {
 public:
@@ -33,30 +33,35 @@ enum class UpdateModule {
 };
 
 class AppContext {
-  GtkWidget *updateWindow;
+  GtkWidget *updateWin;
+  GtkWidget *ctrlWin;
+
   GtkGrid *updateWinGrid;
   GtkWidget *updateIcon;
   GtkWidget *updateMsg;
   guint updateTimeoutId;
-  
-  GtkWidget* rbWindow; // Right bottom window, but right now more like ragebait window
-  
+
   static void hideUpdateWindow(gpointer user_data);
+  static gboolean handleKeyPress(GtkWidget *wid, guint keyval, guint keycode,
+                                 GdkModifierType state, gpointer data);
+
 public:
   DbusSystem dbus;
   DBManager dbManager;
   LoggingManager logger;
   ResourceStore resStore;
-  AppContext();
+  GtkWidget* moduleStk;
 
-  void initUpdateWindow();
+  AppContext();
+  void initWindows();
   bool showUpdateWindow(UpdateModule module, std::string type, std::string msg);
-  void switchRBWindow(GtkWidget* win);
+  void showCtrlWindow(const std::string& moduleName, gint width = -1, gint height = -1);
+  void addModule(GtkWidget *moduleBox, const std::string& moduleName);
 };
 
 struct UpdateWindowData {
-    UpdateModule module;
-    std::string type, msg;
-    AppContext* ctx;
-    GdkPixbuf* pixBuf;
+  UpdateModule module;
+  std::string type, msg;
+  AppContext *ctx;
+  GdkPixbuf *pixBuf;
 };

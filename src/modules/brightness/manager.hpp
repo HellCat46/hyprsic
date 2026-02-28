@@ -8,12 +8,16 @@ class BrightnessManager {
   std::ifstream blFile; // Backlight file
   std::string subsystem;
 
+  
+  short currentLvl;
   bool err;
 
 public:
   BrightnessManager(AppContext *ctx);
   
-  short getBrightness();
-  bool setBrightness(short brightness);
+  
+  void update();
+  bool setLvl(short brightness);
+  short getLvl() const; 
   ~BrightnessManager();
 };

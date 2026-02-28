@@ -6,6 +6,7 @@
 #define TAG "BrightnessManager"
 
 BrightnessManager::BrightnessManager(AppContext *ctx) : ctx(ctx) {
+  currentLvl = -1;
 
   for (const auto &entry :
        std::filesystem::directory_iterator("/sys/class/backlight")) {
@@ -17,6 +18,7 @@ BrightnessManager::BrightnessManager(AppContext *ctx) : ctx(ctx) {
         err = false;
         subsystem = path.substr(path.rfind("/") + 1);
         ctx->logger.LogInfo(TAG, "Backlight file found at: " + path);
+        update();
         return;
       }
     }
@@ -24,9 +26,11 @@ BrightnessManager::BrightnessManager(AppContext *ctx) : ctx(ctx) {
   err = true;
 }
 
-short BrightnessManager::getBrightness() {
-  if (err)
-    return -1;
+void BrightnessManager::update() {
+  if (err) {
+    currentLvl = -1;
+    return;
+  }
 
   char ch;
   short brightness = 0;
@@ -40,10 +44,10 @@ short BrightnessManager::getBrightness() {
   blFile.clear();
   blFile.seekg(0);
 
-  return brightness;
+  currentLvl = brightness;
 }
 
-bool BrightnessManager::setBrightness(short brightness) {
+bool BrightnessManager::setLvl(short brightness) {
   if (err)
     return false;
   if (brightness < 0 || brightness > 100)
@@ -59,11 +63,11 @@ bool BrightnessManager::setBrightness(short brightness) {
 
   DBusMessageIter args;
   dbus_message_iter_init_append(msg, &args);
-  
+
   const char *backlight = "backlight";
   dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &backlight);
-  
-  const char* subsystemStr = subsystem.c_str();
+
+  const char *subsystemStr = subsystem.c_str();
   dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &subsystemStr);
   dbus_message_iter_append_basic(&args, DBUS_TYPE_UINT32, &brightness);
 
@@ -74,13 +78,17 @@ bool BrightnessManager::setBrightness(short brightness) {
     dbus_message_unref(msg);
     return false;
   }
-  
-  ctx->logger.LogInfo(TAG, "Brightness set to " + std::to_string(brightness) + "%");
+
+  currentLvl = brightness;
+  ctx->logger.LogInfo(TAG,
+                      "Brightness set to " + std::to_string(brightness) + "%");
 
   dbus_message_unref(msg);
   dbus_message_unref(reply);
   return true;
 }
+
+short BrightnessManager::getLvl() const { return currentLvl; }
 
 BrightnessManager::~BrightnessManager() {
   if (blFile.is_open())

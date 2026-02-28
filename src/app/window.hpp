@@ -33,13 +33,16 @@ struct Window {
   NotificationModule notifModule;
   StatusNotifierModule snModule;
   PulseAudioModule paModule;
-  BrightnessModule brightnessModule;
+  BrightnessModule brtModule;
 
   Window(AppContext *ctx, MprisManager *mprisMgr,
          ScreenSaverManager *scrnsavrMgr, NotificationManager *notifInstance,
          BluetoothManager *btMgr, HyprWSManager *hyprMgr,
          StatusNotifierManager *snManager, Stats *stat, Memory *mem,
-         SysLoad *load, BatteryInfo *battery, PulseAudioManager *paMgr, BrightnessManager *brightnessMgr);
+         SysLoad *load, BatteryInfo *battery, PulseAudioManager *paMgr,
+         BrightnessManager *brightnessMgr, BluetoothWindow *btWindow,
+         BrightnessWindow *brtWindow, MprisWindow *mprisWindow,
+         NotificationWindow *notifWindow, PulseAudioWindow *paWindow);
 };
 
 class MainWindow {
@@ -62,7 +65,13 @@ class MainWindow {
   PulseAudioManager paManager;
   WifiManager wifiManager;
   ClipboardManager clipboardManager;
-  BrightnessManager brightnessManager;
+  BrightnessManager brtManager;
+
+  BluetoothWindow btWindow;
+  BrightnessWindow brtWindow;
+  MprisWindow mprisWindow;
+  NotificationWindow notifWindow;
+  PulseAudioWindow paWindow;
 
   std::thread ssnDBusThread, dataUpdateThread;
   void captureSessionDBus();
