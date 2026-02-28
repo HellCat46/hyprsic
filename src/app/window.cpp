@@ -153,21 +153,19 @@ void MainWindow::UpdateData() {
     paManager.getDevices();
     mprisManager.GetPlayerInfo();
     brtManager.update();
-    
-    notifWindow.update();
-    btWindow.update();
-    mprisWindow.update();
-    brtWindow.update();
-    paWindow.update();
-    
+
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
   }
 }
 
 gboolean MainWindow::UpdateUI(gpointer data) {
   MainWindow *self = static_cast<MainWindow *>(data);
-
-
+  
+  self->btWindow.update(); 
+  self->notifWindow.update();
+  self->mprisWindow.update();
+  self->brtWindow.update();
+  self->paWindow.update();
 
   for (auto &window : self->mainWindows) {
     window->sysinfoModule.update();

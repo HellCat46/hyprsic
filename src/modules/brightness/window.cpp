@@ -19,7 +19,11 @@ void BrightnessWindow::init() {
                      G_CALLBACK(BrightnessWindow::handleScaleChange), this);
   
     gtk_widget_show_all(winBox);
-  
+    
+    gtk_widget_set_margin_top(winBox, 20);
+    gtk_widget_set_margin_bottom(winBox, 20);
+    gtk_widget_set_margin_start(winBox, 10);
+    gtk_widget_set_margin_end(winBox, 10);
     
     ctx->addModule(winBox, "brightness");
 }

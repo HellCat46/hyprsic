@@ -59,6 +59,12 @@ public:
   void addModule(GtkWidget *moduleBox, const std::string& moduleName);
 };
 
+struct CtrlWindowData {
+  std::string moduleName;
+  gint width, height;
+  AppContext *ctx;
+};
+
 struct UpdateWindowData {
   UpdateModule module;
   std::string type, msg;

@@ -92,6 +92,8 @@ void PulseAudioWindow::setupIcons() {
   GInputStream *stream;
   GError *err;
   do {
+    stream = nullptr;
+    err = nullptr;
     inMuteIcon = nullptr;
     auto icon = ctx->resStore.icons.find("audio_mic_mute");
     if (icon == ctx->resStore.icons.end()) {
@@ -107,7 +109,6 @@ void PulseAudioWindow::setupIcons() {
       break;
     }
 
-    err = nullptr;
     inMuteIcon = gdk_pixbuf_new_from_stream_at_scale(stream, 16, 16, TRUE,
                                                      nullptr, &err);
     if (err) {
@@ -120,6 +121,8 @@ void PulseAudioWindow::setupIcons() {
   } while (0);
 
   do {
+    stream = nullptr;
+    err = nullptr;
     inUnmuteIcon = nullptr;
     // Unmute Icon
     auto icon = ctx->resStore.icons.find("audio_mic_unmute");
@@ -148,6 +151,8 @@ void PulseAudioWindow::setupIcons() {
   } while (0);
 
   do {
+    stream = nullptr;
+    err = nullptr;
     outMuteIcon = nullptr;
     auto icon = ctx->resStore.icons.find("audio_speaker_mute");
     if (icon == ctx->resStore.icons.end()) {
@@ -176,6 +181,8 @@ void PulseAudioWindow::setupIcons() {
   } while (0);
 
   do {
+    stream = nullptr;
+    err = nullptr;
     outUnmuteIcon = nullptr;
     auto icon = ctx->resStore.icons.find("audio_speaker_unmute");
     if (icon == ctx->resStore.icons.end()) {
