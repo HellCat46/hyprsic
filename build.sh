@@ -17,7 +17,7 @@ fi
 # Checking for all the icons and adding them to the resources/icons.h
 
 cd resources/icons || exit
-for file in $(find ./ -type f -name "*.svg"); do
+for file in $(find ./ -type f -name "*.png"); do
     constName=$(sed -e "s/\//_/g" -e "s/\./_/g" <<< "${file:2:-4}")
     if grep -q $constName ../../src/resources/icons.h; then
         continue
@@ -39,7 +39,13 @@ for file in $(find ./resources/wayland -name "*.xml"); do
 done
 
 # Add -DCMAKE_BUILD_TYPE=Debug Flag for Debug build (Increases build time)
-cmake -G Ninja -S . -B build  -DCMAKE_BUILD_TYPE=Debug || exit
+if [ "$1" = "prod" ]; then
+    echo "Building in Production Mode"
+    cmake -G Ninja -S . -B build || exit
+else 
+    cmake -G Ninja -S . -B build -DCMAKE_BUILD_TYPE=Debug || exit
+fi
+
 cmake --build build || exit
 
 printf "\n\n\033[0;32mSuccessfully Built the project. Running the Executable\033[0m\n\n"

@@ -33,6 +33,7 @@ void MprisModule::update() {
   title += finalText;
   title += "</b></span>";
 
+  g_free(finalText);
   gtk_label_set_markup(GTK_LABEL(mainLbl), title.c_str());
 }
 

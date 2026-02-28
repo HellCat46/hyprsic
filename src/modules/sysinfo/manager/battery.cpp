@@ -1,7 +1,6 @@
 #include "battery.hpp"
 #include "../../../utils/helper_func.hpp"
 #include "cstring"
-#include "dirent.h"
 #include "fstream"
 #include "vector"
 #include <filesystem>
@@ -142,26 +141,19 @@ bool Charger::isCharging() {
 Charger::~Charger() { status.close(); }
 
 BatteryInfo::BatteryInfo(AppContext *ctx) : ctx(ctx), charger(ctx) {
-
-  DIR *dir;
   std::string basePath = "/sys/class/power_supply/";
-  char folderStr[] = "BAT";
+  std::string folderStr = "BAT";
 
-  dir = opendir(basePath.c_str());
-  if (dir == nullptr) {
-    return;
-  }
-
-  std::vector<std::string> battPaths;
-  for (dirent *ent = readdir(dir); ent != nullptr; ent = readdir(dir)) {
-    if (HelperFunc::saferStrNCmp(folderStr, ent->d_name, 3)) {
-      battPaths.push_back(ent->d_name);
-      batteries.push_back(
-          std::make_unique<Battery>(basePath + ent->d_name, ctx));
+  battCount = 0;
+  for (auto ent : std::filesystem::directory_iterator(basePath)) {
+    if (folderStr.compare(0, folderStr.length(), ent.path().filename(), 0,
+                          folderStr.length()) == 0) {
+      battCount++;
+      batteries.push_back(std::make_unique<Battery>(
+          basePath + ent.path().filename().string(), ctx));
     }
   }
 
-  battCount = battPaths.size();
   charging = charger.isCharging();
 }
 
@@ -190,7 +182,10 @@ BatteryStats BatteryInfo::getBatteryStats() {
     lowBattery = false;
   } else if (!lowBattery) {
     lowBattery = true;
-    ctx->showUpdateWindow(UpdateModule::BATTERY, "battery_low", "Battery Low. " + HelperFunc::convertToTime(avgStats.timeTillEmpty) + " Remaining");
+    ctx->showUpdateWindow(
+        UpdateModule::BATTERY, "battery_low",
+        "Battery Low. " + HelperFunc::convertToTime(avgStats.timeTillEmpty) +
+            " Remaining");
   }
 
   return avgStats;

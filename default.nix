@@ -18,7 +18,6 @@ pkgs.stdenv.mkDerivation {
     wayland
     wayland-protocols
     jsoncpp
-    librsvg
     dbus-cpp
     dbus.dev
     libpulseaudio
@@ -26,7 +25,6 @@ pkgs.stdenv.mkDerivation {
     cairo
     pango
     systemd
-    cudaPackages.cuda_nvml_dev
   ];
 
   meta = with pkgs.lib; {

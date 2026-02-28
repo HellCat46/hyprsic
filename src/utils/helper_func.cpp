@@ -27,8 +27,11 @@ gchar *HelperFunc::ValidString(std::string str) {
   if (str.empty())
     return g_strdup("");
 
-  gchar *validText = g_utf8_make_valid(str.c_str(), -1);
-  return g_markup_escape_text(validText, -1);
+  gchar *utf8Text = g_utf8_make_valid(str.c_str(), -1);
+  gchar *validStr = g_markup_escape_text(utf8Text, -1);
+  g_free(utf8Text);
+
+  return validStr;
 }
 
 std::string HelperFunc::convertToTime(int minutes) {
@@ -45,6 +48,6 @@ std::string HelperFunc::convertToTime(int minutes) {
   if (mins > 0) {
     timeStr += std::to_string(mins) + "m";
   }
-  
+
   return timeStr;
 }

@@ -17,8 +17,6 @@ MprisManager::MprisManager(AppContext *appCtx) : ctx(appCtx) {
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
       ctx->dbus.ssnConn, msg, -1, &ctx->dbus.ssnErr);
 
-  dbus_message_unref(msg);
-
   DBusMessageIter iter, subIter;
   dbus_message_iter_init(reply, &iter);
 
@@ -50,6 +48,9 @@ MprisManager::MprisManager(AppContext *appCtx) : ctx(appCtx) {
 
     dbus_message_iter_next(&subIter);
   }
+  
+  dbus_message_unref(reply);
+  dbus_message_unref(msg);
 }
 
 bool MprisManager::PlayPause() {
