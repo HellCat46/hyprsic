@@ -9,7 +9,7 @@
 
 #define TAG "ClipboardManager"
 
-ClipboardManager::ClipboardManager(AppContext *ctx) : ctx(ctx) {}
+ClipboardManager::ClipboardManager(AppContext *ctx) : ctx(ctx), registry(nullptr), dp(nullptr) {}
 
 void ClipboardManager::init(GdkDisplay *gdkDp) {
   if (!GDK_IS_WAYLAND_DISPLAY(gdkDp)) {
@@ -76,6 +76,6 @@ void ClipboardManager::dataSrcCancelled(void *data,
 }
 
 ClipboardManager::~ClipboardManager() {
-  wl_registry_destroy(registry);
-  wl_display_disconnect(dp);
+  if(registry != nullptr) wl_registry_destroy(registry);
+  if(dp != nullptr) wl_display_disconnect(dp);
 }

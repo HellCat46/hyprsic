@@ -4,6 +4,7 @@
 #include "dbus/dbus-shared.h"
 #include "dbus/dbus.h"
 #include "gdk-pixbuf/gdk-pixbuf.h"
+#include "glib-object.h"
 #include "glib.h"
 #include <cstring>
 
@@ -72,6 +73,8 @@ void NotificationManager::handleDbusMessage(
       args.dnd = dnd;
 
       showNotification(&args);
+    }else {
+        g_object_unref(notification.icon_pixbuf);
     }
   } else if (HelperFunc::saferStrCmp(member, "CloseNotification")) {
 

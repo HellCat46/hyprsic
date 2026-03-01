@@ -7,11 +7,16 @@
 #include "glib.h"
 #include "gtk-layer-shell.h"
 #include "gtk/gtk.h"
+#include <cstring>
 #include <ctime>
 #include <memory>
+#include <string_view>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <thread>
+#include <unistd.h>
 
-#define TAG "MainWindow"
+#define TAG "Application"
 
 Window::Window(AppContext *ctx, MprisManager *mprisMgr,
                ScreenSaverManager *scrnsavrMgr,
@@ -28,7 +33,7 @@ Window::Window(AppContext *ctx, MprisManager *mprisMgr,
       sysinfoModule(stat, mem, load, battery), paModule(paMgr, ctx, paWindow),
       brtModule(ctx, brtMgr, brtWindow) {}
 
-MainWindow::MainWindow()
+Application::Application()
     : notifManager(&ctx), notifWindow(&ctx, &notifManager), btManager(&ctx),
       btWindow(&ctx, &btManager), mprisManager(&ctx),
       mprisWindow(&ctx, &mprisManager), scrnsavrManager(&ctx),
@@ -37,22 +42,24 @@ MainWindow::MainWindow()
       paManager(&ctx.logger), paWindow(&ctx, &paManager), wifiManager(&ctx),
       clipboardManager(&ctx), brtManager(&ctx), brtWindow(&ctx, &brtManager) {
 
-  btManager.setup();
-  hyprInstance.liveEventListener();
-  ssnDBusThread = std::thread(&MainWindow::captureSessionDBus, this);
-
   app = gtk_application_new("com.hellcat.hyprsic", G_APPLICATION_DEFAULT_FLAGS);
   g_signal_connect(app, "activate", G_CALLBACK(activate), this);
 }
 
-void MainWindow::RunApp() {
-  int status = g_application_run(G_APPLICATION(app), 0, nullptr);
+void Application::Run(int argc, char **argv) {
+  int status = g_application_run(G_APPLICATION(app), argc, argv);
   g_object_unref(app);
 }
 
-void MainWindow::activate(GtkApplication *app, gpointer user_data) {
-  MainWindow *self = static_cast<MainWindow *>(user_data);
+void Application::activate(GtkApplication *app, gpointer user_data) {
+  Application *self = static_cast<Application *>(user_data);
   GdkDisplay *display = gdk_display_get_default();
+
+  self->btManager.setup();
+  self->hyprInstance.liveEventListener();
+  self->ssnDBusThread = std::thread(&Application::captureSessionDBus, self);
+  self->cliIPCThread = std::thread(&Application::captureCLIIPC, self);
+
   self->ctx.initWindows();
   self->paWindow.setupIcons();
   self->paWindow.init();
@@ -143,10 +150,10 @@ void MainWindow::activate(GtkApplication *app, gpointer user_data) {
   }
 
   g_timeout_add(self->delay, UpdateUI, self);
-  self->dataUpdateThread = std::thread(&MainWindow::UpdateData, self);
+  self->dataUpdateThread = std::thread(&Application::UpdateData, self);
 }
 
-void MainWindow::UpdateData() {
+void Application::UpdateData() {
   while (true) {
     btManager.getDeviceList();
     stat.UpdateData();
@@ -158,10 +165,10 @@ void MainWindow::UpdateData() {
   }
 }
 
-gboolean MainWindow::UpdateUI(gpointer data) {
-  MainWindow *self = static_cast<MainWindow *>(data);
-  
-  self->btWindow.update(); 
+gboolean Application::UpdateUI(gpointer data) {
+  Application *self = static_cast<Application *>(data);
+
+  self->btWindow.update();
   self->notifWindow.update();
   self->mprisWindow.update();
   self->brtWindow.update();
@@ -178,7 +185,7 @@ gboolean MainWindow::UpdateUI(gpointer data) {
   return true;
 }
 
-void MainWindow::captureSessionDBus() {
+void Application::captureSessionDBus() {
   notifManager.setupDBus();
   snManager.setupDBus();
 
@@ -231,5 +238,108 @@ void MainWindow::captureSessionDBus() {
     }
 
     dbus_message_unref(msg);
+  }
+}
+
+void Application::captureCLIIPC() {
+  int sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+  sockaddr_un addr;
+
+  memset(&addr, 0, sizeof(addr));
+  addr.sun_family = AF_UNIX;
+  std::string socketPath = "/tmp/hyprsic_ipc.sock";
+  strncpy(addr.sun_path, socketPath.c_str(), sizeof(addr.sun_path) - 1);
+
+  unlink(addr.sun_path);
+  int ret = bind(sockfd, (sockaddr *)&addr, sizeof(addr));
+  if (ret == -1) {
+    ctx.logger.LogError(TAG, "Failed to bind socket: " +
+                                 std::string(strerror(errno)));
+    return;
+  }
+
+  listen(sockfd, 1);
+
+  while (true) {
+    int clientFd = accept(sockfd, nullptr, nullptr);
+    if (clientFd == -1) {
+      ctx.logger.LogError(TAG, "Failed to accept connection: " +
+                                   std::string(strerror(errno)));
+      continue;
+    }
+
+    char buff[256];
+    memset(buff, 0, sizeof(buff));
+
+    ssize_t bytesRead = read(clientFd, buff, sizeof(buff) - 1);
+    if (bytesRead <= 0) {
+      ctx.logger.LogError(TAG, "Failed to read from socket: " +
+                                   std::string(strerror(errno)));
+      close(clientFd);
+      continue;
+    }
+
+    std::string_view cmd(buff);
+    
+    ctx.logger.LogInfo(TAG, "Received IPC Command: " + std::string(cmd));
+
+    size_t spacePos = cmd.find(' ');
+    if (spacePos == std::string_view::npos) {
+      ctx.logger.LogError(TAG, "Invalid command format received: " +
+                                   std::string(cmd));
+      close(clientFd);
+      continue;
+    }
+
+    
+    std::string_view action = cmd.substr(0, spacePos);
+    cmd = cmd.substr(spacePos + 1);
+
+    std::vector<std::string_view> args;
+    while (true) {
+      spacePos = cmd.find(' ');
+      if (spacePos == std::string_view::npos) {
+        break;
+      }
+
+      args.push_back(cmd.substr(0, spacePos));
+      cmd = cmd.substr(spacePos + 1);
+    }
+
+    if (args.size() == 0) {
+      ctx.logger.LogError(TAG, "No arguments provided for command: " +
+                                   std::string(action));
+      close(clientFd);
+      continue;
+    }
+
+
+
+          handleActions(action, args);
+ 
+    close(clientFd);
+  }
+}
+
+void Application::handleActions(std::string_view action,
+                                std::vector<std::string_view> args) {
+  if (action == "toggle-view") {
+    handleIPCAction(args[0]);
+  }
+}
+
+void Application::handleIPCAction(std::string_view module) {
+  if (module == "pulseaudio") {
+      
+    ctx.showCtrlWindow("pulseaudio", 400, -1);
+  } else if (module == "bluetooth") {
+      
+    ctx.showCtrlWindow("bluetooth", 400, 200);
+  } else if (module == "notifications") {
+      
+    ctx.showCtrlWindow("notifications", 420, 400);
+  } else if (module == "brightness") {
+      
+    ctx.showCtrlWindow("brightness", 340, 70);
   }
 }

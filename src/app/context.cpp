@@ -14,7 +14,7 @@
 AppContext::AppContext()
     : dbus(), logger(true), dbManager(&logger), updateTimeoutId(0) {}
 
-DbusSystem::DbusSystem() {
+DbusSystem::DbusSystem() : sysConn(nullptr), ssnConn(nullptr) {
   dbus_error_init(&sysErr);
   dbus_error_init(&ssnErr);
   sysConn = dbus_bus_get(DBUS_BUS_SYSTEM, &sysErr);
@@ -41,11 +41,15 @@ DbusSystem::~DbusSystem() {
   dbus_error_free(&ssnErr);
   dbus_error_free(&sysErr);
 
-  dbus_connection_flush(sysConn);
-  dbus_connection_close(sysConn);
+  if (sysConn != nullptr) {
+    dbus_connection_flush(sysConn);
+    dbus_connection_close(sysConn);
+  }
 
-  dbus_connection_flush(ssnConn);
-  dbus_connection_close(ssnConn);
+  if (ssnConn != nullptr) {
+    dbus_connection_flush(ssnConn);
+    dbus_connection_close(ssnConn);
+  }
 }
 
 void DbusSystem::DictToInt64(DBusMessageIter *iter, uint64_t &outValue) {
@@ -114,11 +118,11 @@ void AppContext::initWindows() {
   GtkEventController *evtCtrl = gtk_event_controller_key_new(ctrlWin);
   g_signal_connect(evtCtrl, "key-released",
                    G_CALLBACK(AppContext::handleKeyPress), ctrlWin);
-  
+
   GdkScreen *screen = gtk_widget_get_screen(ctrlWin);
   GdkVisual *visual = gdk_screen_get_rgba_visual(screen);
   if (visual != nullptr && gdk_screen_is_composited(screen)) {
-      gtk_widget_set_visual(ctrlWin, visual);
+    gtk_widget_set_visual(ctrlWin, visual);
   }
 
   gtk_layer_set_anchor(GTK_WINDOW(ctrlWin), GTK_LAYER_SHELL_EDGE_TOP, false);
@@ -132,39 +136,35 @@ void AppContext::initWindows() {
   gtk_widget_set_margin_bottom(ctrlWin, 30);
 
   GtkWidget *mainBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-  
+
   moduleStk = gtk_stack_new();
   gtk_stack_set_transition_type(GTK_STACK(moduleStk),
                                 GTK_STACK_TRANSITION_TYPE_CROSSFADE);
   gtk_stack_set_homogeneous(GTK_STACK(moduleStk), false);
-  
+
   gtk_box_pack_start(GTK_BOX(mainBox), moduleStk, TRUE, TRUE, 0);
   gtk_container_add(GTK_CONTAINER(ctrlWin), mainBox);
-  
-  
+
   gtk_widget_set_app_paintable(ctrlWin, TRUE);
-  const char *css = 
-      ".win { "
-      "  background-color: transparent; " 
-      "}"
-      ".mainBox { "
-      "  background-color: @theme_bg_color; " 
-      "  border: 2px solid @borders; "
-      "  border-radius: 12px; "
-      "  margin: 5px; "        
-      "}";
-  
+  const char *css = ".win { "
+                    "  background-color: transparent; "
+                    "}"
+                    ".mainBox { "
+                    "  background-color: @theme_bg_color; "
+                    "  border: 2px solid @borders; "
+                    "  border-radius: 12px; "
+                    "  margin: 5px; "
+                    "}";
+
   GtkCssProvider *provider = gtk_css_provider_new();
   gtk_css_provider_load_from_data(provider, css, -1, NULL);
-  gtk_style_context_add_provider_for_screen(
-      gdk_screen_get_default(),
-      GTK_STYLE_PROVIDER(provider),
-      GTK_STYLE_PROVIDER_PRIORITY_USER
-  );
-  
+  gtk_style_context_add_provider_for_screen(gdk_screen_get_default(),
+                                            GTK_STYLE_PROVIDER(provider),
+                                            GTK_STYLE_PROVIDER_PRIORITY_USER);
+
   GtkStyleContext *boxCtx = gtk_widget_get_style_context(mainBox);
   gtk_style_context_add_class(boxCtx, "mainBox");
-  
+
   GtkStyleContext *winCtx = gtk_widget_get_style_context(ctrlWin);
   gtk_style_context_add_class(winCtx, "win");
 }
@@ -203,7 +203,7 @@ void AppContext::addModule(GtkWidget *moduleBox,
   logger.LogDebug(TAG, "Adding Module to Stack: " + moduleName +
                            " with Size: " + std::to_string(width) + "x" +
                            std::to_string(height));
-  
+
   gtk_stack_add_named(GTK_STACK(moduleStk), moduleBox, moduleName.c_str());
 }
 

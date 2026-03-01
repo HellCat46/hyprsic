@@ -45,7 +45,8 @@ struct Window {
          NotificationWindow *notifWindow, PulseAudioWindow *paWindow);
 };
 
-class MainWindow {
+
+class Application {
   GtkApplication *app = nullptr;
   std::vector<std::unique_ptr<Window>> mainWindows;
   AppContext ctx;
@@ -73,13 +74,28 @@ class MainWindow {
   NotificationWindow notifWindow;
   PulseAudioWindow paWindow;
 
-  std::thread ssnDBusThread, dataUpdateThread;
+  std::thread ssnDBusThread, dataUpdateThread, cliIPCThread;
   void captureSessionDBus();
+  void UpdateData();
+  
+  // IPC Handling
+  void captureCLIIPC();
+  void handleActions(std::string_view action, std::vector<std::string_view> args);
+  void handleIPCAction(std::string_view module);
+  
+  static gboolean UpdateUI(gpointer data);
+  
+  static void activate(GtkApplication *app, gpointer user_data);
 
 public:
-  MainWindow();
-  void RunApp();
-  void UpdateData();
-  static gboolean UpdateUI(gpointer data);
-  static void activate(GtkApplication *app, gpointer user_data);
+  Application();
+  void Run(int argc, char **argv);
+};
+
+
+
+struct IPCUIData {
+    std::string_view action;
+    std::vector<std::string_view> args;
+    Application *app;
 };

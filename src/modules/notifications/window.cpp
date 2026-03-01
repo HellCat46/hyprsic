@@ -182,9 +182,11 @@ void NotificationWindow::showNotification(NotifFuncArgs *args) {
   GdkPixbuf *scaled_pixbuf = gdk_pixbuf_scale_simple(
       args->notif->icon_pixbuf, 64, 64, GDK_INTERP_BILINEAR);
   GtkWidget *logo_box = gtk_image_new_from_pixbuf(scaled_pixbuf);
-  g_object_ref(args->notif->icon_pixbuf);
   gtk_widget_set_size_request(logo_box, 5, 5);
   gtk_box_pack_start(GTK_BOX(mainBox), logo_box, FALSE, FALSE, 5);
+  
+  g_object_unref(scaled_pixbuf);
+  g_object_unref(args->notif->icon_pixbuf);
 
   // Action Buttons - Close
   GtkWidget *action_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
@@ -232,6 +234,10 @@ void NotificationWindow::closeNotificationCb(GtkWidget *widget,
     gtk_widget_destroy(it->second);
     args->notifications->erase(it->first);
   }
+  
+  g_free(args->notifId);
+  delete args->notif;
+  g_free(args);
 }
 
 void NotificationWindow::autoCloseNotificationCb(gpointer user_data) {
@@ -263,9 +269,6 @@ void NotificationWindow::autoCloseNotificationCb(gpointer user_data) {
   }
 
   NotificationWindow::closeNotificationCb(nullptr, user_data);
-  g_free(args->notifId);
-  delete args->notif;
-  g_free(args);
 }
 void NotificationWindow::deleteNotificationCb(GtkWidget *widget,
                                               gpointer user_data) {

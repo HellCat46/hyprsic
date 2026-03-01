@@ -15,20 +15,6 @@ pkg_check_modules(DBUS REQUIRED dbus-1)
 pkg_check_modules(LIBPULSE REQUIRED  libpulse)
 
 
-
-if(ENABLE_NVIDIA_NVML)
-    pkg_check_modules(NVML QUIET nvidia-ml)
-    if(NVML_FOUND)
-        message(STATUS
-                "Found NVML: YES (Includes: ${NVML_INCLUDE_DIRS}, Libs: ${NVML_LIBRARIES})")
-        list(APPEND APP_INCLUDE_DIRS ${NVML_INCLUDE_DIRS})
-        list(APPEND APP_LINK_LIBRARIES ${NVML_LIBRARIES})
-        list(APPEND APP_COMPILE_DEFINITIONS "USE_NVML")
-    else()
-        message(WARNING "NVML (nvidia-ml.pc) not found. NVIDIA GPU monitoring will be disabled.")
-    endif()
-endif()
-
 set(WAYLAND_PROTOCOLS_SOURCES
     src/wayland/ext-data-control-v1.c
 )
@@ -96,6 +82,7 @@ set(DEBUG_SOURCES
 set(APP_SOURCES
     src/app/context.cpp
     src/app/window.cpp
+    src/app/cmdline.cpp
 )
 
 
@@ -110,6 +97,7 @@ include_directories(
 )
 
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/thirdparty/SQLiteCpp)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/thirdparty/CLI11)
 
 add_executable(hyprsic
         src/app/main.cpp
@@ -131,6 +119,7 @@ target_sources(hyprsic PRIVATE
 
 target_link_libraries(hyprsic
         SQLiteCpp
+        CLI11
         sqlite3
         ${JSONCPP_LIBRARIES}
         ${DBUS_LIBRARIES}
