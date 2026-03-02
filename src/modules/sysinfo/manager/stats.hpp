@@ -1,15 +1,14 @@
 #pragma once
 
+#include "../../../logging/manager.hpp"
 #include "disk.hpp"
 #include "network.hpp"
-#include "../../../logging/manager.hpp"
 #include <chrono>
 
 class Stats {
-
+  LoggingManager *logger;
   Network net;
   Disk disk;
-  LoggingManager *logger;
 
 public:
   unsigned long rx, tx;
@@ -21,7 +20,7 @@ public:
   std::string GetNetRx();
   std::string GetNetTx();
   std::string GetIfaces();
-  
+
   std::string GetDiskAvail();
   std::string GetDiskTotal();
 

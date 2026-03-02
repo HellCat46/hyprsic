@@ -7,19 +7,19 @@
 #include "window.hpp"
 
 class MprisModule {
-  MprisManager* manager;
-  MprisWindow* window;
   AppContext *ctx;
+  MprisManager *manager;
+  MprisWindow *window;
 
   GtkWidget *mainLbl;
 
-
 public:
-  MprisModule(AppContext *ctx, MprisManager* mprisMgr, MprisWindow* mprisWindow);
+  MprisModule(AppContext *ctx, MprisManager *mprisMgr,
+              MprisWindow *mprisWindow);
 
-  GtkWidget* setup();
+  GtkWidget *setup();
   void update();
 
   static void chgVisibilityMenu(GtkWidget *widget, GdkEvent *e,
-                              gpointer user_data);
+                                gpointer user_data);
 };

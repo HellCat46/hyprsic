@@ -37,7 +37,7 @@ void MprisModule::update() {
   gtk_label_set_markup(GTK_LABEL(mainLbl), title.c_str());
 }
 
-void MprisModule::chgVisibilityMenu(GtkWidget *widget, GdkEvent *e,
+void MprisModule::chgVisibilityMenu([[maybe_unused]] GtkWidget *widget, GdkEvent *e,
                                     gpointer user_data) {
   MprisModule *self = static_cast<MprisModule *>(user_data);
 

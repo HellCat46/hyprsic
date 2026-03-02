@@ -68,7 +68,7 @@ void PulseAudioManager::contextStateHandler(pa_context *pulseCtx, void *data) {
   }
 }
 
-void PulseAudioManager::serverInfoCallBack(pa_context *pulseCtx,
+void PulseAudioManager::serverInfoCallBack([[maybe_unused]] pa_context *pulseCtx,
                                            const pa_server_info *info,
                                            void *data) {
   PulseAudioManager *playing = (PulseAudioManager *)data;
@@ -79,7 +79,7 @@ void PulseAudioManager::serverInfoCallBack(pa_context *pulseCtx,
 
 void PulseAudioManager::handleStateChanges(
     pa_context *pulseCtx, const pa_subscription_event_type eventType,
-    unsigned int idx, void *data) {
+     [[maybe_unused]] unsigned int idx, void *data) {
   unsigned int facility = eventType & PA_SUBSCRIPTION_EVENT_FACILITY_MASK;
 
   switch (facility) {
@@ -98,8 +98,8 @@ void PulseAudioManager::handleStateChanges(
   }
 }
 
-void PulseAudioManager::sinkInfoCallBack(pa_context *pulseCtx,
-                                         const pa_sink_info *info, int eol,
+void PulseAudioManager::sinkInfoCallBack([[maybe_unused]] pa_context *pulseCtx,
+                                         const pa_sink_info *info,[[maybe_unused]] int eol,
                                          void *data) {
   if (info == nullptr)
     return;
@@ -134,8 +134,8 @@ void PulseAudioManager::sinkInfoCallBack(pa_context *pulseCtx,
                std::to_string(self->outDevs.size()) + " Devices)");
 }
 
-void PulseAudioManager::sourceInfoCallBack(pa_context *pulseCtx,
-                                           const pa_source_info *info, int eol,
+void PulseAudioManager::sourceInfoCallBack([[maybe_unused]] pa_context *pulseCtx,
+                                           const pa_source_info *info,[[maybe_unused]] int eol,
                                            void *data) {
   if (info == nullptr)
     return;

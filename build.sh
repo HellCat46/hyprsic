@@ -51,5 +51,9 @@ if [ "$1" = "gdb" ]; then
 elif [ "$1" = "valgrind" ]; then
     valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose build/hyprsic
 else
-	./build/hyprsic
+    if [ "$1" = "prod" ]; then
+        DEBUG_MODE=0 build/hyprsic
+    else
+        DEBUG_MODE=1 build/hyprsic
+    fi
 fi

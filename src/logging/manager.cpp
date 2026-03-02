@@ -9,6 +9,12 @@ LoggingManager::LoggingManager(bool writeConsole) {
   this->writeConsole = writeConsole;
   const char *xshPath = std::getenv("XDG_STATE_HOME");
 
+  const char *debugLogEnv = std::getenv("DEBUG_LOG");
+  if (debugLogEnv && std::strcmp(debugLogEnv, "1"))
+    debug = true;
+  else
+    debug = false;
+
   std::string logPath;
   if (xshPath) {
     logPath = std::string(xshPath) + "/hyprsic/";
@@ -64,6 +70,9 @@ void LoggingManager::LogError(const char *TAG, const std::string &message) {
 }
 
 void LoggingManager::LogDebug(const char *TAG, const std::string &message) {
+  if (!debug)
+    return;
+  
   outputStream << "[DEBUG] [" << GetCurrentTime() << "] [" << TAG << "] "
                << message << std::endl;
 

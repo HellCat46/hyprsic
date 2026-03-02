@@ -5,6 +5,7 @@
 #include <gtk-layer-shell.h>
 #include <gtk/gtk.h>
 #include <memory>
+#include <string_view>
 #include <vector>
 
 #include "../modules/bluetooth/module.hpp"
@@ -58,21 +59,26 @@ class Application {
   SysLoad load;
   BatteryInfo battery;
   BluetoothManager btManager;
+  BluetoothWindow btWindow;
+  
   NotificationManager notifManager;
+  NotificationWindow notifWindow;
+  
   MprisManager mprisManager;
+  MprisWindow mprisWindow;
+  
   ScreenSaverManager scrnsavrManager;
   HyprWSManager hyprInstance;
   StatusNotifierManager snManager;
+  
   PulseAudioManager paManager;
+  PulseAudioWindow paWindow;
+  
   WifiManager wifiManager;
   ClipboardManager clipboardManager;
+  
   BrightnessManager brtManager;
-
-  BluetoothWindow btWindow;
   BrightnessWindow brtWindow;
-  MprisWindow mprisWindow;
-  NotificationWindow notifWindow;
-  PulseAudioWindow paWindow;
 
   std::thread ssnDBusThread, dataUpdateThread, cliIPCThread;
   void captureSessionDBus();
@@ -81,7 +87,8 @@ class Application {
   // IPC Handling
   void captureCLIIPC();
   void handleActions(std::string_view action, std::vector<std::string_view> args);
-  void handleIPCAction(std::string_view module);
+  void IPCToggleView(std::string_view module);
+  void IPCCtrlAudioDev(std::string_view action);
   
   static gboolean UpdateUI(gpointer data);
   

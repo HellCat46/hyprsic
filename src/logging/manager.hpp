@@ -4,7 +4,7 @@
 #include <string>
 class LoggingManager {
     std::ofstream outputStream;
-    bool writeConsole;
+    bool writeConsole, debug;
     
     std::string GetCurrentTime();
     

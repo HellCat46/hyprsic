@@ -10,14 +10,14 @@
 
 class Display {
   AppContext ctx;
-  Stats stat;
+  HyprWSManager hyprWS;
   Network net;
+  Stats stat;
   SysLoad load;
   Memory mem;
   Disk disk;
   BatteryInfo battery;
   // PlayingNow playing;
-  HyprWSManager hyprWS;
 
 public:
   Display();

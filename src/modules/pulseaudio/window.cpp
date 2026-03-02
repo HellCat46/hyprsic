@@ -286,8 +286,8 @@ void PulseAudioWindow::updateControls(bool mute,
                       (uint32_t)(((float)avgVol / 65535) * 100));
 }
 
-void PulseAudioWindow::handleChgVolume(GtkRange *range, GtkScrollType *scroll,
-                                       gdouble value, gpointer data) {
+void PulseAudioWindow::handleChgVolume(GtkRange *range, [[maybe_unused]] GtkScrollType *scroll,
+                                       [[maybe_unused]] gdouble value, gpointer data) {
   PulseAudioWindow *self = static_cast<PulseAudioWindow *>(data);
 
   if (range == GTK_RANGE(self->outScale)) {
@@ -325,7 +325,7 @@ void PulseAudioWindow::handleToggleMute(GtkWidget *widget, gpointer data) {
   }
 }
 
-void PulseAudioWindow::toggleMute(GtkWidget *widget, gpointer data,
+void PulseAudioWindow::toggleMute([[maybe_unused]] GtkWidget *widget, [[maybe_unused]] gpointer data,
                                   bool isOutput) {
   if (isOutput) {
     short res = manager->toggleMute(manager->defOutput, true);

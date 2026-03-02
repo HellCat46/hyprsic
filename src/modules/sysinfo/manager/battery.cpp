@@ -159,7 +159,6 @@ BatteryInfo::BatteryInfo(AppContext *ctx) : ctx(ctx), charger(ctx) {
 
 BatteryStats BatteryInfo::getBatteryStats() {
   BatteryStats avgStats{0, 0, 0};
-  char ch;
 
   for (int idx = 0; idx < battCount; idx++) {
     if (batteries[idx]->failed)

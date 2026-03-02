@@ -27,20 +27,20 @@ Window::Window(AppContext *ctx, MprisManager *mprisMgr,
                BluetoothWindow *btWindow, BrightnessWindow *brtWindow,
                MprisWindow *mprisWindow, NotificationWindow *notifWindow,
                PulseAudioWindow *paWindow)
-    : mprisModule(ctx, mprisMgr, mprisWindow), hyprModule(ctx, hyprMgr),
+    : sysinfoModule(stat, mem, load, battery),
+      mprisModule(ctx, mprisMgr, mprisWindow), hyprModule(ctx, hyprMgr),
       scrnsavrModule(ctx, scrnsavrMgr), btModule(ctx, btMgr, btWindow),
       notifModule(ctx, notifInstance, notifWindow), snModule(ctx, snManager),
-      sysinfoModule(stat, mem, load, battery), paModule(paMgr, ctx, paWindow),
-      brtModule(ctx, brtMgr, brtWindow) {}
+      paModule(paMgr, ctx, paWindow), brtModule(ctx, brtMgr, brtWindow) {}
 
 Application::Application()
-    : notifManager(&ctx), notifWindow(&ctx, &notifManager), btManager(&ctx),
-      btWindow(&ctx, &btManager), mprisManager(&ctx),
+    : stat(&ctx.logger), mem(&ctx.logger), load(&ctx.logger), battery(&ctx),
+      btManager(&ctx), btWindow(&ctx, &btManager), notifManager(&ctx),
+      notifWindow(&ctx, &notifManager), mprisManager(&ctx),
       mprisWindow(&ctx, &mprisManager), scrnsavrManager(&ctx),
-      hyprInstance(&ctx.logger), snManager(&ctx), load(&ctx.logger),
-      mem(&ctx.logger), stat(&ctx.logger), battery(&ctx),
-      paManager(&ctx.logger), paWindow(&ctx, &paManager), wifiManager(&ctx),
-      clipboardManager(&ctx), brtManager(&ctx), brtWindow(&ctx, &brtManager) {
+      hyprInstance(&ctx.logger), snManager(&ctx), paManager(&ctx.logger),
+      paWindow(&ctx, &paManager), wifiManager(&ctx), clipboardManager(&ctx),
+      brtManager(&ctx), brtWindow(&ctx, &brtManager) {
 
   app = gtk_application_new("com.hellcat.hyprsic", G_APPLICATION_DEFAULT_FLAGS);
   g_signal_connect(app, "activate", G_CALLBACK(activate), this);
@@ -49,7 +49,7 @@ Application::Application()
 int Application::Run(int argc, char **argv) {
   int status = g_application_run(G_APPLICATION(app), argc, argv);
   g_object_unref(app);
-  
+
   return status;
 }
 
@@ -282,7 +282,7 @@ void Application::captureCLIIPC() {
     }
 
     std::string_view cmd(buff);
-    
+
     ctx.logger.LogInfo(TAG, "Received IPC Command: " + std::string(cmd));
 
     size_t spacePos = cmd.find(' ');
@@ -293,7 +293,6 @@ void Application::captureCLIIPC() {
       continue;
     }
 
-    
     std::string_view action = cmd.substr(0, spacePos);
     cmd = cmd.substr(spacePos + 1);
 
@@ -315,10 +314,8 @@ void Application::captureCLIIPC() {
       continue;
     }
 
+    handleActions(action, args);
 
-
-          handleActions(action, args);
- 
     close(clientFd);
   }
 }
@@ -326,22 +323,34 @@ void Application::captureCLIIPC() {
 void Application::handleActions(std::string_view action,
                                 std::vector<std::string_view> args) {
   if (action == "toggle-view") {
-    handleIPCAction(args[0]);
+    IPCToggleView(args[0]);
+  } else if (action == "audio") {
+    IPCCtrlAudioDev(args[0]);
   }
 }
 
-void Application::handleIPCAction(std::string_view module) {
+void Application::IPCToggleView(std::string_view module) {
   if (module == "pulseaudio") {
-      
+
     ctx.showCtrlWindow("pulseaudio", 400, -1);
   } else if (module == "bluetooth") {
-      
+
     ctx.showCtrlWindow("bluetooth", 400, 200);
   } else if (module == "notifications") {
-      
+
     ctx.showCtrlWindow("notifications", 420, 400);
   } else if (module == "brightness") {
-      
+
     ctx.showCtrlWindow("brightness", 340, 70);
+  }
+}
+
+void Application::IPCCtrlAudioDev(std::string_view args) {
+  if (args == "play-pause") {
+    mprisManager.PlayPause();
+  } else if (args == "toggle-mic") {
+    paWindow.toggleMute(nullptr, nullptr, false);
+  } else if (args == "toggle-output") {
+    paWindow.toggleMute(nullptr, nullptr, true);
   }
 }

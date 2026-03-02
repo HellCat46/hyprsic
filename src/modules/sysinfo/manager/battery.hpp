@@ -11,9 +11,9 @@ struct BatteryStats {
 };
 
 class Battery {
+  AppContext *ctx;
   std::ifstream capacity, chargeFull, chargeNow, currentNow;
   std::string name;
-  AppContext *ctx;
 
 public:
   bool failed;
@@ -34,10 +34,10 @@ public:
 };
 
 class BatteryInfo {
+  AppContext *ctx;
   std::vector<std::unique_ptr<Battery>> batteries;
   Charger charger;
   int battCount;
-  AppContext *ctx;
   bool charging;
   bool lowBattery;
 
@@ -45,6 +45,6 @@ public:
   BatteryInfo(AppContext *ctx);
   BatteryStats getBatteryStats();
   int getBatteryCount();
-  
+
   bool isCharging();
 };
