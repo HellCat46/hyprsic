@@ -46,9 +46,11 @@ Application::Application()
   g_signal_connect(app, "activate", G_CALLBACK(activate), this);
 }
 
-void Application::Run(int argc, char **argv) {
+int Application::Run(int argc, char **argv) {
   int status = g_application_run(G_APPLICATION(app), argc, argv);
   g_object_unref(app);
+  
+  return status;
 }
 
 void Application::activate(GtkApplication *app, gpointer user_data) {

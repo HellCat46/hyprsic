@@ -6,12 +6,8 @@ if [ -d "$DIRECTORY" ] && [ "$1" = "clean" ]; then
 	echo "Deleting the old build"
 	rm -rf build
 	echo "Deleted the old build"
-	mkdir build
 else
 	echo "Skipping deletion of build folder..."
-	if ! [ -d "$DIRECTORY" ]; then
-	    mkdir build
-	fi
 fi
 
 # Checking for all the icons and adding them to the resources/icons.h
@@ -22,10 +18,9 @@ for file in $(find ./ -type f -name "*.png"); do
     if grep -q $constName ../../src/resources/icons.h; then
         continue
     fi
-    
+
     echo "Adding $file as $constName to icons.h"
     xxd -i -n "$constName" "$file"  | sed 's/unsigned char/const unsigned char/g; s/unsigned int/const unsigned int/g' >> ../../src/resources/icons.h
-
 done
 cd ../.. || exit
 
@@ -38,15 +33,17 @@ for file in $(find ./resources/wayland -name "*.xml"); do
     fi
 done
 
-# Add -DCMAKE_BUILD_TYPE=Debug Flag for Debug build (Increases build time)
-if [ "$1" = "prod" ]; then
-    echo "Building in Production Mode"
-    cmake -G Ninja -S . -B build || exit
-else 
-    cmake -G Ninja -S . -B build -DCMAKE_BUILD_TYPE=Debug || exit
+
+if ! [ -d "$DIRECTORY" ]; then
+    if [ "$1" = "prod" ]; then
+        echo "Building in Production Mode"
+        meson setup build --buildtype=release --wipe || exit
+    else
+        meson setup build --buildtype=debug --wipe || exit
+    fi
 fi
 
-cmake --build build || exit
+ninja -C build || exit
 
 printf "\n\n\033[0;32mSuccessfully Built the project. Running the Executable\033[0m\n\n"
 if [ "$1" = "gdb" ]; then

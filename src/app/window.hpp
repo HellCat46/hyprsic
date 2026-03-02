@@ -89,7 +89,7 @@ class Application {
 
 public:
   Application();
-  void Run(int argc, char **argv);
+  int Run(int argc, char **argv);
 };
 
 

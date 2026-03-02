@@ -12,14 +12,7 @@ pkgs.mkShell {
     valgrind
     clang
     clang-tools
-    dbus
-    gtk3
-    gtk-layer-shell
-    meson
-    sqlite
   ];
-
-  CMAKE_EXPORT_COMPILE_COMMANDS = "ON";
 
   # Environment variables
   shellHook = ''

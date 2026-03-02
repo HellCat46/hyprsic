@@ -2,15 +2,15 @@
 
 pkgs.stdenv.mkDerivation {
   pname = "hyprsic";
-  version = "0.0.1";
+  version = "0.1.0";
 
   src = ./.;
 
   nativeBuildInputs = with pkgs; [
     pkg-config
-    gcc
-    cmake
+    meson
     ninja
+    gcc
     wayland-scanner
   ];
 
@@ -25,6 +25,10 @@ pkgs.stdenv.mkDerivation {
     cairo
     pango
     systemd
+    gtk3
+    gtk-layer-shell
+    sqlite
+    sqlitecpp
   ];
 
   meta = with pkgs.lib; {
