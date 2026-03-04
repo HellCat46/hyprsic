@@ -136,7 +136,7 @@ void HyprWSManager::liveEventListener() {
                                   "Info - Move Workspace");
             continue;
           }
-          
+
           buffView = buffView.substr(pos + 1);
           if (buffView.size() < 2) {
             logger->LogError(TAG, "Failed to Parse Monitor Name from Event "
@@ -248,7 +248,7 @@ Json::Value HyprWSManager::executeQuery(const std::string &msg,
   // Workspace Related Action
   std::string propSockPath = sockPath + ".socket.sock";
   strncpy(addr.sun_path, propSockPath.c_str(), sizeof(addr.sun_path) - 1);
-  
+
   if (connect(workSockfd, (sockaddr *)&addr, sizeof(addr)) == -1) {
     logger->LogError(TAG,
                      "Unable to Establish Connection with hyprctl UNIX Socket");
@@ -261,7 +261,7 @@ Json::Value HyprWSManager::executeQuery(const std::string &msg,
     close(workSockfd);
     return -2;
   }
-  
+
   ssize_t readBytes = read(workSockfd, buffer, sizeof(buffer));
   if (readBytes <= 0) {
     err = "Failed to Read Query Response";
@@ -314,13 +314,11 @@ int HyprWSManager::MoveToWS(int wsId, unsigned char monitorId, bool forward) {
     return 1;
   }
 
-  if (srtPt->second.monitorId != monitorId) {
-    wsId = -1;
-    for (auto it = srtPt; it != workspaces.end(); forward ? it++ : it--) {
-      if (it->second.monitorId == monitorId) {
-        wsId = it->first;
-        break;
-      }
+  wsId = -1;
+  for (auto it = srtPt; it != workspaces.end(); forward ? it++ : it--) {
+    if (it->second.monitorId == monitorId && it != srtPt) {
+      wsId = it->first;
+      break;
     }
   }
 

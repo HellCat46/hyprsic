@@ -9,7 +9,7 @@
 #include <string>
 
 HyprWSModule::HyprWSModule(AppContext *ctx, HyprWSManager *hyprInstance)
-    : logger(&ctx->logger), hyprInstance(hyprInstance) {}
+    : hyprInstance(hyprInstance), logger(&ctx->logger) {}
 
 GtkWidget* HyprWSModule::setup(unsigned char monitorId) {
   GtkWidget *mainBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
@@ -113,26 +113,26 @@ gboolean HyprWSModule::updateWorkspaceUI(gpointer data) {
   return G_SOURCE_REMOVE;
 }
 
-void HyprWSModule::chgWS(GtkWidget *widget, GdkEvent *e, gpointer user_data) {
+void HyprWSModule::chgWS([[maybe_unused]] GtkWidget *widget,[[maybe_unused]]  GdkEvent *e, gpointer user_data) {
   ChgWSArgs *args = static_cast<ChgWSArgs *>(user_data);
 
   args->wsInstance->SwitchToWS(args->wsId);
 }
 
-void HyprWSModule::handleWSScroll(GtkWidget *widget, GdkEventScroll *e,
+void HyprWSModule::handleWSScroll([[maybe_unused]] GtkWidget *widget, GdkEventScroll *e,
                                   gpointer user_data) {
   HyprWSModule *self = static_cast<HyprWSModule *>(user_data);
 
   if (e->direction == GDK_SCROLL_UP) {
-    self->hyprInstance->MoveToWS(self->hyprInstance->activeWorkspaceId - 1,
+    self->hyprInstance->MoveToWS(self->hyprInstance->activeWorkspaceId,
                                  self->monitorId, false);
   } else if (e->direction == GDK_SCROLL_DOWN) {
-    self->hyprInstance->MoveToWS(self->hyprInstance->activeWorkspaceId + 1,
+    self->hyprInstance->MoveToWS(self->hyprInstance->activeWorkspaceId,
                                  self->monitorId, true);
   }
 }
 
-void HyprWSModule::chgSPWS(GtkWidget *widget, GdkEvent *e, gpointer user_data) {
+void HyprWSModule::chgSPWS([[maybe_unused]] GtkWidget *widget,[[maybe_unused]]  GdkEvent *e, gpointer user_data) {
   ChgWSArgs *args = static_cast<ChgWSArgs *>(user_data);
   args->wsInstance->SwitchSPWS(args->wsId, args->name);
 }

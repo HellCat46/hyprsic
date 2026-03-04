@@ -9,8 +9,8 @@ LoggingManager::LoggingManager(bool writeConsole) {
   this->writeConsole = writeConsole;
   const char *xshPath = std::getenv("XDG_STATE_HOME");
 
-  const char *debugLogEnv = std::getenv("DEBUG_LOG");
-  if (debugLogEnv && std::strcmp(debugLogEnv, "1"))
+  const char *debugLogEnv = std::getenv("DEBUG_MODE");
+  if (debugLogEnv && *debugLogEnv == '1')
     debug = true;
   else
     debug = false;

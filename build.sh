@@ -52,8 +52,10 @@ elif [ "$1" = "valgrind" ]; then
     valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose build/hyprsic
 else
     if [ "$1" = "prod" ]; then
+        echo "Running in Production Mode"
         DEBUG_MODE=0 build/hyprsic
     else
+        echo "Running in Debug Mode"
         DEBUG_MODE=1 build/hyprsic
     fi
 fi
