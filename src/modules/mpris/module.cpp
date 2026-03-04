@@ -1,5 +1,6 @@
 #include "module.hpp"
 #include "../../utils/helper_func.hpp"
+#include "gtk/gtk.h"
 #include "manager.hpp"
 #include "window.hpp"
 #include <string>
@@ -19,6 +20,7 @@ GtkWidget *MprisModule::setup() {
 
   gtk_container_add(GTK_CONTAINER(labelAction), mainLbl);
   gtk_widget_set_hexpand(labelAction, FALSE);
+  gtk_widget_set_halign(labelAction, GTK_ALIGN_END);
 
   update();
   return labelAction;

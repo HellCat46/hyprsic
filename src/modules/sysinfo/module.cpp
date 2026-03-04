@@ -1,14 +1,17 @@
 #include "module.hpp"
 #include "../../utils/helper_func.hpp"
+#include "app/context.hpp"
 #include "gtk/gtk.h"
 #include "manager/battery.hpp"
 #include <iomanip>
 #include <sstream>
 #include <string>
 
-SysInfoModule::SysInfoModule(Stats *stats, Memory *memory, SysLoad *sysLoad,
-                             BatteryInfo *batteryInfo)
-    : stat(stats), mem(memory), load(sysLoad), battery(batteryInfo) {}
+SysInfoModule::SysInfoModule(AppContext*ctx, Stats *stats, Memory *memory, SysLoad *sysLoad,
+                             BatteryInfo *batteryInfo,
+                             TemperatureManager *tempMgr)
+    : ctx(ctx), stat(stats), mem(memory), load(sysLoad), battery(batteryInfo),
+      tempManager(tempMgr) {}
 
 std::vector<GtkWidget *> SysInfoModule::setup() {
   stat->UpdateData();
@@ -17,6 +20,9 @@ std::vector<GtkWidget *> SysInfoModule::setup() {
 
   netWid = gtk_label_new(nullptr);
   widgets.push_back(netWid);
+
+  tempWid = gtk_label_new(nullptr);
+  widgets.push_back(tempWid);
 
   diskWid = gtk_label_new(nullptr);
   widgets.push_back(diskWid);
@@ -44,6 +50,10 @@ void SysInfoModule::update() {
   txt = "⬇" + stat->GetNetRx() + "⬆" + stat->GetNetTx();
   gtk_label_set_label(GTK_LABEL(netWid), txt.c_str());
   gtk_widget_set_tooltip_markup(netWid, stat->GetIfaces().c_str());
+  
+  // Update Temperature
+  txt = std::to_string(tempManager->getSensorTemp(SensorType::CPU)) + "°C";
+  gtk_label_set_label(GTK_LABEL(tempWid), txt.c_str());
 
   // Update Disk Usage
   txt = " " + stat->GetDiskAvail();

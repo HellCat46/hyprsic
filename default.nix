@@ -1,4 +1,4 @@
-{ pkgs ? import <nixpkgs> {} }:
+{ pkgs ? import <nixpkgs> {}, lib ? pkgs.lib }:
 
 pkgs.stdenv.mkDerivation {
   pname = "hyprsic";
@@ -31,9 +31,9 @@ pkgs.stdenv.mkDerivation {
     sqlitecpp
   ];
 
-  meta = with pkgs.lib; {
+  meta = {
     description = "A status bar for Hyprland";
-    license = licenses.mit;
-    platforms = platforms.linux;
+    license = lib.licenses.mit;
+    platforms = lib.platforms.linux;
   };
 }

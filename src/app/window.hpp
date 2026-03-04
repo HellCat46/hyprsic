@@ -22,6 +22,7 @@
 #include "../modules/sysinfo/module.hpp"
 #include "../modules/wifi/manager.hpp"
 #include "../modules/workspaces/hyprland/module.hpp"
+#include "modules/sysinfo/manager/temperature.hpp"
 
 struct Window {
   GtkWidget *window = nullptr;
@@ -40,7 +41,7 @@ struct Window {
          ScreenSaverManager *scrnsavrMgr, NotificationManager *notifInstance,
          BluetoothManager *btMgr, HyprWSManager *hyprMgr,
          StatusNotifierManager *snManager, Stats *stat, Memory *mem,
-         SysLoad *load, BatteryInfo *battery, PulseAudioManager *paMgr,
+         SysLoad *load, BatteryInfo *battery, TemperatureManager *tempMgr, PulseAudioManager *paMgr,
          BrightnessManager *brightnessMgr, BluetoothWindow *btWindow,
          BrightnessWindow *brtWindow, MprisWindow *mprisWindow,
          NotificationWindow *notifWindow, PulseAudioWindow *paWindow);
@@ -58,6 +59,8 @@ class Application {
   Memory mem;
   SysLoad load;
   BatteryInfo battery;
+  TemperatureManager tempManager;
+  
   BluetoothManager btManager;
   BluetoothWindow btWindow;
   

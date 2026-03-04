@@ -22,19 +22,19 @@ Window::Window(AppContext *ctx, MprisManager *mprisMgr,
                ScreenSaverManager *scrnsavrMgr,
                NotificationManager *notifInstance, BluetoothManager *btMgr,
                HyprWSManager *hyprMgr, StatusNotifierManager *snManager,
-               Stats *stat, Memory *mem, SysLoad *load, BatteryInfo *battery,
+               Stats *stat, Memory *mem, SysLoad *load, BatteryInfo *battery, TemperatureManager *tempMgr,
                PulseAudioManager *paMgr, BrightnessManager *brtMgr,
                BluetoothWindow *btWindow, BrightnessWindow *brtWindow,
                MprisWindow *mprisWindow, NotificationWindow *notifWindow,
                PulseAudioWindow *paWindow)
-    : sysinfoModule(stat, mem, load, battery),
+    : sysinfoModule(ctx, stat, mem, load, battery, tempMgr),
       mprisModule(ctx, mprisMgr, mprisWindow), hyprModule(ctx, hyprMgr),
       scrnsavrModule(ctx, scrnsavrMgr), btModule(ctx, btMgr, btWindow),
       notifModule(ctx, notifInstance, notifWindow), snModule(ctx, snManager),
       paModule(paMgr, ctx, paWindow), brtModule(ctx, brtMgr, brtWindow) {}
 
 Application::Application()
-    : stat(&ctx.logger), mem(&ctx.logger), load(&ctx.logger), battery(&ctx),
+    : stat(&ctx.logger), mem(&ctx.logger), load(&ctx.logger), battery(&ctx), tempManager(&ctx),
       btManager(&ctx), btWindow(&ctx, &btManager), notifManager(&ctx),
       notifWindow(&ctx, &notifManager), mprisManager(&ctx),
       mprisWindow(&ctx, &mprisManager), scrnsavrManager(&ctx),
@@ -77,7 +77,7 @@ void Application::activate(GtkApplication *app, gpointer user_data) {
     self->mainWindows.push_back(std::unique_ptr<Window>(new Window(
         &self->ctx, &self->mprisManager, &self->scrnsavrManager,
         &self->notifManager, &self->btManager, &self->hyprInstance,
-        &self->snManager, &self->stat, &self->mem, &self->load, &self->battery,
+        &self->snManager, &self->stat, &self->mem, &self->load, &self->battery, &self->tempManager,
         &self->paManager, &self->brtManager, &self->btWindow, &self->brtWindow,
         &self->mprisWindow, &self->notifWindow, &self->paWindow)));
     GdkMonitor *monitor = gdk_display_get_monitor(display, i);
@@ -112,7 +112,7 @@ void Application::activate(GtkApplication *app, gpointer user_data) {
 
     // Right Box to Show System Stats
     GtkWidget *right_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-    gtk_grid_attach(GTK_GRID(mainGrid), right_box, 3, 0, 2, 1);
+    gtk_grid_attach(GTK_GRID(mainGrid), right_box, 3, 0, 3, 1);
     gtk_widget_set_hexpand(right_box, TRUE);
 
     GtkWidget *rightGrid = gtk_grid_new();
@@ -159,6 +159,7 @@ void Application::UpdateData() {
   while (true) {
     btManager.getDeviceList();
     stat.UpdateData();
+    tempManager.update();
     paManager.getDevices();
     mprisManager.GetPlayerInfo();
     brtManager.update();

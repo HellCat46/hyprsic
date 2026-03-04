@@ -43,6 +43,7 @@ module_sources = files(
   'src/modules/sysinfo/manager/network.cpp',
   'src/modules/sysinfo/manager/sys_load.cpp',
   'src/modules/sysinfo/manager/stats.cpp',
+  'src/modules/sysinfo/manager/temperature.cpp',
   'src/modules/sysinfo/module.cpp',
   'src/modules/pulseaudio/manager.cpp',
   'src/modules/pulseaudio/window.cpp',
