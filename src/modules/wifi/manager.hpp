@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../app/context.hpp"
+#include "../../services/header/context.hpp"
 #include <string>
 #include <unordered_map>
 
@@ -16,17 +16,19 @@ class WifiManager {
   bool powered = false;
   std::unordered_map<std::string, WifiStation> devices;
 
-public:
-  WifiManager(AppContext *appCtx);
-
   int GetConnectedDevice();
   void GetDevices();
   int GetDeviceInfo(std::string devPath, WifiStation &station);
-  
+
+public:
+  WifiManager(AppContext *appCtx);
+  void update();
+
+  bool IsPowered() const;
+  WifiStation ConnectedDevice();
+
   // Action methods
+  void Scan();
   int Connect(const std::string &networkPath);
-  int Disconnect;
-  
-  
-    
+  int Disconnect();
 };

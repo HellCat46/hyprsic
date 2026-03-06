@@ -2,7 +2,7 @@
 
 #include <wayland-client-protocol.h>
 #include "../../wayland/ext-data-control-v1.h"
-#include "../../app/context.hpp"
+#include "services/header/context.hpp"
 #include "gdk/gdk.h"
 
 class ClipboardManager {

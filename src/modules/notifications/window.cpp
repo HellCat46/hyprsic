@@ -17,15 +17,15 @@ void NotificationWindow::init() {
 
   // TopBar Box
   GtkWidget *topBar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-  gtk_box_pack_start(GTK_BOX(menuBox), topBar, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(menuBox), topBar, false, false, 0);
 
   GtkWidget *notifTitle = gtk_label_new(nullptr);
   gtk_label_set_markup(GTK_LABEL(notifTitle),
                        "<big><b>Notifications</b></big>");
-  gtk_box_pack_start(GTK_BOX(topBar), notifTitle, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(topBar), notifTitle, false, false, 0);
 
   GtkWidget *clearBtn = gtk_button_new_with_label("Clear All");
-  gtk_box_pack_end(GTK_BOX(topBar), clearBtn, FALSE, FALSE, 0);
+  gtk_box_pack_end(GTK_BOX(topBar), clearBtn, false, false, 0);
   g_signal_connect(clearBtn, "clicked", G_CALLBACK(handleClearAll), this);
 
   // Do Not Disturb Toggle
@@ -37,11 +37,11 @@ void NotificationWindow::init() {
   GtkWidget *dndLbl = gtk_label_new(nullptr);
   gtk_label_set_markup(GTK_LABEL(dndLbl), "<b>Do Not Disturb</b>");
   gtk_widget_set_halign(dndLbl, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(dndBox), dndLbl, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(dndBox), dndLbl, false, false, 0);
 
   GtkWidget *dndSwitch = gtk_switch_new();
-  gtk_box_pack_end(GTK_BOX(dndBox), dndSwitch, FALSE, FALSE, 0);
-  gtk_box_pack_start(GTK_BOX(menuBox), dndBox, FALSE, FALSE, 0);
+  gtk_box_pack_end(GTK_BOX(dndBox), dndSwitch, false, false, 0);
+  gtk_box_pack_start(GTK_BOX(menuBox), dndBox, false, false, 0);
   g_signal_connect(dndSwitch, "state-set", G_CALLBACK(handleDndToggle), this);
 
   // Scrollable Window for Notifications
@@ -50,7 +50,7 @@ void NotificationWindow::init() {
                                  GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
   gtk_widget_set_size_request(scrollWin, 400, 300);
 
-  gtk_box_pack_start(GTK_BOX(menuBox), scrollWin, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(menuBox), scrollWin, true, true, 0);
 
   scrollWinBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
   gtk_container_add(GTK_CONTAINER(scrollWin), scrollWinBox);
@@ -78,22 +78,22 @@ void NotificationWindow::update(bool force) {
     gtk_widget_set_margin_end(notifBox, 5);
 
     GtkWidget *contentBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-    gtk_box_pack_start(GTK_BOX(notifBox), contentBox, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(notifBox), contentBox, true, true, 0);
 
     GtkWidget *topContent = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-    gtk_box_pack_start(GTK_BOX(contentBox), topContent, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(contentBox), topContent, false, false, 0);
 
     GtkWidget *appName = gtk_label_new(nullptr);
     gtk_label_set_markup(GTK_LABEL(appName),
                          ("<b>" + notif->app_name + "</b> - ").c_str());
     gtk_widget_set_halign(appName, GTK_ALIGN_START);
-    gtk_box_pack_start(GTK_BOX(topContent), appName, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(topContent), appName, false, false, 0);
 
     GtkWidget *timestampLbl = gtk_label_new(nullptr);
     gtk_label_set_markup(GTK_LABEL(timestampLbl),
                          ("<i>" + notif->timestamp + "</i>").c_str());
     gtk_widget_set_halign(timestampLbl, GTK_ALIGN_END);
-    gtk_box_pack_start(GTK_BOX(topContent), timestampLbl, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(topContent), timestampLbl, false, false, 0);
 
     GtkWidget *titleLbl = gtk_label_new(nullptr);
     gtk_label_set_markup(
@@ -103,18 +103,18 @@ void NotificationWindow::update(bool force) {
               ? HelperFunc::ValidString(notif->summary.substr(0, 22) + "...")
               : HelperFunc::ValidString(notif->summary)))
             .c_str());
-    gtk_label_set_line_wrap(GTK_LABEL(titleLbl), TRUE);
+    gtk_label_set_line_wrap(GTK_LABEL(titleLbl), true);
     gtk_widget_set_halign(titleLbl, GTK_ALIGN_START);
-    gtk_box_pack_start(GTK_BOX(contentBox), titleLbl, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(contentBox), titleLbl, false, false, 0);
 
     GtkWidget *bodyLbl = gtk_label_new(nullptr);
     gtk_label_set_markup(GTK_LABEL(bodyLbl), (notif->body.c_str()));
-    gtk_label_set_line_wrap(GTK_LABEL(bodyLbl), TRUE);
+    gtk_label_set_line_wrap(GTK_LABEL(bodyLbl), true);
     gtk_widget_set_halign(bodyLbl, GTK_ALIGN_START);
-    gtk_box_pack_start(GTK_BOX(contentBox), bodyLbl, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(contentBox), bodyLbl, false, false, 0);
 
     GtkWidget *removeBtn = gtk_button_new_with_label("✖");
-    gtk_box_pack_end(GTK_BOX(notifBox), removeBtn, FALSE, FALSE, 0);
+    gtk_box_pack_end(GTK_BOX(notifBox), removeBtn, false, false, 0);
     NotifFuncArgs *close_args = g_new0(NotifFuncArgs, 1);
     close_args->notifId = g_strdup(notif->id.c_str());
     close_args->dbManager = dbManager;
@@ -154,15 +154,15 @@ void NotificationWindow::showNotification(NotifFuncArgs *args) {
   gtk_layer_init_for_window(GTK_WINDOW(window));
   gtk_layer_set_layer(GTK_WINDOW(window), GTK_LAYER_SHELL_LAYER_OVERLAY);
 
-  gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_TOP, TRUE);
-  gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_RIGHT, TRUE);
+  gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_TOP, true);
+  gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_RIGHT, true);
 
   gtk_layer_set_margin(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_TOP, 10);
   gtk_layer_set_margin(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_RIGHT, 10);
 
   gtk_layer_set_exclusive_zone(GTK_WINDOW(window), 0);
 
-  gtk_window_set_decorated(GTK_WINDOW(window), FALSE);
+  gtk_window_set_decorated(GTK_WINDOW(window), false);
   gtk_widget_set_size_request(window, 400, -1);
 
   GtkWidget *mainBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
@@ -183,30 +183,30 @@ void NotificationWindow::showNotification(NotifFuncArgs *args) {
       args->notif->icon_pixbuf, 64, 64, GDK_INTERP_BILINEAR);
   GtkWidget *logo_box = gtk_image_new_from_pixbuf(scaled_pixbuf);
   gtk_widget_set_size_request(logo_box, 5, 5);
-  gtk_box_pack_start(GTK_BOX(mainBox), logo_box, FALSE, FALSE, 5);
+  gtk_box_pack_start(GTK_BOX(mainBox), logo_box, false, false, 5);
   
   g_object_unref(scaled_pixbuf);
   g_object_unref(args->notif->icon_pixbuf);
 
   // Action Buttons - Close
   GtkWidget *action_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
-  gtk_box_pack_end(GTK_BOX(mainBox), action_box, TRUE, TRUE, 5);
+  gtk_box_pack_end(GTK_BOX(mainBox), action_box, true, true, 5);
   GtkWidget *close_btn = gtk_button_new_with_label("✖");
-  gtk_box_pack_start(GTK_BOX(action_box), close_btn, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(action_box), close_btn, false, false, 0);
   g_signal_connect(close_btn, "clicked",
                    G_CALLBACK(NotificationWindow::closeNotificationCb),
                    close_args);
 
   // Notification Texts
   GtkWidget *text_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
-  gtk_box_pack_start(GTK_BOX(mainBox), text_box, TRUE, TRUE, 5);
+  gtk_box_pack_start(GTK_BOX(mainBox), text_box, true, true, 5);
 
   GtkWidget *title_box = gtk_label_new(nullptr);
   gtk_label_set_markup(GTK_LABEL(title_box),
                        ("<b>" + args->notif->summary + "</b>").c_str());
-  gtk_label_set_line_wrap(GTK_LABEL(title_box), TRUE);
+  gtk_label_set_line_wrap(GTK_LABEL(title_box), true);
   gtk_widget_set_halign(title_box, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(text_box), title_box, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(text_box), title_box, false, false, 0);
 
   // Body Text
   if (args->notif->body.size() > 500) {
@@ -215,9 +215,9 @@ void NotificationWindow::showNotification(NotifFuncArgs *args) {
   GtkWidget *body_box = gtk_label_new(nullptr);
   gtk_label_set_markup(GTK_LABEL(body_box),
                        HelperFunc::ValidString(args->notif->body));
-  gtk_label_set_line_wrap(GTK_LABEL(body_box), TRUE);
+  gtk_label_set_line_wrap(GTK_LABEL(body_box), true);
   gtk_widget_set_halign(body_box, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(text_box), body_box, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(text_box), body_box, false, false, 0);
 
   gtk_widget_show_all(window);
 

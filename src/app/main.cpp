@@ -1,7 +1,7 @@
-#include "cmdline.hpp"
+#include "app.hpp"
 #include "cstdlib"
 #include "cstring"
-#include "window.hpp"
+#include "services/header/cli_client.hpp"
 
 int main(int argc, char **argv) {
   CLIClient::Run(argc, argv);

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "gtk/gtk.h"
-#include "../../app/context.hpp"
+#include "services/header/context.hpp"
 #include "manager.hpp"
 #include "window.hpp"
 #include <vector>

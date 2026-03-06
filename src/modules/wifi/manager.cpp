@@ -21,8 +21,8 @@ WifiManager::WifiManager(AppContext *appCtx) : ctx(appCtx) {
       ctx->dbus.sysConn, msg, -1, &ctx->dbus.sysErr);
   if (dbus_error_is_set(&ctx->dbus.sysErr) && !reply) {
     ctx->logger.LogError(TAG,
-                          std::string("D-Bus GetManagedObjects call failed: ") +
-                              ctx->dbus.sysErr.message);
+                         std::string("D-Bus GetManagedObjects call failed: ") +
+                             ctx->dbus.sysErr.message);
     dbus_error_free(&ctx->dbus.sysErr);
     dbus_message_unref(msg);
     return;
@@ -56,7 +56,7 @@ WifiManager::WifiManager(AppContext *appCtx) : ctx(appCtx) {
 
   if (dbus_message_iter_get_arg_type(&dictEntryIter) != DBUS_TYPE_OBJECT_PATH) {
     ctx->logger.LogError(TAG, "Unexpected argument type (Object Path Type) in "
-                               "GetManagedObjects reply");
+                              "GetManagedObjects reply");
 
     return;
   }
@@ -114,6 +114,36 @@ WifiManager::WifiManager(AppContext *appCtx) : ctx(appCtx) {
 
   GetConnectedDevice();
   GetDevices();
+
+  update();
+}
+
+void WifiManager::update() {
+  GetConnectedDevice();
+  GetDevices();
+}
+
+void WifiManager::Scan() {
+  DBusMessage *msg = dbus_message_new_method_call(
+      "net.connman.iwd", devPath.c_str(), "net.connman.iwd.Station", "Scan");
+  if (!msg) {
+    ctx->logger.LogError(TAG, "Failed to create D-Bus message for Scan");
+    return;
+  }
+
+  DBusMessage *reply = dbus_connection_send_with_reply_and_block(
+      ctx->dbus.sysConn, msg, -1, &ctx->dbus.sysErr);
+  if (dbus_error_is_set(&ctx->dbus.sysErr) && !reply) {
+    ctx->logger.LogError(TAG,
+                         std::string("D-Bus Scan call failed: ") +
+                             ctx->dbus.sysErr.message);
+    dbus_error_free(&ctx->dbus.sysErr);
+    dbus_message_unref(msg);
+    return;
+  }
+
+  dbus_message_unref(msg);
+  dbus_message_unref(reply);
 }
 
 int WifiManager::GetConnectedDevice() {
@@ -171,9 +201,9 @@ void WifiManager::GetDevices() {
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
       ctx->dbus.sysConn, msg, -1, &ctx->dbus.sysErr);
   if (dbus_error_is_set(&ctx->dbus.sysErr) && !reply) {
-    ctx->logger.LogError(
-        TAG, std::string("D-Bus GetOrderedNetworks call failed: ") +
-                 ctx->dbus.sysErr.message);
+    ctx->logger.LogError(TAG,
+                         std::string("D-Bus GetOrderedNetworks call failed: ") +
+                             ctx->dbus.sysErr.message);
     dbus_error_free(&ctx->dbus.sysErr);
     dbus_message_unref(msg);
     return;
@@ -222,7 +252,7 @@ int WifiManager::GetDeviceInfo(std::string devPath, WifiStation &station) {
                                    "org.freedesktop.DBus.Properties", "GetAll");
   if (!msg) {
     ctx->logger.LogError(TAG,
-                          "Failed to create D-Bus message for Get Device Info");
+                         "Failed to create D-Bus message for Get Device Info");
     return -1;
   }
 
@@ -235,8 +265,8 @@ int WifiManager::GetDeviceInfo(std::string devPath, WifiStation &station) {
       ctx->dbus.sysConn, msg, -1, &ctx->dbus.sysErr);
   if (dbus_error_is_set(&ctx->dbus.sysErr) && !reply) {
     ctx->logger.LogError(TAG,
-                          std::string("D-Bus Get Device Info call failed: ") +
-                              ctx->dbus.sysErr.message);
+                         std::string("D-Bus Get Device Info call failed: ") +
+                             ctx->dbus.sysErr.message);
     dbus_error_free(&ctx->dbus.sysErr);
     dbus_message_unref(msg);
     return -1;
@@ -280,3 +310,16 @@ int WifiManager::GetDeviceInfo(std::string devPath, WifiStation &station) {
   dbus_message_unref(reply);
   return 0;
 }
+
+WifiStation WifiManager::ConnectedDevice() {
+  auto it = devices.find(connectedDev);
+  if (it != devices.end()) {
+    return it->second;
+  }
+
+  return WifiStation{.ssid = "", .type = "", .connected = false, .rssi = 0};
+}
+
+bool WifiManager::IsPowered() const { return powered; }
+int WifiManager::Disconnect() { return 0; }
+

@@ -1,10 +1,9 @@
 #include "manager.hpp"
-#include "../../utils/dbus_utils.hpp"
-#include "../../utils/helper_func.hpp"
+#include "utils/dbus_utils.hpp"
+#include "utils/helper_func.hpp"
 #include "cstring"
 #include "dbus/dbus-protocol.h"
 #include "dbus/dbus.h"
-#include "thread"
 #include "unordered_map"
 #include <algorithm>
 #include <cstddef>
@@ -53,7 +52,6 @@ int BluetoothManager::setup() {
 
   getDeviceList();
 
-  signalThread = std::thread(&BluetoothManager::monitorChanges, this);
   return 0;
 }
 
@@ -69,7 +67,7 @@ int BluetoothManager::switchPower(bool on) {
 
   const char *iface = "org.bluez.Adapter1";
   const char *prop = "Powered";
-  dbus_bool_t value = on ? TRUE : FALSE;
+  dbus_bool_t value = on ? true : false;
   DBusMessageIter args, subargs;
 
   dbus_message_iter_init_append(msg, &args);
@@ -134,54 +132,7 @@ int BluetoothManager::switchDiscovery(bool on) {
   return 0;
 }
 
-void BluetoothManager::monitorChanges() {
-  if (addMatchRules())
-    return;
-
-  DBusMessage *msg;
-  while (true) {
-    // Blocks the thread until new message received
-    if (!dbus_connection_read_write(ctx->dbus.sysConn, 0)) {
-      ctx->logger.LogError(
-          TAG, "Connection Closed while Waiting for Signal Messages");
-      return;
-    }
-
-    msg = dbus_connection_pop_message(ctx->dbus.sysConn);
-    if (!msg) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
-      continue;
-    }
-
-    DBusMessageIter rootIter;
-    dbus_message_iter_init(msg, &rootIter);
-
-    if (dbus_message_is_signal(msg, "org.freedesktop.DBus.ObjectManager",
-                               "InterfacesAdded")) {
-
-      ctx->logger.LogDebug(TAG, "Received InterfacesAdded Signal");
-      handleInterfacesAdded(msg, rootIter);
-    } else if (dbus_message_is_signal(msg, "org.freedesktop.DBus.ObjectManager",
-                                      "InterfacesRemoved")) {
-
-      ctx->logger.LogDebug(TAG, "Received InterfacesRemoved Signal");
-      handleInterfacesRemoved(msg, rootIter);
-    } else if (dbus_message_is_signal(msg, "org.freedesktop.DBus.Properties",
-                                      "PropertiesChanged")) {
-
-      // ctx->logger.LogDebug(TAG, "Received PropertiesChanged Signal");
-      handlePropertiesChanged(msg, rootIter);
-    } else {
-
-      ctx->logger.LogInfo(TAG, "Received Unknown Signal");
-    }
-
-    dbus_message_unref(msg);
-  }
-  return;
-}
-
-int BluetoothManager::addMatchRules() {
+void BluetoothManager::addMatchRules() {
   ctx->logger.LogInfo(TAG, "Adding filter to Bluez Signals");
 
   // Adding Filters to Signals before starting listening to them
@@ -196,7 +147,7 @@ int BluetoothManager::addMatchRules() {
     errMsg += ctx->dbus.sysErr.message;
     ctx->logger.LogError(TAG, errMsg);
     dbus_error_free(&ctx->dbus.sysErr);
-    return 1;
+    return;
   }
 
   dbus_bus_add_match(
@@ -210,7 +161,7 @@ int BluetoothManager::addMatchRules() {
     errMsg += ctx->dbus.sysErr.message;
     ctx->logger.LogError(TAG, errMsg);
     dbus_error_free(&ctx->dbus.sysErr);
-    return 1;
+    return;
   }
 
   dbus_bus_add_match(
@@ -224,16 +175,15 @@ int BluetoothManager::addMatchRules() {
     errMsg += ctx->dbus.sysErr.message;
     ctx->logger.LogError(TAG, errMsg);
     dbus_error_free(&ctx->dbus.sysErr);
-    return 1;
+    return;
   }
   ctx->logger.LogInfo(TAG, "Successfully Added Filters to Bluez Dbus Signals. "
                            "Started listening to events now.");
 
-  return 0;
+  return;
 }
 
-void BluetoothManager::handleInterfacesAdded(DBusMessage *msg,
-                                             DBusMessageIter &rootIter) {
+void BluetoothManager::handleInterfacesAdded(DBusMessageIter &rootIter) {
 
   if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_OBJECT_PATH) {
     ctx->logger.LogError(TAG, "Unable to parse InterfacesAdded Reply. Unknown "
@@ -287,8 +237,7 @@ void BluetoothManager::handleInterfacesAdded(DBusMessage *msg,
   ctx->logger.LogInfo(TAG, logMsg);
 }
 
-void BluetoothManager::handleInterfacesRemoved(DBusMessage *msg,
-                                               DBusMessageIter &rootIter) {
+void BluetoothManager::handleInterfacesRemoved(DBusMessageIter &rootIter) {
   if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_OBJECT_PATH) {
     ctx->logger.LogError(TAG,
                          "Unable to parse InterfacesRemoved Reply. Unknown "

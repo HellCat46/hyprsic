@@ -1,4 +1,4 @@
-#include "context.hpp"
+#include "services/header/context.hpp"
 #include "cstring"
 #include "dbus/dbus.h"
 #include "gdk-pixbuf/gdk-pixbuf.h"
@@ -12,7 +12,7 @@
 #define TAG "AppContext"
 
 AppContext::AppContext()
-    : dbus(), logger(true), dbManager(&logger), updateTimeoutId(0) {}
+    : updateTimeoutId(0), dbus(), dbManager(&logger), logger(true) {}
 
 DbusSystem::DbusSystem() : sysConn(nullptr), ssnConn(nullptr) {
   dbus_error_init(&sysErr);
@@ -142,10 +142,10 @@ void AppContext::initWindows() {
                                 GTK_STACK_TRANSITION_TYPE_CROSSFADE);
   gtk_stack_set_homogeneous(GTK_STACK(moduleStk), false);
 
-  gtk_box_pack_start(GTK_BOX(mainBox), moduleStk, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(mainBox), moduleStk, true, true, 0);
   gtk_container_add(GTK_CONTAINER(ctrlWin), mainBox);
 
-  gtk_widget_set_app_paintable(ctrlWin, TRUE);
+  gtk_widget_set_app_paintable(ctrlWin, true);
   const char *css = ".win { "
                     "  background-color: transparent; "
                     "}"
@@ -236,6 +236,9 @@ bool AppContext::showUpdateWindow(UpdateModule module, std::string type,
   case UpdateModule::BATTERY:
     iconPath += "battery_" + type;
     break;
+  case UpdateModule::SYSINFO:
+    iconPath += "sysinfo_" + type;
+    break;
   }
 
   auto icon = resStore.icons.find(iconPath);
@@ -292,8 +295,8 @@ void AppContext::hideUpdateWindow(gpointer user_data) {
   self->updateTimeoutId = 0;
 }
 
-gboolean AppContext::handleKeyPress(GtkWidget *wid, guint keyval, guint keycode,
-                                    GdkModifierType state, gpointer data) {
+gboolean AppContext::handleKeyPress([[maybe_unused]] GtkWidget *wid, guint keyval, [[maybe_unused]] guint keycode,
+                                    [[maybe_unused]] GdkModifierType state, gpointer data) {
 
   GtkWidget *window = static_cast<GtkWidget *>(data);
 

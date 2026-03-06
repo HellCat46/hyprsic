@@ -18,13 +18,13 @@ void PulseAudioWindow::init() {
   GtkWidget *outTitle = gtk_label_new(nullptr);
   gtk_label_set_markup(GTK_LABEL(outTitle), "<b>Output Device:</b>");
   gtk_widget_set_halign(outTitle, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(mainBox), outTitle, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(mainBox), outTitle, false, false, 0);
 
   GtkWidget *outBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-  gtk_box_pack_start(GTK_BOX(mainBox), outBox, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(mainBox), outBox, false, false, 0);
 
   outMuteBtn = gtk_event_box_new();
-  gtk_box_pack_start(GTK_BOX(outBox), outMuteBtn, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(outBox), outMuteBtn, false, false, 0);
   g_signal_connect(outMuteBtn, "button-press-event",
                    G_CALLBACK(handleToggleMute), this);
   outIcon = gtk_image_new_from_pixbuf(nullptr);
@@ -34,16 +34,16 @@ void PulseAudioWindow::init() {
     gtk_image_set_from_pixbuf(GTK_IMAGE(outIcon), outUnmuteIcon);
 
   outScale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 100, 1);
-  gtk_box_pack_start(GTK_BOX(outBox), outScale, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(outBox), outScale, true, true, 0);
   g_signal_connect(outScale, "change-value", G_CALLBACK(handleChgVolume), this);
 
   outStore = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_STRING);
   outDropdown = gtk_combo_box_new_with_model(GTK_TREE_MODEL(outStore));
   g_signal_connect(outDropdown, "changed", G_CALLBACK(chgDevice), this);
-  gtk_box_pack_start(GTK_BOX(mainBox), outDropdown, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(mainBox), outDropdown, false, false, 0);
 
   GtkCellRenderer *outRenderer = gtk_cell_renderer_text_new();
-  gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(outDropdown), outRenderer, TRUE);
+  gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(outDropdown), outRenderer, true);
   gtk_cell_layout_set_attributes(GTK_CELL_LAYOUT(outDropdown), outRenderer,
                                  "text", 1, nullptr);
 
@@ -51,14 +51,14 @@ void PulseAudioWindow::init() {
   GtkWidget *inTitle = gtk_label_new(nullptr);
   gtk_label_set_markup(GTK_LABEL(inTitle), "<b>Input Device:</b>");
   gtk_widget_set_halign(inTitle, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(mainBox), inTitle, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(mainBox), inTitle, false, false, 0);
   gtk_widget_set_margin_top(inTitle, 20);
 
   GtkWidget *inBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-  gtk_box_pack_start(GTK_BOX(mainBox), inBox, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(mainBox), inBox, true, true, 0);
 
   inMuteBtn = gtk_event_box_new();
-  gtk_box_pack_start(GTK_BOX(inBox), inMuteBtn, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(inBox), inMuteBtn, false, false, 0);
   g_signal_connect(inMuteBtn, "button-press-event",
                    G_CALLBACK(handleToggleMute), this);
   inIcon = gtk_image_new_from_pixbuf(nullptr);
@@ -68,16 +68,16 @@ void PulseAudioWindow::init() {
     gtk_image_set_from_pixbuf(GTK_IMAGE(inIcon), inUnmuteIcon);
 
   inScale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 100, 1);
-  gtk_box_pack_start(GTK_BOX(inBox), inScale, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(inBox), inScale, true, true, 0);
   g_signal_connect(inScale, "change-value", G_CALLBACK(handleChgVolume), this);
 
   inStore = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_STRING);
   inDropdown = gtk_combo_box_new_with_model(GTK_TREE_MODEL(inStore));
   g_signal_connect(inDropdown, "changed", G_CALLBACK(chgDevice), this);
-  gtk_box_pack_start(GTK_BOX(mainBox), inDropdown, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(mainBox), inDropdown, false, false, 0);
 
   GtkCellRenderer *inRenderer = gtk_cell_renderer_text_new();
-  gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(inDropdown), inRenderer, TRUE);
+  gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(inDropdown), inRenderer, true);
   gtk_cell_layout_set_attributes(GTK_CELL_LAYOUT(inDropdown), inRenderer,
                                  "text", 1, nullptr);
 
@@ -109,7 +109,7 @@ void PulseAudioWindow::setupIcons() {
       break;
     }
 
-    inMuteIcon = gdk_pixbuf_new_from_stream_at_scale(stream, 16, 16, TRUE,
+    inMuteIcon = gdk_pixbuf_new_from_stream_at_scale(stream, 16, 16, true,
                                                      nullptr, &err);
     if (err) {
       ctx->logger.LogError(TAG, "Failed to load mic mute icon: " +
@@ -139,7 +139,7 @@ void PulseAudioWindow::setupIcons() {
       break;
     }
 
-    inUnmuteIcon = gdk_pixbuf_new_from_stream_at_scale(stream, 16, 16, TRUE,
+    inUnmuteIcon = gdk_pixbuf_new_from_stream_at_scale(stream, 16, 16, true,
                                                        nullptr, &err);
     if (err) {
       ctx->logger.LogError(TAG, "Failed to load mic unmute icon: " +
@@ -169,7 +169,7 @@ void PulseAudioWindow::setupIcons() {
       break;
     }
 
-    outMuteIcon = gdk_pixbuf_new_from_stream_at_scale(stream, 16, 16, TRUE,
+    outMuteIcon = gdk_pixbuf_new_from_stream_at_scale(stream, 16, 16, true,
                                                       nullptr, &err);
     if (err) {
       ctx->logger.LogError(TAG, "Failed to load volume mute icon: " +
@@ -199,7 +199,7 @@ void PulseAudioWindow::setupIcons() {
       break;
     }
 
-    outUnmuteIcon = gdk_pixbuf_new_from_stream_at_scale(stream, 16, 16, TRUE,
+    outUnmuteIcon = gdk_pixbuf_new_from_stream_at_scale(stream, 16, 16, true,
                                                         nullptr, &err);
     if (err) {
       ctx->logger.LogError(TAG, "Failed to load volume unmute icon: " +

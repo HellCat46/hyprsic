@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../app/context.hpp"
+#include "services/header/context.hpp"
 #include "dbus/dbus.h"
 #include "gdk-pixbuf/gdk-pixbuf.h"
 #include "gtk/gtk.h"
