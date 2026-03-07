@@ -101,9 +101,15 @@ void Application::captureSystemDBus() {
     } else if (dbus_message_is_signal(msg, "org.freedesktop.DBus.Properties",
                                       "PropertiesChanged")) {
       const char *path = dbus_message_get_path(msg);
+      
       if (HelperFunc::saferStrNCmp(path, "/org/bluez", 10)) {
+
         btManager.handlePropertiesChanged(msg, rootIter);
+      } else if (HelperFunc::saferStrNCmp(path, "/net/connman/iwd", 16)) {
+        
+        wifiManager.handlePropertiesChanged(msg, rootIter);
       }
+      
     } else {
       ctx.logger.LogInfo(TAG, "Received Unknown Signal on System Bus");
     }
@@ -111,4 +117,3 @@ void Application::captureSystemDBus() {
     dbus_message_unref(msg);
   }
 }
-

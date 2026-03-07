@@ -41,30 +41,32 @@ void WifiWindow::init() {
   // Connected Device Box
   connDevBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
   gtk_box_pack_start(GTK_BOX(mainBox), connDevBox, false, false, 0);
-  gtk_widget_set_margin_top(connDevBox, 10);
+  gtk_widget_set_margin_top(connDevBox, 20);
 
   GtkWidget *connDevTitle = gtk_label_new(nullptr);
   gtk_label_set_markup(GTK_LABEL(connDevTitle), "<u>Connected Network:</u>");
   gtk_widget_set_halign(connDevTitle, GTK_ALIGN_START);
   gtk_box_pack_start(GTK_BOX(connDevBox), connDevTitle, false, false, 0);
 
-  connDevIBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  connDevIBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_box_pack_start(GTK_BOX(connDevBox), connDevIBox, false, false, 0);
 
   connDeviceName = gtk_label_new(nullptr);
+  gtk_widget_set_halign(connDeviceName, GTK_ALIGN_START);
   gtk_box_pack_start(GTK_BOX(connDevIBox), connDeviceName, true, true, 0);
 
-  GtkWidget *disCBtn = gtk_button_new_with_label("Disconnect");
-  gtk_grid_attach(GTK_GRID(connDevIBox), disCBtn, 2, 0, 1, 1);
-  g_signal_connect(disCBtn, "clicked", G_CALLBACK(handleDisconnect), this);
-
   GtkWidget *frgtBtn = gtk_button_new_with_label("Forget");
-  gtk_grid_attach(GTK_GRID(connDevIBox), frgtBtn, 3, 0, 1, 1);
-  g_signal_connect(disCBtn, "clicked", G_CALLBACK(handleForget), this);
+  gtk_box_pack_end(GTK_BOX(connDevIBox), frgtBtn, false, false, 5);
+  g_signal_connect(frgtBtn, "clicked", G_CALLBACK(handleForget), this);
+
+  GtkWidget *disCBtn = gtk_button_new_with_label("Disconnect");
+  gtk_box_pack_end(GTK_BOX(connDevIBox), disCBtn, false, false,5);
+  g_signal_connect(disCBtn, "clicked", G_CALLBACK(handleDisconnect), this);
 
   // Available Networks
   devBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
   gtk_box_pack_start(GTK_BOX(mainBox), devBox, false, false, 0);
+  gtk_widget_set_margin_top(devBox, 20);
 
   GtkWidget *availDevTitle = gtk_label_new(nullptr);
   gtk_label_set_markup(GTK_LABEL(availDevTitle), "<u>Available Networks:</u>");
@@ -81,30 +83,43 @@ void WifiWindow::init() {
   gtk_widget_hide(devBox);
 
   ctx->addModule(mainBox, "wifi");
+  
+  update();
 }
 
 void WifiWindow::update() {
   WifiStation station = manager->ConnectedDevice();
   if (station.connected) {
-    gtk_label_set_text(GTK_LABEL(connDeviceName), station.ssid.c_str());
+    gtk_label_set_markup(GTK_LABEL(connDeviceName),
+                         ("<b>" + station.ssid + "</b>").c_str());
     gtk_widget_show(connDevBox);
   } else {
     gtk_widget_hide(connDevBox);
   }
+  
+  if(!manager->IsScanning()){
+      gtk_widget_set_sensitive(scanBtn, true);
+  }
 }
 
-void WifiWindow::handleDisconnect([[maybe_unused]] GtkWidget *widget, gpointer user_data) {
-    WifiWindow *self = static_cast<WifiWindow *>(user_data);
-    self->manager->Disconnect();
+void WifiWindow::handleDisconnect([[maybe_unused]] GtkWidget *widget,
+                                  gpointer user_data) {
+  WifiWindow *self = static_cast<WifiWindow *>(user_data);
+  self->manager->Disconnect();
 }
 
-void WifiWindow::handleForget([[maybe_unused]] GtkWidget *widget, gpointer user_data) {
-    WifiWindow *self = static_cast<WifiWindow *>(user_data);
-    self->manager->Disconnect();
-}    
+void WifiWindow::handleForget([[maybe_unused]] GtkWidget *widget,
+                              gpointer user_data) {
+  WifiWindow *self = static_cast<WifiWindow *>(user_data);
+  self->manager->Forget(self->manager->ConnectedDevice().ssid);
+}
 
-void WifiWindow::handleScan([[maybe_unused]] GtkWidget *widget, gpointer user_data){
-    WifiWindow *self = static_cast<WifiWindow *>(user_data);
-    self->manager->Scan();
-    
+void WifiWindow::handleScan([[maybe_unused]] GtkWidget *widget,
+                            gpointer user_data) {
+  WifiWindow *self = static_cast<WifiWindow *>(user_data);
+  self->manager->Scan();
+  
+  if(self->manager->IsScanning()){
+      gtk_widget_set_sensitive(self->scanBtn, false);
+  }
 }

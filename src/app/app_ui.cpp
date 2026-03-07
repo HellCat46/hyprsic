@@ -95,7 +95,7 @@ void Application::activate(GtkApplication *app, gpointer user_data) {
 
     // System Info Widgets
     auto wids = winInstance->sysinfoModule.setup();
-    for (int i = 0; i < wids.size(); i++) {
+    for (unsigned long i = 0; i < wids.size(); i++) {
       gtk_grid_attach(GTK_GRID(rightGrid), wids[i], i, 0, 1, 1);
     }
 
@@ -116,7 +116,7 @@ void Application::activate(GtkApplication *app, gpointer user_data) {
     gtk_grid_attach(GTK_GRID(rightGrid), wid, loc++, 0, 1, 1);
 
     wids = winInstance->paModule.setup();
-    for (int i = 0; i < wids.size(); i++) {
+    for (unsigned long i = 0; i < wids.size(); i++) {
       gtk_grid_attach(GTK_GRID(rightGrid), wids[i], loc + i, 0, 1, 1);
     }
 

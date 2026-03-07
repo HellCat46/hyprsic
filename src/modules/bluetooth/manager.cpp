@@ -1,10 +1,10 @@
 #include "manager.hpp"
-#include "utils/dbus_utils.hpp"
-#include "utils/helper_func.hpp"
 #include "cstring"
 #include "dbus/dbus-protocol.h"
 #include "dbus/dbus.h"
 #include "unordered_map"
+#include "utils/dbus_utils.hpp"
+#include "utils/helper_func.hpp"
 #include <algorithm>
 #include <cstddef>
 #include <string>
@@ -261,8 +261,7 @@ void BluetoothManager::handleInterfacesRemoved(DBusMessageIter &rootIter) {
 void BluetoothManager::handlePropertiesChanged(DBusMessage *msg,
                                                DBusMessageIter &rootIter) {
   const char *path = dbus_message_get_path(msg);
-  if (!HelperFunc::saferStrNCmp(path, "/org/bluez", 10) ||
-      std::strlen(path) > 37)
+  if (std::strlen(path) > 37)
     return;
 
   // Extract Device Address from Object Path
@@ -273,9 +272,9 @@ void BluetoothManager::handlePropertiesChanged(DBusMessage *msg,
                            "Unknown Format. Skipping.");
     return;
   }
-
+  
   std::string addr = path + 4; // Move past "dev_"
-  for (int i = 0; i < addr.length(); i++) {
+  for (unsigned long i = 0; i < addr.length(); i++) {
     if (addr[i] == '_')
       addr[i] = ':';
   }
