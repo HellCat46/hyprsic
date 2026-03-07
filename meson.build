@@ -62,15 +62,13 @@ module_sources = files(
   'src/modules/statusnotifier/manager.cpp',
   'src/modules/statusnotifier/module.cpp',
   'src/modules/wifi/manager.cpp',
+  'src/modules/wifi/module.cpp',
+  'src/modules/wifi/window.cpp',
   'src/modules/clipboard/manager.cpp',
   'src/modules/brightness/manager.cpp',
   'src/modules/brightness/module.cpp',
   'src/modules/brightness/window.cpp'
 )
-
-database_sources = files('src/database/db_manager.cpp')
-
-logging_sources = files('src/logging/manager.cpp')
 
 util_sources = files(
   'src/utils/dbus_utils.cpp',
@@ -79,10 +77,18 @@ util_sources = files(
 
 debug_sources = files('src/debug/console_preview.cpp')
 
+service_sources = files(
+  'src/services/cli_client.cpp',
+  'src/services/context.cpp',
+  'src/services/database.cpp',
+  'src/services/logging.cpp',
+)
+
 app_sources = files(
-  'src/app/context.cpp',
-  'src/app/window.cpp',
-  'src/app/cmdline.cpp'
+  'src/app/app_cli.cpp',
+  'src/app/app_dbus.cpp',
+  'src/app/app_ui.cpp', 
+  'src/app/window.cpp'
 )
 
 all_sources = [
@@ -90,10 +96,9 @@ all_sources = [
   'src/resources/store.cpp',
   wayland_proto_sources,
   module_sources,
-  database_sources,
-  logging_sources,
   util_sources,
   debug_sources,
+  service_sources,
   app_sources
 ]
 

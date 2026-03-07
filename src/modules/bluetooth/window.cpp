@@ -10,54 +10,54 @@ void BluetoothWindow::init() {
   
     // Navigation Box with Close Button
     GtkWidget *navBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-    gtk_box_pack_start(GTK_BOX(menuBox), navBox, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(menuBox), navBox, false, false, 0);
     gtk_widget_set_margin_bottom(navBox, 10);
   
     // Items in Nav Bar
     GtkWidget *title = gtk_label_new(NULL);
     gtk_label_set_markup(GTK_LABEL(title), "<big><b>Bluetooth Manager</b></big>");
     gtk_label_set_xalign(GTK_LABEL(title), 0);
-    gtk_box_pack_start(GTK_BOX(navBox), title, FALSE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(navBox), title, false, true, 0);
   
     scanBtn = gtk_button_new_with_label(manager->discovering ? "Stop" : "Scan");
-    gtk_box_pack_end(GTK_BOX(navBox), scanBtn, FALSE, FALSE, 0);
+    gtk_box_pack_end(GTK_BOX(navBox), scanBtn, false, false, 0);
     g_signal_connect(scanBtn, "clicked", G_CALLBACK(handleDiscovery), this);
   
     // Top Box with Power and Scan Buttons
     GtkWidget *topBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-    gtk_box_pack_start(GTK_BOX(menuBox), topBox, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(menuBox), topBox, false, false, 0);
   
     // Power Toggle
     GtkWidget *powerBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
     GtkWidget *powerLbl = gtk_label_new(nullptr);
     gtk_label_set_markup(GTK_LABEL(powerLbl), "<b>Power</b>");
     gtk_widget_set_halign(powerLbl, GTK_ALIGN_START);
-    gtk_box_pack_start(GTK_BOX(powerBox), powerLbl, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(powerBox), powerLbl, false, false, 0);
   
     powerBtn = gtk_switch_new();
     gtk_switch_set_state(GTK_SWITCH(powerBtn), manager->power);
-    gtk_box_pack_end(GTK_BOX(topBox), powerBtn, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(topBox), powerBox, FALSE, FALSE, 0);
+    gtk_box_pack_end(GTK_BOX(topBox), powerBtn, false, false, 0);
+    gtk_box_pack_start(GTK_BOX(topBox), powerBox, false, false, 0);
     g_signal_connect(powerBtn, "state-set", G_CALLBACK(handlePower), this);
   
     devBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-    gtk_box_pack_start(GTK_BOX(menuBox), devBox, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(menuBox), devBox, false, false, 0);
   
     // Device List Sections
     pairedDevTitle = gtk_label_new(nullptr);
     gtk_label_set_markup(GTK_LABEL(pairedDevTitle),
                          "<b><u>Paired Devices:</u></b>");
     gtk_widget_set_halign(pairedDevTitle, GTK_ALIGN_START);
-    gtk_box_pack_start(GTK_BOX(devBox), pairedDevTitle, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(devBox), pairedDevTitle, false, false, 0);
   
     pairedDevList = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-    gtk_box_pack_start(GTK_BOX(devBox), pairedDevList, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(devBox), pairedDevList, false, false, 0);
   
     availDevTitle = gtk_label_new(nullptr);
     gtk_label_set_markup(GTK_LABEL(availDevTitle),
                          "<b><u>Available Devices:</u></b>");
     gtk_widget_set_halign(availDevTitle, GTK_ALIGN_START);
-    gtk_box_pack_start(GTK_BOX(devBox), availDevTitle, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(devBox), availDevTitle, false, false, 0);
   
     GtkWidget *availDevScroll = gtk_scrolled_window_new(nullptr, nullptr);
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(availDevScroll),
@@ -65,7 +65,7 @@ void BluetoothWindow::init() {
     gtk_widget_set_size_request(availDevScroll, 200, 150);
     availDevList = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
     gtk_container_add(GTK_CONTAINER(availDevScroll), availDevList);
-    gtk_box_pack_start(GTK_BOX(devBox), availDevScroll, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(devBox), availDevScroll, false, false, 0);
   
     gtk_widget_show_all(menuBox);
   
@@ -160,14 +160,14 @@ void BluetoothWindow::addDeviceEntry(const Device &dev, GtkWidget *parentBox,
 
   // Adding Label and Tooltip
   GtkWidget *devLabelWid = gtk_label_new(devLabel.c_str());
-  gtk_box_pack_start(GTK_BOX(devSection), devLabelWid, FALSE, FALSE, 2);
+  gtk_box_pack_start(GTK_BOX(devSection), devLabelWid, false, false, 2);
   gtk_widget_set_tooltip_text(devLabelWid, devTooltip.c_str());
 
   // Only Shown for Paired Devices
   if (dev.paired) {
     // Device Unpair Button
     GtkWidget *devRemoveBtn = gtk_button_new_with_label("✖");
-    gtk_box_pack_end(GTK_BOX(devSection), devRemoveBtn, FALSE, FALSE, 2);
+    gtk_box_pack_end(GTK_BOX(devSection), devRemoveBtn, false, false, 2);
     gtk_widget_set_tooltip_text(devRemoveBtn, "Remove Device");
 
     // Connect Signal
@@ -181,7 +181,7 @@ void BluetoothWindow::addDeviceEntry(const Device &dev, GtkWidget *parentBox,
 
     // Device Trust Button
     GtkWidget *devTrustBtn = gtk_button_new_with_label("");
-    gtk_box_pack_end(GTK_BOX(devSection), devTrustBtn, FALSE, FALSE, 2);
+    gtk_box_pack_end(GTK_BOX(devSection), devTrustBtn, false, false, 2);
     gtk_widget_set_tooltip_text(devTrustBtn, dev.trusted ? "Untrust Device"
                                                          : "Trust Device");
 
@@ -198,7 +198,7 @@ void BluetoothWindow::addDeviceEntry(const Device &dev, GtkWidget *parentBox,
 
   // Device Connect Button Connect Icon
   GtkWidget *devConnBtn = gtk_button_new_with_label("");
-  gtk_box_pack_end(GTK_BOX(devSection), devConnBtn, FALSE, FALSE, 2);
+  gtk_box_pack_end(GTK_BOX(devSection), devConnBtn, false, false, 2);
   gtk_widget_set_tooltip_text(devConnBtn, dev.connected ? "Disconnect Device"
                                                         : "Connect Device");
 
@@ -212,7 +212,7 @@ void BluetoothWindow::addDeviceEntry(const Device &dev, GtkWidget *parentBox,
                         G_CALLBACK(BluetoothWindow::handleDeviceConnect), args,
                         (GClosureNotify)FreeArgs, (GConnectFlags)0);
 
-  gtk_box_pack_start(GTK_BOX(parentBox), devSection, FALSE, FALSE, 2);
+  gtk_box_pack_start(GTK_BOX(parentBox), devSection, false, false, 2);
   gtk_widget_show_all(devSection);
 }
 

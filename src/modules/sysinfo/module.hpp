@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/context.hpp"
+#include "services/header/context.hpp"
 #include "gtk/gtk.h"
 #include "manager/battery.hpp"
 #include "manager/memory.hpp"

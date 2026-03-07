@@ -1,4 +1,4 @@
-#include "db_manager.hpp"
+#include "header/database.hpp"
 #include "SQLiteCpp/Database.h"
 #include "SQLiteCpp/Statement.h"
 #include "glib.h"

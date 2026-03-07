@@ -1,7 +1,7 @@
 #pragma once
 #include "cstring"
 #include "fstream"
-#include "../../../logging/manager.hpp"
+#include "services/header/logging.hpp"
 
 class Memory {
 private:

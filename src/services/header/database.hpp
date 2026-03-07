@@ -1,5 +1,5 @@
 #pragma once
-#include "../logging/manager.hpp"
+#include "logging.hpp"
 #include "SQLiteCpp/Database.h"
 #include "SQLiteCpp/Statement.h"
 #include <list>

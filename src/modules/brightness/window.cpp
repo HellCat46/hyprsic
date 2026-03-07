@@ -9,12 +9,12 @@ void BrightnessWindow::init() {
   
     GtkWidget *titleLbl = gtk_label_new(nullptr);
     gtk_label_set_markup(GTK_LABEL(titleLbl), "<b>Brightness</b>");
-    gtk_box_pack_start(GTK_BOX(winBox), titleLbl, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(winBox), titleLbl, false, false, 0);
   
     adjWid = gtk_adjustment_new(0, 0, 100, 5, 10, 0);
     GtkWidget *scale = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, adjWid);
     gtk_scale_set_value_pos(GTK_SCALE(scale), GTK_POS_TOP);
-    gtk_box_pack_start(GTK_BOX(winBox), scale, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(winBox), scale, true, true, 0);
     g_signal_connect(scale, "change-value",
                      G_CALLBACK(BrightnessWindow::handleScaleChange), this);
   

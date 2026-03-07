@@ -1,7 +1,7 @@
 #pragma once
-#include "../database/db_manager.hpp"
-#include "../logging/manager.hpp"
-#include "../resources/store.hpp"
+#include "database.hpp"
+#include "services/header/logging.hpp"
+#include "resources/store.hpp"
 #include "dbus/dbus.h"
 #include "gdk-pixbuf/gdk-pixbuf.h"
 #include "glib.h"
@@ -29,7 +29,8 @@ enum class UpdateModule {
   SCREENSAVER,
   PULSEAUDIO,
   WIFI,
-  BATTERY
+  BATTERY,
+  SYSINFO
 };
 
 class AppContext {

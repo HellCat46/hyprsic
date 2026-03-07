@@ -38,10 +38,10 @@ GtkWidget *BrightnessModule::setup() {
       gdk_pixbuf_new_from_stream_at_scale(stream, 18, 18, true, nullptr, &err);
 
   GtkWidget *iconWid = gtk_image_new_from_pixbuf(pixbuf);
-  gtk_box_pack_start(GTK_BOX(box), iconWid, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(box), iconWid, false, false, 0);
 
   mainWid = gtk_label_new(nullptr);
-  gtk_box_pack_start(GTK_BOX(box), mainWid, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(box), mainWid, false, false, 0);
   
   
 
