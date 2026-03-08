@@ -25,7 +25,8 @@ class WifiManager {
   int GetDeviceInfo(std::string devPath, WifiStation &station);
 
 public:
-  std::string connectedDev;
+  std::string connDev, authDev;
+  DBusMessage* authMsg;
   std::unordered_map<std::string, WifiStation> devices;
   
   WifiManager(AppContext *appCtx);
@@ -37,11 +38,15 @@ public:
   
   // Monitor Changes Functions
   void addMatchRules();
+  void handleRequestPassphrase(DBusMessage* msg, DBusMessageIter &rootIter);
+  void handleRequestCancel();
+  void handleInterfacesRemoved(DBusMessageIter &rootIter);
   void handlePropertiesChanged(DBusMessage* msg, DBusMessageIter &rootIter);
 
   // Action methods
   void Scan();
-  int Connect(const std::string &networkPath);
+  void Connect(const std::string &networkPath);
   void Disconnect();
   void Forget(const std::string &networkPath);
+  void SubmitPassphrase(const std::string& password);
 };

@@ -19,7 +19,7 @@ GtkWidget *WifiModule::setup() {
 }
 
 void WifiModule::update() {
-  auto it = manager->devices.find(manager->connectedDev);
+  auto it = manager->devices.find(manager->connDev);
   if (it != manager->devices.end()) {
     gtk_label_set_text(GTK_LABEL(mainLbl), it->second.ssid.c_str());
     return;

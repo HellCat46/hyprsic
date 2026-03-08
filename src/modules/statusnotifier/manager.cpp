@@ -129,7 +129,8 @@ void StatusNotifierManager::handleIntrospectCall(DBusMessage *msg) {
 
 void StatusNotifierManager::handleGetAllPropertiesCall(DBusMessage *msg) {
   DBusMessage *reply = dbus_message_new_method_return(msg);
-  DBusMessageIter replyIter, arrayIter, dictIter, variantIter;
+  DBusMessageIter replyIter, arrayIter;
+  
   dbus_message_iter_init_append(reply, &replyIter);
   dbus_message_iter_open_container(&replyIter, DBUS_TYPE_ARRAY, "{sv}",
                                    &arrayIter);

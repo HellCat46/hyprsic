@@ -3,6 +3,7 @@
 #include "gtk/gtk.h"
 #include "modules/wifi/window.hpp"
 #include <algorithm>
+#include <cstring>
 #include <functional>
 #include <string>
 #include <utility>
@@ -66,7 +67,7 @@ void WifiWindow::init() {
   gtk_box_pack_end(GTK_BOX(connDevIBox), frgtBtn, false, false, 5);
   connDevFrgtId = g_signal_connect_data(
       frgtBtn, "clicked", G_CALLBACK(handleForget),
-      new ActionArgs{.manager = manager, .devPath = manager->connectedDev},
+      new ActionArgs{.manager = manager, .devPath = manager->connDev},
       (GClosureNotify)FreeActionArgs, (GConnectFlags)0);
 
   GtkWidget *disCBtn = gtk_button_new_with_label("Disconnect");
@@ -92,9 +93,23 @@ void WifiWindow::init() {
   devListBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
   gtk_container_add(GTK_CONTAINER(devListScrlBox), devListBox);
 
+  // Passphrase Input Box
+  passEntBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  gtk_box_pack_start(GTK_BOX(devBox), passEntBox, false, false, 5);
+
+  passEntry = gtk_entry_new();
+  gtk_entry_set_visibility(GTK_ENTRY(passEntry), false);
+  gtk_entry_set_placeholder_text(GTK_ENTRY(passEntry), "Enter Password");
+  gtk_box_pack_start(GTK_BOX(passEntBox), passEntry, true, true, 5);
+
+  GtkWidget *passEntBtn = gtk_button_new_with_label("Submit");
+  gtk_box_pack_end(GTK_BOX(passEntBox), passEntBtn, false, false, 5);
+  g_signal_connect(passEntBtn, "clicked", G_CALLBACK(handlePassSubmit), this);
+
   gtk_widget_show_all(mainBox);
   gtk_widget_hide(connDevBox);
   gtk_widget_hide(devBox);
+  gtk_widget_hide(passEntBox);
 
   ctx->addModule(mainBox, "wifi");
 
@@ -108,6 +123,12 @@ void WifiWindow::update() {
     gtk_widget_set_sensitive(scanBtn, true);
   }
 
+  if (!manager->authDev.empty()) {
+    gtk_widget_show(passEntBox);
+  } else {
+    gtk_widget_hide(passEntBox);
+  }
+
   GList *children = gtk_container_get_children(GTK_CONTAINER(devListBox));
   for (GList *child = children; child; child = child->next) {
     gtk_widget_destroy(GTK_WIDGET(child->data));
@@ -116,9 +137,9 @@ void WifiWindow::update() {
 
   std::vector<std::pair<short, GtkWidget *>> devWids;
   for (const auto &[devPath, station] : manager->devices) {
-    if (devPath == manager->connectedDev)
+    if (devPath == manager->connDev)
       continue;
-    
+
     devWids.push_back({station.rssi, addDevList(devPath, station)});
   }
 
@@ -138,33 +159,20 @@ void WifiWindow::update() {
 
 void WifiWindow::updateConnDev() {
 
-  auto it = manager->devices.find(manager->connectedDev);
+  auto it = manager->devices.find(manager->connDev);
   if (it != manager->devices.end()) {
 
     WifiStation station = it->second;
     gtk_label_set_markup(GTK_LABEL(connDeviceName),
                          ("<b>" + station.ssid + "</b>").c_str());
-
-    std::string tooltip =
-        "<b>Security:</b> " + station.type + "\n<b>Signal Strength:</b> ";
-    if (station.rssi > -50)
-      tooltip += "Excellent";
-    else if (station.rssi > -60)
-      tooltip += "Good";
-    else if (station.rssi > -70)
-      tooltip += "Fair";
-    else if (station.rssi > -80)
-      tooltip += "Weak";
-    else
-      tooltip += "Very Weak";
-    gtk_widget_set_tooltip_markup(connDeviceName, tooltip.c_str());
+    addTooltip(connDeviceName, station);
 
     // Disconnect the last "Forget" signal handler to stop memory leak while
     // also updating it
     g_signal_handler_disconnect(frgtBtn, connDevFrgtId);
     connDevFrgtId = g_signal_connect_data(
         frgtBtn, "clicked", G_CALLBACK(handleForget),
-        new ActionArgs{.manager = manager, .devPath = manager->connectedDev},
+        new ActionArgs{.manager = manager, .devPath = manager->connDev},
         (GClosureNotify)FreeActionArgs, (GConnectFlags)0);
 
     gtk_widget_show_all(connDevBox);
@@ -180,6 +188,8 @@ GtkWidget *WifiWindow::addDevList(const std::string &devPath,
   GtkWidget *devName = gtk_label_new(nullptr);
   gtk_label_set_markup(GTK_LABEL(devName),
                        ("<b>" + station.ssid + "</b>").c_str());
+  addTooltip(devName, station);
+  
   gtk_widget_set_halign(devName, GTK_ALIGN_START);
   gtk_box_pack_start(GTK_BOX(devRow), devName, true, true, 5);
 
@@ -188,7 +198,7 @@ GtkWidget *WifiWindow::addDevList(const std::string &devPath,
   g_signal_connect_data(connBtn, "clicked", G_CALLBACK(handleConnect),
                         new ActionArgs{.manager = manager, .devPath = devPath},
                         (GClosureNotify)FreeActionArgs, (GConnectFlags)0);
-  
+
   if (station.known) {
     GtkWidget *frgtBtn = gtk_button_new_with_label("Forget");
     gtk_box_pack_end(GTK_BOX(devRow), frgtBtn, false, false, 5);
@@ -201,10 +211,27 @@ GtkWidget *WifiWindow::addDevList(const std::string &devPath,
   return devRow;
 }
 
+void WifiWindow::addTooltip(GtkWidget *widget, const WifiStation &station) {
+  std::string tooltip =
+      "<b>Security:</b> " + station.type + "\n<b>Signal Strength:</b> ";
+  if (station.rssi > -50)
+    tooltip += "Excellent";
+  else if (station.rssi > -60)
+    tooltip += "Good";
+  else if (station.rssi > -70)
+    tooltip += "Fair";
+  else if (station.rssi > -80)
+    tooltip += "Weak";
+  else
+    tooltip += "Very Weak";
+
+  gtk_widget_set_tooltip_markup(widget, tooltip.c_str());
+}
+
 void WifiWindow::handleConnect([[maybe_unused]] GtkWidget *widget,
                                gpointer user_data) {
   ActionArgs *args = static_cast<ActionArgs *>(user_data);
-  // args->manager->Connect(args->devPath);
+  args->manager->Connect(args->devPath);
 }
 
 void WifiWindow::handleDisconnect([[maybe_unused]] GtkWidget *widget,
@@ -226,6 +253,16 @@ void WifiWindow::handleScan([[maybe_unused]] GtkWidget *widget,
 
   if (self->manager->IsScanning()) {
     gtk_widget_set_sensitive(self->scanBtn, false);
+  }
+}
+
+void WifiWindow::handlePassSubmit([[maybe_unused]] GtkWidget *widget,
+                                  gpointer user_data) {
+  WifiWindow *self = static_cast<WifiWindow *>(user_data);
+  const char *password = gtk_entry_get_text(GTK_ENTRY(self->passEntry));
+
+  if (password && std::strlen(password) > 0) {
+    self->manager->SubmitPassphrase(password);
   }
 }
 
