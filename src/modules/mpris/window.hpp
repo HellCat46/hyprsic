@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../app/context.hpp"
+#include "services/header/context.hpp"
 #include "manager.hpp"
 
 class MprisWindow {

@@ -1,10 +1,9 @@
 #pragma once
 
-#include "../../app/context.hpp"
+#include "services/header/context.hpp"
 #include "cstring"
 #include "dbus/dbus.h"
 #include "string"
-#include "thread"
 #include "unordered_map"
 #include <string>
 #include <string_view>
@@ -31,17 +30,9 @@ class BluetoothManager {
 private:
   AppContext *ctx;
   DBusMessage *devListMsg;
-  std::thread signalThread;
-
-  void monitorChanges();
+  
   unsigned char setDeviceProps(Device &dev, DBusMessageIter &propsIter);
   int getPropertyVal(const char *prop);
-
-  // Monitor Changes Functions
-  int addMatchRules();
-  void handleInterfacesAdded(DBusMessage *msg, DBusMessageIter &rootIter);
-  void handleInterfacesRemoved(DBusMessage *msg, DBusMessageIter &rootIter);
-  void handlePropertiesChanged(DBusMessage *msg, DBusMessageIter &rootIter);
 
 public:
   bool discovering, power;
@@ -56,6 +47,12 @@ public:
 
   int switchDiscovery(bool on);
   int switchPower(bool on);
+  
+  // Monitor Changes Functions
+  void addMatchRules();
+  void handleInterfacesAdded(DBusMessageIter &rootIter);
+  void handleInterfacesRemoved(DBusMessageIter &rootIter);
+  void handlePropertiesChanged(DBusMessage *msg, DBusMessageIter &rootIter);
 
   BluetoothManager(AppContext *ctx);
   int setup();

@@ -1,12 +1,13 @@
 #pragma once
 
-#include "../../app/context.hpp"
+#include "gtk/gtk.h"
 #include "manager.hpp"
+#include "services/header/context.hpp"
+
 
 class NotificationWindow {
-  NotificationManager *manager;
   AppContext *ctx;
-  DBManager *dbManager;
+  NotificationManager *manager;
 
   GtkWidget *menuBox;
   GtkWidget *scrollWinBox;
@@ -17,15 +18,10 @@ public:
   NotificationWindow(AppContext *ctx, NotificationManager *manager);
   void init();
   void update(bool force = false);
-  
-  
+
   static void deleteNotificationCb(GtkWidget *widget, gpointer user_data);
   static void handleDndToggle(GtkSwitch *widget, gboolean state,
                               gpointer user_data);
   static void handleClearAll(GtkWidget *widget, gpointer user_data);
 
-  // Notification PopUp Functions
-  static void showNotification(NotifFuncArgs *args);
-  static void autoCloseNotificationCb(gpointer user_data);
-  static void closeNotificationCb(GtkWidget *widget, gpointer user_data);
 };

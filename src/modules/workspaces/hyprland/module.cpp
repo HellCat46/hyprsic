@@ -13,7 +13,7 @@ HyprWSModule::HyprWSModule(AppContext *ctx, HyprWSManager *hyprInstance)
 
 GtkWidget* HyprWSModule::setup(unsigned char monitorId) {
   GtkWidget *mainBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
-  gtk_widget_set_hexpand(mainBox, TRUE);
+  gtk_widget_set_hexpand(mainBox, true);
 
   wsWid = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
   GtkWidget *wdEvtBox = gtk_event_box_new();

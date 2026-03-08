@@ -19,7 +19,7 @@ GtkWidget *MprisModule::setup() {
                    G_CALLBACK(MprisModule::chgVisibilityMenu), this);
 
   gtk_container_add(GTK_CONTAINER(labelAction), mainLbl);
-  gtk_widget_set_hexpand(labelAction, FALSE);
+  gtk_widget_set_hexpand(labelAction, false);
   gtk_widget_set_halign(labelAction, GTK_ALIGN_END);
 
   update();

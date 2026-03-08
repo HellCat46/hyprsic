@@ -53,7 +53,7 @@ void StatusNotifierModule::update() {
                      G_CALLBACK(StatusNotifierModule::handleContextMenuOpen),
                      args);
 
-    gtk_box_pack_start(GTK_BOX(sniBox), app.icon, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(sniBox), app.icon, false, false, 0);
     gtk_widget_show_all(sniBox);
 
     sniApps.insert({servicePath, app});
@@ -100,8 +100,8 @@ void StatusNotifierModule::handleContextMenuOpen(GtkWidget *widget,
 
     if (menuItem.isSeparator) {
       GtkWidget *separator = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
-      gtk_box_pack_start(GTK_BOX(args->sniApp.parentBox), separator, FALSE,
-                         FALSE, 0);
+      gtk_box_pack_start(GTK_BOX(args->sniApp.parentBox), separator, false,
+                         false, 0);
     } else if (menuItem.visible) {
       GtkWidget *menuEvtBox = gtk_event_box_new();
       GtkWidget *menuBtn = gtk_label_new(menuItem.label.c_str());
@@ -109,8 +109,8 @@ void StatusNotifierModule::handleContextMenuOpen(GtkWidget *widget,
       gtk_container_add(GTK_CONTAINER(menuEvtBox), menuBtn);
       gtk_widget_set_sensitive(menuBtn, menuItem.enabled);
 
-      gtk_box_pack_start(GTK_BOX(args->sniApp.parentBox), menuEvtBox, FALSE,
-                         FALSE, 0);
+      gtk_box_pack_start(GTK_BOX(args->sniApp.parentBox), menuEvtBox, false,
+                         false, 0);
       
         EvtBtnPressArgs *btnArgs = g_new0(EvtBtnPressArgs, 1);
         btnArgs->snManager = args->snManager;
