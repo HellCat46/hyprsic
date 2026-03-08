@@ -1,30 +1,46 @@
 #pragma once
 
-#include "services/header/context.hpp"
+#include "glib-object.h"
+#include "glib.h"
 #include "gtk/gtk.h"
 #include "manager.hpp"
-class WifiWindow {
-    AppContext* ctx;
-    WifiManager* manager;
-    GtkWidget* mainBox;
-    
-    GtkWidget* scanBtn;
-    GtkWidget* powerBtn;
-    
-    GtkWidget* connDevBox;
-    GtkWidget* connDevIBox;
-    GtkWidget* connDeviceName;
-    
-    GtkWidget* devBox;
-    GtkWidget* devListScrlBox;
-    
-    static void handleScan(GtkWidget *widget, gpointer user_data);
-    static void handleDisconnect(GtkWidget *widget, gpointer user_data);
-    static void handleForget(GtkWidget *widget, gpointer user_data);
-    
-    public:
-    WifiWindow(AppContext* context, WifiManager* manager);
-    void init();
-    void update();
+#include "services/header/context.hpp"
+#include <string>
+
+struct ActionArgs {
+  WifiManager *manager;
+  std::string devPath;
 };
 
+class WifiWindow {
+  AppContext *ctx;
+  WifiManager *manager;
+  GtkWidget *mainBox;
+
+  GtkWidget *scanBtn;
+  GtkWidget *powerBtn;
+
+  GtkWidget *connDevBox;
+  GtkWidget *connDevIBox;
+  GtkWidget *connDeviceName;
+  GtkWidget *frgtBtn;
+  glong connDevFrgtId;
+
+  GtkWidget *devBox;
+  GtkWidget *devListBox;
+
+  static void handleScan(GtkWidget *widget, gpointer user_data);
+  static void handleConnect(GtkWidget *widget, gpointer user_data);
+  static void handleDisconnect(GtkWidget *widget, gpointer user_data);
+  static void handleForget(GtkWidget *widget, gpointer user_data);
+  
+  static void FreeActionArgs(gpointer data, GClosure *closure);
+
+  void updateConnDev();
+  GtkWidget* addDevList(const std::string &devPath, const WifiStation &station);
+
+public:
+  WifiWindow(AppContext *context, WifiManager *manager);
+  void init();
+  void update();
+};

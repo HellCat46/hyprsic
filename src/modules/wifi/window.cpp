@@ -2,6 +2,13 @@
 #include "glib-object.h"
 #include "gtk/gtk.h"
 #include "modules/wifi/window.hpp"
+#include <algorithm>
+#include <functional>
+#include <string>
+#include <utility>
+#include <vector>
+
+#define TAG "WifiWindow"
 
 WifiWindow::WifiWindow(AppContext *ctx, WifiManager *mgr)
     : ctx(ctx), manager(mgr) {}
@@ -55,12 +62,15 @@ void WifiWindow::init() {
   gtk_widget_set_halign(connDeviceName, GTK_ALIGN_START);
   gtk_box_pack_start(GTK_BOX(connDevIBox), connDeviceName, true, true, 0);
 
-  GtkWidget *frgtBtn = gtk_button_new_with_label("Forget");
+  frgtBtn = gtk_button_new_with_label("Forget");
   gtk_box_pack_end(GTK_BOX(connDevIBox), frgtBtn, false, false, 5);
-  g_signal_connect(frgtBtn, "clicked", G_CALLBACK(handleForget), this);
+  connDevFrgtId = g_signal_connect_data(
+      frgtBtn, "clicked", G_CALLBACK(handleForget),
+      new ActionArgs{.manager = manager, .devPath = manager->connectedDev},
+      (GClosureNotify)FreeActionArgs, (GConnectFlags)0);
 
   GtkWidget *disCBtn = gtk_button_new_with_label("Disconnect");
-  gtk_box_pack_end(GTK_BOX(connDevIBox), disCBtn, false, false,5);
+  gtk_box_pack_end(GTK_BOX(connDevIBox), disCBtn, false, false, 5);
   g_signal_connect(disCBtn, "clicked", G_CALLBACK(handleDisconnect), this);
 
   // Available Networks
@@ -73,33 +83,128 @@ void WifiWindow::init() {
   gtk_widget_set_halign(availDevTitle, GTK_ALIGN_START);
   gtk_box_pack_start(GTK_BOX(devBox), availDevTitle, false, false, 0);
 
-  devListScrlBox = gtk_scrolled_window_new(nullptr, nullptr);
+  GtkWidget *devListScrlBox = gtk_scrolled_window_new(nullptr, nullptr);
   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(devListScrlBox),
                                  GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+  gtk_widget_set_size_request(devListScrlBox, 400, 200);
   gtk_box_pack_start(GTK_BOX(devBox), devListScrlBox, false, false, 0);
+
+  devListBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+  gtk_container_add(GTK_CONTAINER(devListScrlBox), devListBox);
 
   gtk_widget_show_all(mainBox);
   gtk_widget_hide(connDevBox);
   gtk_widget_hide(devBox);
 
   ctx->addModule(mainBox, "wifi");
-  
+
   update();
 }
 
 void WifiWindow::update() {
-  WifiStation station = manager->ConnectedDevice();
-  if (station.connected) {
+  updateConnDev();
+
+  if (!manager->IsScanning()) {
+    gtk_widget_set_sensitive(scanBtn, true);
+  }
+
+  GList *children = gtk_container_get_children(GTK_CONTAINER(devListBox));
+  for (GList *child = children; child; child = child->next) {
+    gtk_widget_destroy(GTK_WIDGET(child->data));
+  }
+  g_list_free(children);
+
+  std::vector<std::pair<short, GtkWidget *>> devWids;
+  for (const auto &[devPath, station] : manager->devices) {
+    if (devPath == manager->connectedDev)
+      continue;
+    
+    devWids.push_back({station.rssi, addDevList(devPath, station)});
+  }
+
+  // Sort devices by signal strength
+  std::sort(devWids.begin(), devWids.end(),
+            std::greater<std::pair<short, GtkWidget *>>());
+  for (const auto &[_, widget] : devWids) {
+    gtk_box_pack_start(GTK_BOX(devListBox), widget, false, false, 5);
+  }
+
+  if (devWids.size() > 0) {
+    gtk_widget_show_all(devListBox);
+  } else {
+    gtk_widget_hide(devListBox);
+  }
+}
+
+void WifiWindow::updateConnDev() {
+
+  auto it = manager->devices.find(manager->connectedDev);
+  if (it != manager->devices.end()) {
+
+    WifiStation station = it->second;
     gtk_label_set_markup(GTK_LABEL(connDeviceName),
                          ("<b>" + station.ssid + "</b>").c_str());
-    gtk_widget_show(connDevBox);
+
+    std::string tooltip =
+        "<b>Security:</b> " + station.type + "\n<b>Signal Strength:</b> ";
+    if (station.rssi > -50)
+      tooltip += "Excellent";
+    else if (station.rssi > -60)
+      tooltip += "Good";
+    else if (station.rssi > -70)
+      tooltip += "Fair";
+    else if (station.rssi > -80)
+      tooltip += "Weak";
+    else
+      tooltip += "Very Weak";
+    gtk_widget_set_tooltip_markup(connDeviceName, tooltip.c_str());
+
+    // Disconnect the last "Forget" signal handler to stop memory leak while
+    // also updating it
+    g_signal_handler_disconnect(frgtBtn, connDevFrgtId);
+    connDevFrgtId = g_signal_connect_data(
+        frgtBtn, "clicked", G_CALLBACK(handleForget),
+        new ActionArgs{.manager = manager, .devPath = manager->connectedDev},
+        (GClosureNotify)FreeActionArgs, (GConnectFlags)0);
+
+    gtk_widget_show_all(connDevBox);
   } else {
     gtk_widget_hide(connDevBox);
   }
+}
+
+GtkWidget *WifiWindow::addDevList(const std::string &devPath,
+                                  const WifiStation &station) {
+  GtkWidget *devRow = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+
+  GtkWidget *devName = gtk_label_new(nullptr);
+  gtk_label_set_markup(GTK_LABEL(devName),
+                       ("<b>" + station.ssid + "</b>").c_str());
+  gtk_widget_set_halign(devName, GTK_ALIGN_START);
+  gtk_box_pack_start(GTK_BOX(devRow), devName, true, true, 5);
+
+  GtkWidget *connBtn = gtk_button_new_with_label("Connect");
+  gtk_box_pack_end(GTK_BOX(devRow), connBtn, false, false, 5);
+  g_signal_connect_data(connBtn, "clicked", G_CALLBACK(handleConnect),
+                        new ActionArgs{.manager = manager, .devPath = devPath},
+                        (GClosureNotify)FreeActionArgs, (GConnectFlags)0);
   
-  if(!manager->IsScanning()){
-      gtk_widget_set_sensitive(scanBtn, true);
+  if (station.known) {
+    GtkWidget *frgtBtn = gtk_button_new_with_label("Forget");
+    gtk_box_pack_end(GTK_BOX(devRow), frgtBtn, false, false, 5);
+    g_signal_connect_data(
+        frgtBtn, "clicked", G_CALLBACK(handleForget),
+        new ActionArgs{.manager = manager, .devPath = devPath},
+        (GClosureNotify)FreeActionArgs, (GConnectFlags)0);
   }
+
+  return devRow;
+}
+
+void WifiWindow::handleConnect([[maybe_unused]] GtkWidget *widget,
+                               gpointer user_data) {
+  ActionArgs *args = static_cast<ActionArgs *>(user_data);
+  // args->manager->Connect(args->devPath);
 }
 
 void WifiWindow::handleDisconnect([[maybe_unused]] GtkWidget *widget,
@@ -110,16 +215,22 @@ void WifiWindow::handleDisconnect([[maybe_unused]] GtkWidget *widget,
 
 void WifiWindow::handleForget([[maybe_unused]] GtkWidget *widget,
                               gpointer user_data) {
-  WifiWindow *self = static_cast<WifiWindow *>(user_data);
-  self->manager->Forget(self->manager->ConnectedDevice().ssid);
+  ActionArgs *args = static_cast<ActionArgs *>(user_data);
+  args->manager->Forget(args->devPath);
 }
 
 void WifiWindow::handleScan([[maybe_unused]] GtkWidget *widget,
                             gpointer user_data) {
   WifiWindow *self = static_cast<WifiWindow *>(user_data);
   self->manager->Scan();
-  
-  if(self->manager->IsScanning()){
-      gtk_widget_set_sensitive(self->scanBtn, false);
+
+  if (self->manager->IsScanning()) {
+    gtk_widget_set_sensitive(self->scanBtn, false);
   }
+}
+
+void WifiWindow::FreeActionArgs(gpointer data,
+                                [[maybe_unused]] GClosure *closure) {
+  ActionArgs *args = static_cast<ActionArgs *>(data);
+  delete args;
 }

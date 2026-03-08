@@ -7,27 +7,33 @@
 
 struct WifiStation {
   std::string ssid, type;
-  bool connected;
+  bool known, autoConn;
   short rssi;
 };
 
 class WifiManager {
   AppContext *ctx;
-  std::string devPath, devAddr, devName, devAdapter, connectedDev;
+  std::string devPath, devAddr, devName, devAdapter, agentPath;
   bool powered = false, scanning = false;
-  std::unordered_map<std::string, WifiStation> devices;
+  
+  void RegisterAgent(bool reg);
+  void GetManagedObjects();
+  
 
   int GetConnectedDevice();
   void GetDevices();
   int GetDeviceInfo(std::string devPath, WifiStation &station);
 
 public:
+  std::string connectedDev;
+  std::unordered_map<std::string, WifiStation> devices;
+  
   WifiManager(AppContext *appCtx);
-  void update();
+  ~WifiManager();
+  void update(bool force = false);
 
   bool IsPowered() const;
   bool IsScanning() const;
-  WifiStation ConnectedDevice();
   
   // Monitor Changes Functions
   void addMatchRules();
