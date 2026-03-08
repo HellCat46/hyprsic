@@ -27,7 +27,7 @@ void Application::captureSessionDBus() {
     const char *member = dbus_message_get_member(msg);
 
     if (HelperFunc::saferStrCmp(interface, "org.freedesktop.Notifications")) {
-      notifManager.handleDbusMessage(msg, NotificationWindow::showNotification);
+      notifManager.handleDbusMessage(msg);
     } else if (HelperFunc::saferStrCmp(interface, "org.freedesktop.DBus") &&
                HelperFunc::saferStrCmp(member, "NameOwnerChanged") &&
                HelperFunc::saferStrCmp(path, "/org/freedesktop/DBus")) {

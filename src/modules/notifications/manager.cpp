@@ -10,7 +10,8 @@
 
 #define TAG "NotificationManager"
 
-NotificationManager::NotificationManager(AppContext *ctx) : ctx(ctx), dnd(false) {}
+NotificationManager::NotificationManager(AppContext *ctx)
+    : ctx(ctx), dnd(false) {}
 
 void NotificationManager::setupDBus() {
   int ret = dbus_bus_request_name(
@@ -27,7 +28,7 @@ void NotificationManager::setupDBus() {
 
   if (ret != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) {
     ctx->logger.LogError(TAG,
-                          "Another Notification Service is already running.");
+                         "Another Notification Service is already running.");
     return;
   }
 
@@ -52,8 +53,7 @@ void NotificationManager::setupDBus() {
   ctx->logger.LogInfo(TAG, "Started Notification Capture Service");
 }
 
-void NotificationManager::handleDbusMessage(
-    DBusMessage *msg, std::function<void(NotifFuncArgs *)> showNotification) {
+void NotificationManager::handleDbusMessage(DBusMessage *msg) {
   const char *member = dbus_message_get_member(msg);
   int type = dbus_message_get_type(msg);
 
@@ -65,16 +65,9 @@ void NotificationManager::handleDbusMessage(
 
     Notification notification = handleNotifyCall(msg);
     if (notification.app_name.size() > 0) {
-      NotifFuncArgs args;
-      args.notif = &notification;
-      args.notifications = &notifications;
-      args.logger = &ctx->logger;
-      args.dbManager = &ctx->dbManager;
-      args.dnd = dnd;
-
-      showNotification(&args);
-    }else {
-        g_object_unref(notification.icon_pixbuf);
+      ctx->showNotifWindow(&notification, dnd);
+    } else {
+      g_object_unref(notification.icon_pixbuf);
     }
   } else if (HelperFunc::saferStrCmp(member, "CloseNotification")) {
 
@@ -117,7 +110,7 @@ void NotificationManager::handleGetCapabilitiesCall(DBusMessage *msg) {
   dbus_message_iter_init_append(reply, &args);
   dbus_message_iter_open_container(&args, DBUS_TYPE_ARRAY, "s", &array);
 
-  for (int idx = 0; idx < (sizeof(capabilities) / sizeof(capabilities[0]));
+  for (unsigned long idx = 0; idx < (sizeof(capabilities) / sizeof(capabilities[0]));
        idx++) {
     const char *cap = capabilities[idx];
     dbus_message_iter_append_basic(&array, DBUS_TYPE_STRING, &cap);
@@ -162,6 +155,7 @@ Notification NotificationManager::handleNotifyCall(DBusMessage *msg) {
   DBusMessageIter args;
   Notification notif;
   notif.id = g_uuid_string_random();
+  notif.icon_pixbuf = nullptr;
 
   if (!dbus_message_iter_init(msg, &args)) {
     ctx->logger.LogError(TAG, "Notification Message has no arguments!");

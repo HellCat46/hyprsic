@@ -1,12 +1,11 @@
 #include "window.hpp"
 #include "../../utils/helper_func.hpp"
-#include "gtk-layer-shell.h"
 
 #define TAG "NotificationWindow"
 
 NotificationWindow::NotificationWindow(AppContext *ctx,
                                        NotificationManager *manager)
-    : ctx(ctx), dbManager(&ctx->dbManager), manager(manager) {}
+    : ctx(ctx), manager(manager) {}
 
 void NotificationWindow::init() {
   menuBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
@@ -64,8 +63,8 @@ void NotificationWindow::update(bool force) {
   if (!gtk_widget_get_visible(menuBox) && !force)
     return;
 
-  for (auto notif = dbManager->notifList.begin();
-       notif != dbManager->notifList.end(); ++notif) {
+  for (auto notif = ctx->dbManager.notifList.begin();
+       notif != ctx->dbManager.notifList.end(); ++notif) {
     // If we've already processed this notification, skip the whole list as they
     // are ordered by timestamp
     if (notifLookup.find(notif->id) != notifLookup.end())
@@ -117,7 +116,7 @@ void NotificationWindow::update(bool force) {
     gtk_box_pack_end(GTK_BOX(notifBox), removeBtn, false, false, 0);
     NotifFuncArgs *close_args = g_new0(NotifFuncArgs, 1);
     close_args->notifId = g_strdup(notif->id.c_str());
-    close_args->dbManager = dbManager;
+    close_args->dbManager = &ctx->dbManager;
     close_args->notifLookup = &notifLookup;
     g_signal_connect_data(removeBtn, "clicked",
                           G_CALLBACK(NotificationWindow::deleteNotificationCb),
@@ -130,147 +129,7 @@ void NotificationWindow::update(bool force) {
   }
 }
 
-void NotificationWindow::showNotification(NotifFuncArgs *args) {
-
-  NotifFuncArgs *close_args = g_new0(NotifFuncArgs, 1);
-  close_args->notifId = g_strdup(args->notif->id.c_str());
-  close_args->notifications = args->notifications;
-  close_args->logger = args->logger;
-  close_args->dbManager = args->dbManager;
-  close_args->dnd = args->dnd;
-
-  close_args->notif = new Notification();
-  close_args->notif->app_name = args->notif->app_name.c_str();
-  close_args->notif->summary = args->notif->summary.c_str();
-  close_args->notif->body = args->notif->body.c_str();
-
-  if (args->dnd) {
-    autoCloseNotificationCb(close_args);
-    return;
-  }
-
-  GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-
-  gtk_layer_init_for_window(GTK_WINDOW(window));
-  gtk_layer_set_layer(GTK_WINDOW(window), GTK_LAYER_SHELL_LAYER_OVERLAY);
-
-  gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_TOP, true);
-  gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_RIGHT, true);
-
-  gtk_layer_set_margin(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_TOP, 10);
-  gtk_layer_set_margin(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_RIGHT, 10);
-
-  gtk_layer_set_exclusive_zone(GTK_WINDOW(window), 0);
-
-  gtk_window_set_decorated(GTK_WINDOW(window), false);
-  gtk_widget_set_size_request(window, 400, -1);
-
-  GtkWidget *mainBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-  gtk_widget_set_margin_top(mainBox, 5);
-  gtk_widget_set_margin_bottom(mainBox, 5);
-  gtk_widget_set_margin_start(mainBox, 5);
-  gtk_widget_set_margin_end(mainBox, 5);
-  gtk_container_add(GTK_CONTAINER(window), mainBox);
-
-  // Set Expire Timeout
-  args->notif->expire_timeout = 5000;
-  g_timeout_add_once(
-      args->notif->expire_timeout,
-      (GSourceOnceFunc)NotificationWindow::autoCloseNotificationCb, close_args);
-
-  // Logo of Application
-  GdkPixbuf *scaled_pixbuf = gdk_pixbuf_scale_simple(
-      args->notif->icon_pixbuf, 64, 64, GDK_INTERP_BILINEAR);
-  GtkWidget *logo_box = gtk_image_new_from_pixbuf(scaled_pixbuf);
-  gtk_widget_set_size_request(logo_box, 5, 5);
-  gtk_box_pack_start(GTK_BOX(mainBox), logo_box, false, false, 5);
-  
-  g_object_unref(scaled_pixbuf);
-  g_object_unref(args->notif->icon_pixbuf);
-
-  // Action Buttons - Close
-  GtkWidget *action_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
-  gtk_box_pack_end(GTK_BOX(mainBox), action_box, true, true, 5);
-  GtkWidget *close_btn = gtk_button_new_with_label("✖");
-  gtk_box_pack_start(GTK_BOX(action_box), close_btn, false, false, 0);
-  g_signal_connect(close_btn, "clicked",
-                   G_CALLBACK(NotificationWindow::closeNotificationCb),
-                   close_args);
-
-  // Notification Texts
-  GtkWidget *text_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
-  gtk_box_pack_start(GTK_BOX(mainBox), text_box, true, true, 5);
-
-  GtkWidget *title_box = gtk_label_new(nullptr);
-  gtk_label_set_markup(GTK_LABEL(title_box),
-                       ("<b>" + args->notif->summary + "</b>").c_str());
-  gtk_label_set_line_wrap(GTK_LABEL(title_box), true);
-  gtk_widget_set_halign(title_box, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(text_box), title_box, false, false, 0);
-
-  // Body Text
-  if (args->notif->body.size() > 500) {
-    args->notif->body = args->notif->body.substr(0, 497) + "...";
-  }
-  GtkWidget *body_box = gtk_label_new(nullptr);
-  gtk_label_set_markup(GTK_LABEL(body_box),
-                       HelperFunc::ValidString(args->notif->body));
-  gtk_label_set_line_wrap(GTK_LABEL(body_box), true);
-  gtk_widget_set_halign(body_box, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(text_box), body_box, false, false, 0);
-
-  gtk_widget_show_all(window);
-
-  (*args->notifications).insert({args->notif->id, window});
-}
-
-void NotificationWindow::closeNotificationCb(GtkWidget *widget,
-                                             gpointer user_data) {
-
-  NotifFuncArgs *args = static_cast<NotifFuncArgs *>(user_data);
-
-  auto it = args->notifications->find(args->notifId);
-  if (it != args->notifications->end()) {
-    gtk_widget_destroy(it->second);
-    args->notifications->erase(it->first);
-  }
-  
-  g_free(args->notifId);
-  delete args->notif;
-  g_free(args);
-}
-
-void NotificationWindow::autoCloseNotificationCb(gpointer user_data) {
-  NotifFuncArgs *args = static_cast<NotifFuncArgs *>(user_data);
-
-  args->logger->LogInfo(TAG,
-                        "Auto-closing/Clearing Resources notification ID: " +
-                            std::string(args->notifId));
-
-  // Save to DB that notification was closed due to timeout
-  auto it = args->notifications->find(args->notifId);
-  if (it != args->notifications->end() || args->dnd) {
-    NotificationRecord record;
-    record.id = args->notifId;
-    record.app_name = args->notif->app_name;
-    record.summary = args->notif->summary;
-    record.body = args->notif->body;
-    record.timestamp = args->dbManager->getCurrentTimestamp();
-
-    if (!args->dbManager->insertNotification(&record)) {
-      args->logger->LogInfo(
-          TAG, "Saved notification ID: " + std::string(args->notifId) +
-                   " to database before auto-closing.");
-    } else {
-      args->logger->LogError(
-          TAG, "Failed to save notification ID: " + std::string(args->notifId) +
-                   " to database before auto-closing.");
-    }
-  }
-
-  NotificationWindow::closeNotificationCb(nullptr, user_data);
-}
-void NotificationWindow::deleteNotificationCb(GtkWidget *widget,
+void NotificationWindow::deleteNotificationCb([[maybe_unused]] GtkWidget *widget,
                                               gpointer user_data) {
   NotifFuncArgs *args = static_cast<NotifFuncArgs *>(user_data);
 
@@ -287,7 +146,7 @@ void NotificationWindow::deleteNotificationCb(GtkWidget *widget,
   // g_free(args);
 }
 
-void NotificationWindow::handleDndToggle(GtkSwitch *widget, gboolean state,
+void NotificationWindow::handleDndToggle([[maybe_unused]] GtkSwitch *widget, gboolean state,
                                          gpointer user_data) {
   NotificationWindow *self = static_cast<NotificationWindow *>(user_data);
   self->manager->dnd = state;
@@ -299,9 +158,9 @@ void NotificationWindow::handleDndToggle(GtkSwitch *widget, gboolean state,
                               state ? "dnd_on" : "dnd_off", msg);
 }
 
-void NotificationWindow::handleClearAll(GtkWidget *widget, gpointer user_data) {
+void NotificationWindow::handleClearAll([[maybe_unused]] GtkWidget *widget, gpointer user_data) {
   NotificationWindow *self = static_cast<NotificationWindow *>(user_data);
-  self->dbManager->clearAllNotifications();
+  self->ctx->dbManager.clearAllNotifications();
 
   for (auto &pair : self->notifLookup) {
     gtk_widget_destroy(pair.second.widget);

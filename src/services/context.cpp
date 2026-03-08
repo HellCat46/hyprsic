@@ -1,4 +1,5 @@
 #include "services/header/context.hpp"
+#include "../utils/helper_func.hpp"
 #include "cstring"
 #include "dbus/dbus.h"
 #include "gdk-pixbuf/gdk-pixbuf.h"
@@ -8,6 +9,7 @@
 #include "gtk-layer-shell.h"
 #include "gtk/gtk.h"
 #include "iostream"
+#include "services/header/database.hpp"
 
 #define TAG "AppContext"
 
@@ -74,7 +76,12 @@ void DbusSystem::DictToString(DBusMessageIter *iter, std::string &outValue) {
 }
 
 void AppContext::initWindows() {
-  // Setting Up Update Window
+  setupUpdateWindow();
+  setupNotifWindow();
+  setupCtrlWindow();
+}
+
+void AppContext::setupUpdateWindow() {
   updateTimeoutId = 0;
   updateWin = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 
@@ -107,8 +114,54 @@ void AppContext::initWindows() {
   gtk_widget_set_size_request(updateMsg, 200, -1);
 
   gtk_grid_attach(updateWinGrid, updateMsg, 0, 4, 1, 1);
+}
 
-  // Setting Up Control Window
+void AppContext::setupNotifWindow() {
+  closeNotifId = 0;
+  notifWin = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+
+  gtk_layer_init_for_window(GTK_WINDOW(notifWin));
+  gtk_layer_set_layer(GTK_WINDOW(notifWin), GTK_LAYER_SHELL_LAYER_OVERLAY);
+
+  gtk_layer_set_anchor(GTK_WINDOW(notifWin), GTK_LAYER_SHELL_EDGE_TOP, true);
+  gtk_layer_set_anchor(GTK_WINDOW(notifWin), GTK_LAYER_SHELL_EDGE_RIGHT, true);
+
+  gtk_layer_set_margin(GTK_WINDOW(notifWin), GTK_LAYER_SHELL_EDGE_TOP, 10);
+  gtk_layer_set_margin(GTK_WINDOW(notifWin), GTK_LAYER_SHELL_EDGE_RIGHT, 10);
+
+  gtk_layer_set_exclusive_zone(GTK_WINDOW(notifWin), 0);
+
+  gtk_window_set_decorated(GTK_WINDOW(notifWin), false);
+  gtk_widget_set_size_request(notifWin, 400, -1);
+
+  notifEvtBox = gtk_event_box_new();
+  GtkWidget *notifBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  gtk_widget_set_margin_top(notifBox, 5);
+  gtk_widget_set_margin_bottom(notifBox, 5);
+  gtk_widget_set_margin_start(notifBox, 5);
+  gtk_widget_set_margin_end(notifBox, 5);
+  gtk_container_add(GTK_CONTAINER(notifEvtBox), notifBox);
+  gtk_container_add(GTK_CONTAINER(notifWin), notifEvtBox);
+
+  notifLogo = gtk_image_new();
+  gtk_widget_set_size_request(notifLogo, 64, 64);
+  gtk_box_pack_start(GTK_BOX(notifBox), notifLogo, false, false, 5);
+
+  GtkWidget *notifTextBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+  gtk_box_pack_start(GTK_BOX(notifBox), notifTextBox, true, true, 5);
+
+  notifTitle = gtk_label_new(nullptr);
+  gtk_label_set_line_wrap(GTK_LABEL(notifTitle), true);
+  gtk_widget_set_halign(notifTitle, GTK_ALIGN_START);
+  gtk_box_pack_start(GTK_BOX(notifTextBox), notifTitle, false, false, 0);
+
+  notifBody = gtk_label_new(nullptr);
+  gtk_label_set_line_wrap(GTK_LABEL(notifBody), true);
+  gtk_widget_set_halign(notifBody, GTK_ALIGN_START);
+  gtk_box_pack_start(GTK_BOX(notifTextBox), notifBody, false, false, 0);
+}
+
+void AppContext::setupCtrlWindow() {
   ctrlWin = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 
   gtk_layer_init_for_window(GTK_WINDOW(ctrlWin));
@@ -288,6 +341,83 @@ bool AppContext::showUpdateWindow(UpdateModule module, std::string type,
   return 0;
 }
 
+void AppContext::showNotifWindow(Notification *notif, bool dnd) {
+  auto winData =
+      new NotifWindowData{NotificationRecord{
+                              .id = notif->id,
+                              .app_name = notif->app_name,
+                              .summary = notif->summary,
+                              .body = notif->body,
+                              .timestamp = dbManager.getCurrentTimestamp(),
+                          },
+                          this, dnd};
+  if (dnd) {
+    autoCloseNotificationCb(winData);
+    return;
+  }
+
+  g_timeout_add_once(5000, autoCloseNotificationCb, winData);
+
+  // Signal Connection Handling
+  if (closeNotifId > 0)
+    g_signal_handler_disconnect(notifEvtBox, closeNotifId);
+
+  closeNotifId = g_signal_connect_data(notifEvtBox, "button-press-event",
+                                       G_CALLBACK(closeNotificationCb), this,
+                                       nullptr, (GConnectFlags)0);
+
+  // Adding Data to UI Elements
+  gtk_label_set_markup(GTK_LABEL(notifTitle),
+                       ("<b>" + notif->summary + "</b>").c_str());
+
+  if (notif->body.size() > 500) {
+    notif->body = notif->body.substr(0, 497) + "...";
+  }
+  gtk_label_set_markup(GTK_LABEL(notifBody),
+                       HelperFunc::ValidString(notif->body));
+
+  if (notif->icon_pixbuf) {
+    gtk_image_set_from_pixbuf(GTK_IMAGE(notifLogo), notif->icon_pixbuf);
+    g_object_unref(notif->icon_pixbuf);
+  } else {
+    gtk_image_clear(GTK_IMAGE(notifLogo));
+  }
+
+  gtk_widget_show_all(notifWin);
+}
+
+void AppContext::closeNotificationCb([[maybe_unused]] GtkWidget *widget,
+                                     [[maybe_unused]] GdkEvent *e,
+                                     gpointer user_data) {
+  AppContext *self = static_cast<AppContext *>(user_data);
+  gtk_widget_hide(self->notifWin);
+}
+
+void AppContext::autoCloseNotificationCb(gpointer user_data) {
+  NotifWindowData *args = static_cast<NotifWindowData *>(user_data);
+
+  // Handles the case where notification is already closed by user interaction
+  // before timeout
+  if (!gtk_widget_is_visible(args->ctx->notifWin) && !args->dnd) {
+    delete args;
+    return;
+  }
+
+  closeNotificationCb(nullptr, nullptr, args->ctx);
+
+  // Save to DB that notification was closed due to timeout
+  if (!args->ctx->dbManager.insertNotification(&args->notif)) {
+    args->ctx->logger.LogInfo(TAG, "Saved notification ID: " + args->notif.id +
+                                       " to database before auto-closing.");
+  } else {
+    args->ctx->logger.LogError(
+        TAG, "Failed to save notification ID: " + args->notif.id +
+                 " to database before auto-closing.");
+  }
+
+  delete args;
+}
+
 void AppContext::hideUpdateWindow(gpointer user_data) {
   AppContext *self = static_cast<AppContext *>(user_data);
   gtk_widget_hide(self->updateWin);
@@ -295,8 +425,11 @@ void AppContext::hideUpdateWindow(gpointer user_data) {
   self->updateTimeoutId = 0;
 }
 
-gboolean AppContext::handleKeyPress([[maybe_unused]] GtkWidget *wid, guint keyval, [[maybe_unused]] guint keycode,
-                                    [[maybe_unused]] GdkModifierType state, gpointer data) {
+gboolean AppContext::handleKeyPress([[maybe_unused]] GtkWidget *wid,
+                                    guint keyval,
+                                    [[maybe_unused]] guint keycode,
+                                    [[maybe_unused]] GdkModifierType state,
+                                    gpointer data) {
 
   GtkWidget *window = static_cast<GtkWidget *>(data);
 

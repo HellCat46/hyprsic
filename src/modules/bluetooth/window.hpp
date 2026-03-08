@@ -4,7 +4,7 @@
 #include "manager.hpp"
 
 struct FuncArgs {
-  char *devIfacePath;
+  std::string devIfacePath;
   bool state;
   BluetoothManager *manager;
   AppContext *ctx;
@@ -23,8 +23,8 @@ class BluetoothWindow  {
     GtkWidget *pairedDevTitle;
     GtkWidget *pairedDevList;
     
-    void addDeviceEntry(const Device &dev, GtkWidget *parentBox, bool isPaired);
-    static void FreeArgs(gpointer data);
+    void addDeviceEntry(const Device &dev, GtkWidget *parentBox);
+    static void FreeArgs(gpointer data, GClosure *closure);
     
     static void handleDiscovery(GtkWidget *widget, gpointer user_data);
     static void handlePower(GtkSwitch *widget, gboolean state,
