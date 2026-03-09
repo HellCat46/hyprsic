@@ -1,7 +1,5 @@
 #pragma once
 
-#include <gtk-layer-shell.h>
-#include <gtk/gtk.h>
 #include "../modules/bluetooth/module.hpp"
 #include "../modules/brightness/module.hpp"
 #include "../modules/mpris/module.hpp"
@@ -10,8 +8,12 @@
 #include "../modules/screensaver/module.hpp"
 #include "../modules/statusnotifier/module.hpp"
 #include "../modules/sysinfo/module.hpp"
-#include "../modules/workspaces/hyprland/module.hpp"
 #include "../modules/wifi/module.hpp"
+#include "../modules/workspaces/hyprland/module.hpp"
+#include "gdk/gdk.h"
+#include "modules/sysinfo/manager/temperature.hpp"
+#include <gtk-layer-shell.h>
+#include <gtk/gtk.h>
 
 struct Window {
   GtkWidget *window = nullptr;
@@ -37,5 +39,8 @@ struct Window {
          BrightnessWindow *brtWindow, PulseAudioManager *paMgr,
          PulseAudioWindow *paWindow, WifiManager *wifiMgr,
          WifiWindow *wifiWindow);
-};
 
+public:
+  void create(GtkApplication *app, GdkDisplay *dp, int i);
+  void update();
+};

@@ -17,6 +17,7 @@ A Status Bar for Hyprland inspired by Simplicity of i3Bar (Not Anymore i suppose
 - [x] GPU Stats Module (Cancelled)
 - [x] Brightness Control Integration  
 - [x] CLI to perform some Actions using calling commands. Could be used with Shortcuts by configuring them in Hyprland Config.
+- [x] Wifi Integration (Using iwd)
 - [ ] Config to control which modules load & their Order in the Bar UI
 - [ ] Encrypt Notification Contents (Using libsodium)
 - [ ] Clipboard Manager Integration (Text, Image, Videos, Other Files, etc)
