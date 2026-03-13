@@ -1,17 +1,17 @@
 #pragma once
 
-#include "../modules/bluetooth/module.hpp"
-#include "../modules/brightness/module.hpp"
-#include "../modules/mpris/module.hpp"
-#include "../modules/notifications/module.hpp"
-#include "../modules/pulseaudio/module.hpp"
-#include "../modules/screensaver/module.hpp"
-#include "../modules/statusnotifier/module.hpp"
-#include "../modules/sysinfo/module.hpp"
-#include "../modules/wifi/module.hpp"
-#include "../modules/workspaces/hyprland/module.hpp"
+#include "modules/bluetooth/header/module.hpp"
+#include "modules/brightness/header/module.hpp"
+#include "modules/mpris/header/module.hpp"
+#include "modules/notifications/header/module.hpp"
+#include "modules/pulseaudio/header/module.hpp"
+#include "modules/screensaver/header/module.hpp"
+#include "modules/statusnotifier/header/module.hpp"
+#include "modules/sysinfo/header/module.hpp"
+#include "modules/wifi/header/module.hpp"
+#include "modules/workspaces/hyprland/header/module.hpp"
 #include "gdk/gdk.h"
-#include "modules/sysinfo/manager/temperature.hpp"
+#include "modules/sysinfo/header/manager/temperature.hpp"
 #include <gtk-layer-shell.h>
 #include <gtk/gtk.h>
 

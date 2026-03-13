@@ -1,9 +1,8 @@
-#include "module.hpp"
+#include "header/module.hpp"
 #include "gdk/gdk.h"
 #include "glib-object.h"
 #include "glib.h"
 #include "gtk/gtk.h"
-#include "manager.hpp"
 #include <algorithm>
 #include <functional>
 #include <string>

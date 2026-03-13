@@ -1,5 +1,5 @@
-#include "battery.hpp"
-#include "../../../utils/helper_func.hpp"
+#include "../header/manager/battery.hpp"
+#include "utils/helper_func.hpp"
 #include "cstring"
 #include "fstream"
 #include "vector"

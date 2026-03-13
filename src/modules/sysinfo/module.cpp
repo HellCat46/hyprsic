@@ -1,8 +1,7 @@
-#include "module.hpp"
+#include "header/module.hpp"
 #include "../../utils/helper_func.hpp"
 #include "services/header/context.hpp"
 #include "gtk/gtk.h"
-#include "manager/battery.hpp"
 #include <iomanip>
 #include <sstream>
 #include <string>

@@ -1,5 +1,5 @@
-#include "app.hpp"
-#include "app/window.hpp"
+#include "header/app.hpp"
+#include "header/window.hpp"
 
 Application::Application()
     : stat(&ctx.logger), mem(&ctx.logger), load(&ctx.logger), battery(&ctx),

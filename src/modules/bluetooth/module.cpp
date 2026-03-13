@@ -1,4 +1,4 @@
-#include "module.hpp"
+#include "header/module.hpp"
 
 #define TAG "BluetoothModule"
 
@@ -19,7 +19,7 @@ GtkWidget *BluetoothModule::setup() {
 }
 
 
-void BluetoothModule::switchVisibilityBTMenu(GtkWidget *widget, GdkEvent *e,
+void BluetoothModule::switchVisibilityBTMenu([[maybe_unused]] GtkWidget *widget,[[maybe_unused]] GdkEvent *e,
                                              gpointer user_data) {
   BluetoothModule *self = static_cast<BluetoothModule *>(user_data);
 

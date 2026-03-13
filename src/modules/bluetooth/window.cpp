@@ -1,6 +1,5 @@
-#include "window.hpp"
+#include "header/window.hpp"
 #include "glib-object.h"
-#include "manager.hpp"
 
 #define TAG "BluetoothWindow"
 

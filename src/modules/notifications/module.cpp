@@ -1,5 +1,4 @@
-#include "module.hpp"
-#include "manager.hpp"
+#include "header/module.hpp"
 #include <cstring>
 
 #define TAG "NotificationModule"
@@ -21,7 +20,7 @@ GtkWidget *NotificationModule::setup() {
   return notifEBox;
 }
 
-void NotificationModule::chgVisibiltyWin(GtkWidget *widget, GdkEvent *e,
+void NotificationModule::chgVisibiltyWin([[maybe_unused]] GtkWidget *widget,[[maybe_unused]] GdkEvent *e,
                                          gpointer user_data) {
   NotificationModule *self = static_cast<NotificationModule *>(user_data);
 

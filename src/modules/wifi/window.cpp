@@ -1,7 +1,6 @@
-#include "app/window.hpp"
+#include "header/window.hpp"
 #include "glib-object.h"
 #include "gtk/gtk.h"
-#include "modules/wifi/window.hpp"
 #include <algorithm>
 #include <cstring>
 #include <functional>
@@ -189,7 +188,7 @@ GtkWidget *WifiWindow::addDevList(const std::string &devPath,
   gtk_label_set_markup(GTK_LABEL(devName),
                        ("<b>" + station.ssid + "</b>").c_str());
   addTooltip(devName, station);
-  
+
   gtk_widget_set_halign(devName, GTK_ALIGN_START);
   gtk_box_pack_start(GTK_BOX(devRow), devName, true, true, 5);
 

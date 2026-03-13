@@ -1,4 +1,4 @@
-#include "module.hpp"
+#include "header/module.hpp"
 #include "gdk-pixbuf/gdk-pixbuf.h"
 #include "glib-object.h"
 #include "glib.h"
@@ -59,7 +59,7 @@ void BrightnessModule::update() {
   }
 }
 
-void BrightnessModule::handleWinOpen(GtkWidget *wid, GdkEventButton *evt,
+void BrightnessModule::handleWinOpen([[maybe_unused]] GtkWidget *wid,[[maybe_unused]] GdkEventButton *evt,
                                      gpointer data) {
   BrightnessModule *self = static_cast<BrightnessModule *>(data);
 

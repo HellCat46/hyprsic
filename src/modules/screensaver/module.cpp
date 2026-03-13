@@ -1,4 +1,4 @@
-#include "module.hpp"
+#include "header/module.hpp"
 #include "gtk/gtk.h"
 
 #define TAG "ScreenSaverModule"
@@ -21,7 +21,7 @@ GtkWidget* ScreenSaverModule::setup() {
   return scrnSvrEBox;
 }
 
-void ScreenSaverModule::switchScreenSaverCb(GtkWidget *widget, GdkEvent *e,
+void ScreenSaverModule::switchScreenSaverCb([[maybe_unused]] GtkWidget *widget,[[maybe_unused]] GdkEvent *e,
                                             gpointer user_data) {
   ScreenSaverModule *self = static_cast<ScreenSaverModule *>(user_data);
 

@@ -1,4 +1,4 @@
-#include "window.hpp"
+#include "header/window.hpp"
 #include "../../utils/helper_func.hpp"
 #include "gtk-layer-shell.h"
 
@@ -102,31 +102,31 @@ void MprisWindow::update() {
   }
 }
 
-void MprisWindow::handlePlayPause(GtkWidget *widget, GdkEvent *e,
+void MprisWindow::handlePlayPause([[maybe_unused]] GtkWidget *widget,[[maybe_unused]]  GdkEvent *e,
                                   gpointer user_data) {
   MprisManager *mprisInstance = static_cast<MprisManager *>(user_data);
   mprisInstance->PlayPause();
 }
 
-gchar *MprisWindow::handleFormatValue(GtkScale *scale, gdouble value,
-                                      gpointer user_data) {
+gchar *MprisWindow::handleFormatValue([[maybe_unused]] GtkScale *scale, gdouble value,
+                                      [[maybe_unused]] gpointer user_data) {
   uint64_t totalSeconds = static_cast<uint64_t>(value);
 
   return g_strdup(timeToStr(totalSeconds).c_str());
 }
 
-gboolean MprisWindow::handleScaleChange(GtkRange *range, GtkScrollType *scroll,
+gboolean MprisWindow::handleScaleChange([[maybe_unused]]  GtkRange *range,[[maybe_unused]]  GtkScrollType *scroll,
                                         gdouble value, gpointer user_data) {
   MprisManager *mprisInstance = static_cast<MprisManager *>(user_data);
   mprisInstance->SetPosition(static_cast<int>(value));
   return false;
 }
 
-void MprisWindow::handleNextTrack(GtkWidget *widget, gpointer user_data) {
+void MprisWindow::handleNextTrack([[maybe_unused]] GtkWidget *widget, gpointer user_data) {
   MprisManager *mprisInstance = static_cast<MprisManager *>(user_data);
   mprisInstance->NextTrack();
 }
-void MprisWindow::handlePrevTrack(GtkWidget *widget, gpointer user_data) {
+void MprisWindow::handlePrevTrack([[maybe_unused]] GtkWidget *widget, gpointer user_data) {
   MprisManager *mprisInstance = static_cast<MprisManager *>(user_data);
   mprisInstance->PreviousTrack();
 }

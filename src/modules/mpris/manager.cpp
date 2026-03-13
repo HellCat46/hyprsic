@@ -1,5 +1,5 @@
-#include "manager.hpp"
-#include "../../utils/helper_func.hpp"
+#include "header/manager.hpp"
+#include "utils/helper_func.hpp"
 #include "dbus/dbus-protocol.h"
 #include "dbus/dbus.h"
 #include <algorithm>
@@ -223,7 +223,6 @@ int MprisManager::GetCurrentPositionDbusCall() {
 }
 
 void MprisManager::GetPlayerInfo() {
-  bool titleFound = false;
   for (const auto &player : players) {
 
     PlayerTrack track;

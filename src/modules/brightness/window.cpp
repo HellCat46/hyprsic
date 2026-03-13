@@ -1,5 +1,4 @@
-#include "window.hpp"
-#include "manager.hpp"
+#include "header/window.hpp"
 
 
 BrightnessWindow::BrightnessWindow(AppContext *ctx, BrightnessManager* manager) : ctx(ctx), manager(manager){}
@@ -36,7 +35,7 @@ void BrightnessWindow::update() {
     }
 }
 
-void BrightnessWindow::handleScaleChange(GtkRange *range, GtkScrollType *scroll,
+void BrightnessWindow::handleScaleChange([[maybe_unused]] GtkRange *range,[[maybe_unused]] GtkScrollType *scroll,
                                          gdouble value, gpointer data) {
   BrightnessWindow *self = static_cast<BrightnessWindow *>(data);
 

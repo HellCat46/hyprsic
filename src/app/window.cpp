@@ -1,5 +1,4 @@
-#include "window.hpp"
-#include "modules/wifi/module.hpp"
+#include "header/window.hpp"
 #include <cstring>
 #include <ctime>
 #include <sys/socket.h>

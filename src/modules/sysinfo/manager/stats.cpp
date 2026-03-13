@@ -1,6 +1,6 @@
-#include "stats.hpp"
-#include "disk.hpp"
-#include "network.hpp"
+#include "../header/manager/stats.hpp"
+#include "../header/manager/disk.hpp"
+#include "../header/manager/network.hpp"
 #include <cmath>
 #include <string>
 

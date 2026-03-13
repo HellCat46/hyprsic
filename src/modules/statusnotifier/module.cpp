@@ -1,9 +1,8 @@
-#include "module.hpp"
+#include "header/module.hpp"
 #include "gdk-pixbuf/gdk-pixbuf.h"
 #include "glib-object.h"
 #include "glib.h"
 #include "gtk/gtk.h"
-#include "manager.hpp"
 #include <map>
 #include <string>
 
@@ -71,7 +70,7 @@ void StatusNotifierModule::remove(std::string servicePath,
   }
 }
 
-void StatusNotifierModule::handleContextMenuOpen(GtkWidget *widget,
+void StatusNotifierModule::handleContextMenuOpen([[maybe_unused]] GtkWidget *widget,
                                                  GdkEventButton *event,
                                                  gpointer user_data) {
 
@@ -129,7 +128,7 @@ void StatusNotifierModule::handleContextMenuOpen(GtkWidget *widget,
   gtk_popover_popup(GTK_POPOVER(args->sniApp.popOver));
 }
 
-void StatusNotifierModule::handleEvtButtonPress(GtkWidget *widget,
+void StatusNotifierModule::handleEvtButtonPress([[maybe_unused]] GtkWidget *widget,
                                                  GdkEventButton *event,
                                                  gpointer user_data) {
   if (event->type != GDK_BUTTON_PRESS || event->button != 1)

@@ -1,8 +1,6 @@
-#include "module.hpp"
+#include "header/module.hpp"
 #include "glib-object.h"
 #include "gtk/gtk.h"
-#include "modules/wifi/manager.hpp"
-#include "modules/wifi/window.hpp"
 
 WifiModule::WifiModule(AppContext *ctx, WifiManager *mgr, WifiWindow *window)
     : ctx(ctx), manager(mgr), window(window) {}

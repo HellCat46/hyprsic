@@ -1,4 +1,4 @@
-#include "window.hpp"
+#include "header/window.hpp"
 #include "../../utils/helper_func.hpp"
 
 #define TAG "NotificationWindow"

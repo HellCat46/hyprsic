@@ -53,7 +53,7 @@ public:
   void handleIntrospectCall(DBusMessage *msg);
   void handleGetAllPropertiesCall(DBusMessage *msg);
   void handleGetPropertyCall(DBusMessage *msg);
-  void handleNameOwnerChangedSignal(DBusMessage *msg, const char* name, const char* newOwner);
+  void handleNameOwnerChangedSignal(const char* name, const char* newOwner);
 
   // Functions to get Additional Info about Registered Items
   void getItemInfo(const std::string &itemService, StatusApp &outApp);

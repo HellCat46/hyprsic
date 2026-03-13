@@ -1,11 +1,11 @@
 #pragma once
 
-#include "services/header/context.hpp"
 #include "manager.hpp"
+#include "services/header/context.hpp"
 
 class MprisWindow {
-  MprisManager *manager;
   AppContext *ctx;
+  MprisManager *manager;
 
   GtkWidget *menuWin;
   GtkWidget *progTtl;

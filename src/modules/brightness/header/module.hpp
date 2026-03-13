@@ -6,17 +6,17 @@
 #include "window.hpp"
 
 class BrightnessModule {
+  AppContext *ctx;
   BrightnessManager *manager;
   BrightnessWindow *window;
-  AppContext *ctx;
-  
+
   GtkWidget *mainWid;
 
 public:
-  BrightnessModule(AppContext *ctx, BrightnessManager *manager, BrightnessWindow *window);
+  BrightnessModule(AppContext *ctx, BrightnessManager *manager,
+                   BrightnessWindow *window);
   GtkWidget *setup();
   void update();
 
-  static void handleWinOpen(GtkWidget *wid, GdkEventButton* evt, gpointer data);
-
+  static void handleWinOpen(GtkWidget *wid, GdkEventButton *evt, gpointer data);
 };

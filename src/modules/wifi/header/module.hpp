@@ -1,11 +1,12 @@
 #pragma once
 
-#include "../../services/header/context.hpp"
+#include "services/header/context.hpp"
 #include "gdk/gdk.h"
 #include "glib.h"
 #include "gtk/gtk.h"
-#include "modules/wifi/manager.hpp"
-#include "modules/wifi/window.hpp"
+#include "manager.hpp"
+#include "window.hpp"
+
 class WifiModule {
   AppContext *ctx;
   WifiManager *manager;

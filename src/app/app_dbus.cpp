@@ -1,4 +1,4 @@
-#include "app.hpp"
+#include "header/app.hpp"
 #include "dbus/dbus.h"
 #include "utils/helper_func.hpp"
 
@@ -50,7 +50,7 @@ void Application::captureSessionDBus() {
         }
       }
 
-      snManager.handleNameOwnerChangedSignal(msg, name, newOwner);
+      snManager.handleNameOwnerChangedSignal(name, newOwner);
     }
     {
       snManager.handleDbusMessage(msg);

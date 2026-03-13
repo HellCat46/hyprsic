@@ -1,4 +1,4 @@
-#include "manager.hpp"
+#include "header/manager.hpp"
 #include "cstdlib"
 #include "sstream"
 #include "sys/poll.h"
@@ -216,7 +216,7 @@ long HyprWSManager::parseWorkspaceId(std::string_view stPoint) {
   long id = 0;
   bool neg = false;
 
-  for (int idx = 0; stPoint[idx] != '\n' && stPoint[idx] != '\0' &&
+  for (unsigned long idx = 0; stPoint[idx] != '\n' && stPoint[idx] != '\0' &&
                     stPoint[idx] != ',' && idx < stPoint.size();
        idx++) {
     if (stPoint[idx] >= 48 && stPoint[idx] <= 57) {

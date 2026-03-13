@@ -1,6 +1,5 @@
-#include "module.hpp"
+#include "header/module.hpp"
 #include "gdk-pixbuf/gdk-pixbuf.h"
-#include "manager.hpp"
 #include <vector>
 
 #define TAG "PulseAudioModule"

@@ -1,8 +1,6 @@
-#include "module.hpp"
-#include "../../utils/helper_func.hpp"
+#include "header/module.hpp"
+#include "utils/helper_func.hpp"
 #include "gtk/gtk.h"
-#include "manager.hpp"
-#include "window.hpp"
 #include <string>
 
 #define TAG "MprisModule"

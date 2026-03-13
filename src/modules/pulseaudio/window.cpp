@@ -1,6 +1,5 @@
-#include "window.hpp"
+#include "header/window.hpp"
 #include "gtk/gtk.h"
-#include "manager.hpp"
 
 #define TAG "PulseAudioWindow"
 

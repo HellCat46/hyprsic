@@ -1,5 +1,5 @@
-#include "network.hpp"
-#include "../../../utils/helper_func.hpp"
+#include "../header/manager/network.hpp"
+#include "utils/helper_func.hpp"
 #include "cstring"
 #include "dirent.h"
 #include "fstream"

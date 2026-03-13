@@ -1,4 +1,4 @@
-#include "manager.hpp"
+#include "header/manager.hpp"
 #include "../../utils/helper_func.hpp"
 #include "dbus/dbus-protocol.h"
 #include "dbus/dbus-shared.h"
@@ -6,7 +6,6 @@
 #include "gdk-pixbuf/gdk-pixbuf.h"
 #include <algorithm>
 #include <cstring>
-#include <ostream>
 #include <sstream>
 #include <string>
 #include <sys/types.h>
@@ -518,7 +517,7 @@ void StatusNotifierManager::getMenuActions(const std::string &itemService,
   dbus_message_unref(msg);
 }
 
-void StatusNotifierManager::handleNameOwnerChangedSignal(DBusMessage *msg, const char* name, const char* newOwner) {
+void StatusNotifierManager::handleNameOwnerChangedSignal(const char* name, const char* newOwner) {
   
 
   std::string nameStr = std::string(name);
