@@ -11,13 +11,15 @@ class BrightnessManager {
   
   short currentLvl;
   bool err;
+  
+  
+  bool setLvl(short brightness);
+  
+  void update();
 
 public:
   BrightnessManager(AppContext *ctx);
   
-  
-  void update();
-  bool setLvl(short brightness);
   short getLvl() const; 
   ~BrightnessManager();
 };

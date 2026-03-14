@@ -53,7 +53,7 @@ void NotificationManager::setupDBus() {
   ctx->logger.LogInfo(TAG, "Started Notification Capture Service");
 }
 
-void NotificationManager::handleDbusMessage(DBusMessage *msg) {
+void NotificationManager::handleDbusMessageDbus(DBusMessage *msg) {
   const char *member = dbus_message_get_member(msg);
   int type = dbus_message_get_type(msg);
 
@@ -63,7 +63,7 @@ void NotificationManager::handleDbusMessage(DBusMessage *msg) {
   // Method Call Handlers
   if (HelperFunc::saferStrCmp(member, "Notify")) {
 
-    Notification notification = handleNotifyCall(msg);
+    Notification notification = handleNotifyCallDbus(msg);
     if (notification.app_name.size() > 0) {
       ctx->showNotifWindow(&notification, dnd);
     } else {
@@ -71,18 +71,18 @@ void NotificationManager::handleDbusMessage(DBusMessage *msg) {
     }
   } else if (HelperFunc::saferStrCmp(member, "CloseNotification")) {
 
-    handleCloseNotificationCall(msg);
+    handleCloseNotificationCallDbus(msg);
   } else if (HelperFunc::saferStrCmp(member, "GetCapabilities")) {
 
-    handleGetCapabilitiesCall(msg);
+    handleGetCapabilitiesCallDbus(msg);
   } else if (HelperFunc::saferStrCmp(member, "GetServerInformation")) {
 
     ctx->logger.LogInfo(TAG, "Received GetServerInformation Call");
-    handleGetServerInformationCall(msg);
+    handleGetServerInformationCallDbus(msg);
   }
 }
 
-void NotificationManager::handleGetServerInformationCall(DBusMessage *msg) {
+void NotificationManager::handleGetServerInformationCallDbus(DBusMessage *msg) {
   DBusMessage *reply = dbus_message_new_method_return(msg);
 
   const char *name = "Hyprsic";
@@ -99,7 +99,7 @@ void NotificationManager::handleGetServerInformationCall(DBusMessage *msg) {
   dbus_message_unref(reply);
 }
 
-void NotificationManager::handleGetCapabilitiesCall(DBusMessage *msg) {
+void NotificationManager::handleGetCapabilitiesCallDbus(DBusMessage *msg) {
   DBusMessage *reply = dbus_message_new_method_return(msg);
 
   const char *capabilities[] = {"body",        "body-hyperlinks",
@@ -123,7 +123,7 @@ void NotificationManager::handleGetCapabilitiesCall(DBusMessage *msg) {
   dbus_message_unref(reply);
 }
 
-void NotificationManager::handleCloseNotificationCall(DBusMessage *msg) {
+void NotificationManager::handleCloseNotificationCallDbus(DBusMessage *msg) {
   DBusMessageIter args;
   dbus_int32_t notifId;
 
@@ -151,7 +151,7 @@ void NotificationManager::handleCloseNotificationCall(DBusMessage *msg) {
   dbus_message_unref(signal);
 }
 
-Notification NotificationManager::handleNotifyCall(DBusMessage *msg) {
+Notification NotificationManager::handleNotifyCallDbus(DBusMessage *msg) {
   DBusMessageIter args;
   Notification notif;
   notif.id = g_uuid_string_random();

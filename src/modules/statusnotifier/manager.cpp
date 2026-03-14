@@ -87,15 +87,15 @@ void StatusNotifierManager::handleDbusMessage(DBusMessage *msg) {
       HelperFunc::saferStrCmp(member, "Introspect") &&
       HelperFunc::saferStrCmp(path, "/StatusNotifierWatcher")) {
 
-    handleIntrospectCall(msg);
+    handleIntrospectCallDbus(msg);
   } else if (HelperFunc::saferStrCmp(interface,
                                      "org.freedesktop.DBus.Properties") &&
              HelperFunc::saferStrCmp(path, "/StatusNotifierWatcher")) {
 
     if (HelperFunc::saferStrCmp(member, "GetAll"))
-      handleGetAllPropertiesCall(msg);
+      handleGetAllPropertiesCallDbus(msg);
     else if (HelperFunc::saferStrCmp(member, "Get"))
-      handleGetPropertyCall(msg);
+      handleGetPropertyCallDbus(msg);
 
   } else if (HelperFunc::saferStrCmp(interface,
                                      "org.kde.StatusNotifierWatcher") &&
@@ -114,7 +114,7 @@ void StatusNotifierManager::handleDbusMessage(DBusMessage *msg) {
  * To provide info about the Status Notifier Watcher interface
  * supported Methods, Signals and Properties
  */
-void StatusNotifierManager::handleIntrospectCall(DBusMessage *msg) {
+void StatusNotifierManager::handleIntrospectCallDbus(DBusMessage *msg) {
   const char *data = SNWXML.c_str();
 
   DBusMessage *reply = dbus_message_new_method_return(msg);
@@ -126,7 +126,7 @@ void StatusNotifierManager::handleIntrospectCall(DBusMessage *msg) {
   ctx->logger.LogDebug(TAG, "Responded to Introspect Call.");
 }
 
-void StatusNotifierManager::handleGetAllPropertiesCall(DBusMessage *msg) {
+void StatusNotifierManager::handleGetAllPropertiesCallDbus(DBusMessage *msg) {
   DBusMessage *reply = dbus_message_new_method_return(msg);
   DBusMessageIter replyIter, arrayIter;
   
@@ -142,7 +142,7 @@ void StatusNotifierManager::handleGetAllPropertiesCall(DBusMessage *msg) {
   ctx->logger.LogDebug(TAG, "Received GetAll Properties Call.");
 }
 
-void StatusNotifierManager::handleGetPropertyCall(DBusMessage *msg) {
+void StatusNotifierManager::handleGetPropertyCallDbus(DBusMessage *msg) {
   DBusMessageIter iter;
   dbus_message_iter_init(msg, &iter);
 
@@ -517,7 +517,7 @@ void StatusNotifierManager::getMenuActions(const std::string &itemService,
   dbus_message_unref(msg);
 }
 
-void StatusNotifierManager::handleNameOwnerChangedSignal(const char* name, const char* newOwner) {
+void StatusNotifierManager::handleNameOwnerChangedSignalDbus(const char* name, const char* newOwner) {
   
 
   std::string nameStr = std::string(name);

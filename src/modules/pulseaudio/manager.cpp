@@ -8,31 +8,31 @@
 
 #define TAG "PulseAudioManager"
 
-PulseAudioManager::PulseAudioManager(LoggingManager *logMgr) : logger(logMgr) {
+PulseAudioManager::PulseAudioManager(AppContext* ctx) : ctx(ctx) {
 
   mainLoop = pa_threaded_mainloop_new();
   if (mainLoop == nullptr) {
-    logger->LogError(TAG, "Failed to Get Pulseaudio Main Loop.");
+    ctx->logger.LogError(TAG, "Failed to Get Pulseaudio Main Loop.");
     return;
   }
 
   pa_mainloop_api *mainLoopAPI = pa_threaded_mainloop_get_api(mainLoop);
-  pulseContext = pa_context_new(mainLoopAPI, "hyprsic");
-  if (!pulseContext) {
-    logger->LogError(TAG, "Failed to Create a Pulseaudio Context.");
+  pulseCtx = pa_context_new(mainLoopAPI, "hyprsic");
+  if (!pulseCtx) {
+    ctx->logger.LogError(TAG, "Failed to Create a Pulseaudio Context.");
     return;
   }
 
-  pa_context_set_state_callback(pulseContext, contextStateHandler, this);
+  pa_context_set_state_callback(pulseCtx, contextStateHandler, this);
 
-  if (pa_context_connect(pulseContext, nullptr, PA_CONTEXT_NOFAIL, nullptr) <
+  if (pa_context_connect(pulseCtx, nullptr, PA_CONTEXT_NOFAIL, nullptr) <
       0) {
-    logger->LogError(TAG, "Failed to Connect the Pulseaudio Context.");
+    ctx->logger.LogError(TAG, "Failed to Connect the Pulseaudio Context.");
     return;
   }
 
   if (pa_threaded_mainloop_start(mainLoop) < 0) {
-    logger->LogError(TAG, "Failed to Start the Pulseaudio Context.");
+    ctx->logger.LogError(TAG, "Failed to Start the Pulseaudio Context.");
     return;
   }
 
@@ -44,7 +44,7 @@ void PulseAudioManager::contextStateHandler(pa_context *pulseCtx, void *data) {
 
   switch (pa_context_get_state(pulseCtx)) {
   case PA_CONTEXT_READY:
-    self->logger->LogInfo(
+    self->ctx->logger.LogInfo(
         TAG, "PulseAudio Connection Established. Subscribing to Events...");
     pa_context_get_server_info(pulseCtx, serverInfoCallBack, data);
 
@@ -55,13 +55,13 @@ void PulseAudioManager::contextStateHandler(pa_context *pulseCtx, void *data) {
                                     PA_SUBSCRIPTION_EVENT_SOURCE |
                                     PA_SUBSCRIPTION_EVENT_SINK),
         nullptr, nullptr);
-    self->logger->LogInfo(TAG, "Successfully Subscribed to Pulseaudio Events.");
+    self->ctx->logger.LogInfo(TAG, "Successfully Subscribed to Pulseaudio Events.");
     break;
   case PA_CONTEXT_TERMINATED:
-    self->logger->LogInfo(TAG, "Connection Terminated");
+    self->ctx->logger.LogInfo(TAG, "Connection Terminated");
     break;
   case PA_CONTEXT_FAILED:
-    self->logger->LogError(TAG, "Connection Failed");
+    self->ctx->logger.LogError(TAG, "Connection Failed");
     break;
   default:
     break;
@@ -128,7 +128,7 @@ void PulseAudioManager::sinkInfoCallBack([[maybe_unused]] pa_context *pulseCtx,
     dev.volume.push_back(info->volume.values[i]);
   }
   self->outDevs.insert({info->name, dev});
-  self->logger->LogDebug(
+  self->ctx->logger.LogDebug(
       TAG, "Sink Device Found: " + std::string(info->name) +
                " | Description: " + dev.description + "(Total " +
                std::to_string(self->outDevs.size()) + " Devices)");
@@ -164,7 +164,7 @@ void PulseAudioManager::sourceInfoCallBack([[maybe_unused]] pa_context *pulseCtx
     dev.volume.push_back(info->volume.values[i]);
   }
   self->inDevs.insert({info->name, dev});
-  self->logger->LogInfo(TAG,
+  self->ctx->logger.LogInfo(TAG,
                         "Source Device Found: " + std::string(info->name) +
                             " | Description: " + dev.description + "(Total " +
                             std::to_string(self->inDevs.size()) + " Devices)");
@@ -172,8 +172,8 @@ void PulseAudioManager::sourceInfoCallBack([[maybe_unused]] pa_context *pulseCtx
 
 void PulseAudioManager::getDevices() {
   pa_threaded_mainloop_lock(mainLoop);
-  pa_context_get_sink_info_list(pulseContext, sinkInfoCallBack, this);
-  pa_context_get_source_info_list(pulseContext, sourceInfoCallBack, this);
+  pa_context_get_sink_info_list(pulseCtx, sinkInfoCallBack, this);
+  pa_context_get_source_info_list(pulseCtx, sourceInfoCallBack, this);
   pa_threaded_mainloop_unlock(mainLoop);
 }
 
@@ -192,7 +192,7 @@ void PulseAudioManager::setVolume(const std::string &devName, bool isOutput,
     }
 
     auto op = pa_context_set_sink_volume_by_index(
-        pulseContext, it->second.index, &paVolume, nullptr, nullptr);
+        pulseCtx, it->second.index, &paVolume, nullptr, nullptr);
 
     if (op)
       pa_operation_unref(op);
@@ -205,7 +205,7 @@ void PulseAudioManager::setVolume(const std::string &devName, bool isOutput,
     }
 
     auto op = pa_context_set_source_volume_by_index(
-        pulseContext, it->second.index, &paVolume, nullptr, nullptr);
+        pulseCtx, it->second.index, &paVolume, nullptr, nullptr);
 
     if (op)
       pa_operation_unref(op);
@@ -226,7 +226,7 @@ short PulseAudioManager::toggleMute(const std::string &devName, bool isOutput) {
     }
 
     auto op = pa_context_set_sink_mute_by_index(
-        pulseContext, it->second.index, !it->second.mute, nullptr, nullptr);
+        pulseCtx, it->second.index, !it->second.mute, nullptr, nullptr);
 
     if (op) {
       it->second.mute = !it->second.mute;
@@ -241,7 +241,7 @@ short PulseAudioManager::toggleMute(const std::string &devName, bool isOutput) {
     }
 
     auto op = pa_context_set_source_mute_by_index(
-        pulseContext, it->second.index, !it->second.mute, nullptr, nullptr);
+        pulseCtx, it->second.index, !it->second.mute, nullptr, nullptr);
 
     if (op) {
       it->second.mute = !it->second.mute;
@@ -263,7 +263,7 @@ bool PulseAudioManager::updateDefDevice(const std::string &devName,
     auto it = outDevs.find(devName);
     if (it != outDevs.end()) {
 
-      auto op = pa_context_set_default_sink(pulseContext, devName.c_str(),
+      auto op = pa_context_set_default_sink(pulseCtx, devName.c_str(),
                                             nullptr, nullptr);
       if (op) {
         pa_operation_unref(op);
@@ -276,7 +276,7 @@ bool PulseAudioManager::updateDefDevice(const std::string &devName,
     auto it = inDevs.find(devName);
     if (it != inDevs.end()) {
 
-      auto op = pa_context_set_default_source(pulseContext, devName.c_str(),
+      auto op = pa_context_set_default_source(pulseCtx, devName.c_str(),
                                               nullptr, nullptr);
       if (op) {
         pa_operation_unref(op);
@@ -295,9 +295,9 @@ PulseAudioManager::~PulseAudioManager() {
     pa_threaded_mainloop_stop(mainLoop);
   }
 
-  if (pulseContext) {
-    pa_context_disconnect(pulseContext);
-    pa_context_unref(pulseContext);
+  if (pulseCtx) {
+    pa_context_disconnect(pulseCtx);
+    pa_context_unref(pulseCtx);
   }
 
   if (mainLoop) {

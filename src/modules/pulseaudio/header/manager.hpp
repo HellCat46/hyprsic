@@ -1,5 +1,5 @@
 #pragma once
-#include "services/header/logging.hpp"
+#include "services/header/context.hpp"
 #include "string"
 #include <cstdint>
 #include <map>
@@ -18,9 +18,9 @@ struct PulseAudioDevice {
 };
 
 class PulseAudioManager {
-  pa_context *pulseContext;
+  AppContext *ctx;
+  pa_context *pulseCtx;
   pa_threaded_mainloop *mainLoop;
-  LoggingManager *logger;
 
   static void contextStateHandler(pa_context *, void *);
   static void handleStateChanges(pa_context *, const pa_subscription_event_type,
@@ -33,14 +33,17 @@ class PulseAudioManager {
                                  const pa_source_info *info, int eol,
                                  void *data);
 
-public:
-  std::string defOutput, defInput;
-  std::map<std::string, PulseAudioDevice> outDevs, inDevs;
-  PulseAudioManager(LoggingManager *logMgr);
-  ~PulseAudioManager();
-  void getDevices();
-  
   void setVolume(const std::string &devName, bool isOutput, uint32_t volume);
   short toggleMute(const std::string &devName, bool isOutput);
   bool updateDefDevice(const std::string &devName, bool isOutput);
+
+  void getDevices();
+
+public:
+  PulseAudioManager(AppContext *ctx);
+
+  std::string defOutput, defInput;
+  std::map<std::string, PulseAudioDevice> outDevs, inDevs;
+
+  ~PulseAudioManager();
 };

@@ -15,6 +15,8 @@ class WifiManager {
   AppContext *ctx;
   std::string devPath, devAddr, devName, devAdapter, agentPath;
   bool powered = false, scanning = false;
+  std::string connDev, authDev;
+  DBusMessage* authMsg;
   
   void RegisterAgent(bool reg);
   void GetManagedObjects();
@@ -23,10 +25,15 @@ class WifiManager {
   int GetConnectedDevice();
   void GetDevices();
   int GetDeviceInfo(std::string devPath, WifiStation &station);
+  
+  // Action methods
+  void Scan();
+  void Connect(const std::string &networkPath);
+  void Disconnect();
+  void Forget(const std::string &networkPath);
+  void SubmitPassphrase(const std::string& password);
 
 public:
-  std::string connDev, authDev;
-  DBusMessage* authMsg;
   std::unordered_map<std::string, WifiStation> devices;
   
   WifiManager(AppContext *appCtx);
@@ -37,16 +44,11 @@ public:
   bool IsScanning() const;
   
   // Monitor Changes Functions
-  void addMatchRules();
-  void handleRequestPassphrase(DBusMessage* msg, DBusMessageIter &rootIter);
-  void handleRequestCancel();
-  void handleInterfacesRemoved(DBusMessageIter &rootIter);
-  void handlePropertiesChanged(DBusMessage* msg, DBusMessageIter &rootIter);
+  void addMatchRulesDbus();
+  void handleRequestPassphraseDbus(DBusMessage* msg, DBusMessageIter &rootIter);
+  void handleRequestCancelDbus();
+  void handleInterfacesRemovedDbus(DBusMessageIter &rootIter);
+  void handlePropertiesChangedDbus(DBusMessage* msg, DBusMessageIter &rootIter);
 
-  // Action methods
-  void Scan();
-  void Connect(const std::string &networkPath);
-  void Disconnect();
-  void Forget(const std::string &networkPath);
-  void SubmitPassphrase(const std::string& password);
+
 };

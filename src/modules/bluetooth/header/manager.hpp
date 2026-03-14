@@ -33,26 +33,26 @@ private:
   
   unsigned char setDeviceProps(Device &dev, DBusMessageIter &propsIter);
   int getPropertyVal(const char *prop);
+  
+  
+  // Device Operations
+  int connectDevice(bool state, std::string_view devPath);
+  int trustDevice(bool state, std::string_view devPath);
+  int removeDevice(std::string_view devPath);
+  int getDeviceList();
 
 public:
   bool discovering, power;
   std::unordered_map<std::string, Device> devices;
 
-  int getDeviceList();
-
-  // Device Operations
-  int connectDevice(bool state, std::string_view devPath);
-  int trustDevice(bool state, std::string_view devPath);
-  int removeDevice(std::string_view devPath);
-
   int switchDiscovery(bool on);
   int switchPower(bool on);
   
   // Monitor Changes Functions
-  void addMatchRules();
-  void handleInterfacesAdded(DBusMessageIter &rootIter);
-  void handleInterfacesRemoved(DBusMessageIter &rootIter);
-  void handlePropertiesChanged(DBusMessage *msg, DBusMessageIter &rootIter);
+  void addMatchRulesDbus();
+  void handleInterfacesAddedDbus(DBusMessageIter &rootIter);
+  void handleInterfacesRemovedDbus(DBusMessageIter &rootIter);
+  void handlePropertiesChangedDbus(DBusMessage *msg, DBusMessageIter &rootIter);
 
   BluetoothManager(AppContext *ctx);
   int setup();

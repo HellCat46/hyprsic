@@ -27,7 +27,7 @@ void Application::captureSessionDBus() {
     const char *member = dbus_message_get_member(msg);
 
     if (HelperFunc::saferStrCmp(interface, "org.freedesktop.Notifications")) {
-      notifManager.handleDbusMessage(msg);
+      notifManager.handleDbusMessageDbus(msg);
     } else if (HelperFunc::saferStrCmp(interface, "org.freedesktop.DBus") &&
                HelperFunc::saferStrCmp(member, "NameOwnerChanged") &&
                HelperFunc::saferStrCmp(path, "/org/freedesktop/DBus")) {
@@ -42,15 +42,9 @@ void Application::captureSessionDBus() {
       dbus_message_iter_next(&args);
       dbus_message_iter_get_basic(&args, &newOwner);
 
-      if (HelperFunc::saferStrNCmp(name, "org.mpris.MediaPlayer2", 22)) {
-        if (std::strlen(newOwner) != 0) {
-          mprisManager.addPlayer(name);
-        } else {
-          mprisManager.removePlayer(name);
-        }
-      }
+      mprisManager.handlePlayerChangesDbus(name, newOwner);
 
-      snManager.handleNameOwnerChangedSignal(name, newOwner);
+      snManager.handleNameOwnerChangedSignalDbus(name, newOwner);
     }
     {
       snManager.handleDbusMessage(msg);
@@ -61,7 +55,7 @@ void Application::captureSessionDBus() {
 }
 
 void Application::captureSystemDBus() {
-  btManager.addMatchRules();
+  btManager.addMatchRulesDbus();
 
   DBusMessage *msg;
   while (true) {
@@ -88,7 +82,7 @@ void Application::captureSystemDBus() {
 
       if (HelperFunc::saferStrNCmp(path, "/org/bluez", 10)) {
         ctx.logger.LogDebug(TAG, "Received InterfacesAdded Signal for Bluez");
-        btManager.handleInterfacesAdded(rootIter);
+        btManager.handleInterfacesAddedDbus(rootIter);
       }
 
       dbus_message_unref(msg);
@@ -98,7 +92,7 @@ void Application::captureSystemDBus() {
       dbus_message_iter_get_basic(&rootIter, &path);
 
       if (HelperFunc::saferStrNCmp(path, "/org/bluez", 10)) {
-        btManager.handleInterfacesRemoved(rootIter);
+        btManager.handleInterfacesRemovedDbus(rootIter);
       } else {
         wifiManager.handleInterfacesRemoved(rootIter);
       }
@@ -110,7 +104,7 @@ void Application::captureSystemDBus() {
 
       if (HelperFunc::saferStrNCmp(path, "/org/bluez", 10)) {
 
-        btManager.handlePropertiesChanged(msg, rootIter);
+        btManager.handlePropertiesChangedDbus(msg, rootIter);
       } else if (HelperFunc::saferStrNCmp(path, "/net/connman/iwd", 16)) {
 
         wifiManager.handlePropertiesChanged(msg, rootIter);

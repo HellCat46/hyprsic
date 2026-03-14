@@ -60,6 +60,7 @@ class Application {
 public:
   Application();
   int Run(int argc, char **argv);
+  
 };
 
 struct IPCUIData {

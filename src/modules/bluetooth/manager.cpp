@@ -132,7 +132,7 @@ int BluetoothManager::switchDiscovery(bool on) {
   return 0;
 }
 
-void BluetoothManager::addMatchRules() {
+void BluetoothManager::addMatchRulesDbus() {
   ctx->logger.LogInfo(TAG, "Adding filter to Bluez Signals");
 
   // Adding Filters to Signals before starting listening to them
@@ -183,7 +183,7 @@ void BluetoothManager::addMatchRules() {
   return;
 }
 
-void BluetoothManager::handleInterfacesAdded(DBusMessageIter &rootIter) {
+void BluetoothManager::handleInterfacesAddedDbus(DBusMessageIter &rootIter) {
 
   if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_OBJECT_PATH) {
     ctx->logger.LogError(TAG, "Unable to parse InterfacesAdded Reply. Unknown "
@@ -237,7 +237,7 @@ void BluetoothManager::handleInterfacesAdded(DBusMessageIter &rootIter) {
   ctx->logger.LogInfo(TAG, logMsg);
 }
 
-void BluetoothManager::handleInterfacesRemoved(DBusMessageIter &rootIter) {
+void BluetoothManager::handleInterfacesRemovedDbus(DBusMessageIter &rootIter) {
   if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_OBJECT_PATH) {
     ctx->logger.LogError(TAG,
                          "Unable to parse InterfacesRemoved Reply. Unknown "
@@ -258,7 +258,7 @@ void BluetoothManager::handleInterfacesRemoved(DBusMessageIter &rootIter) {
   }
 }
 
-void BluetoothManager::handlePropertiesChanged(DBusMessage *msg,
+void BluetoothManager::handlePropertiesChangedDbus(DBusMessage *msg,
                                                DBusMessageIter &rootIter) {
   const char *path = dbus_message_get_path(msg);
   if (std::strlen(path) > 37)

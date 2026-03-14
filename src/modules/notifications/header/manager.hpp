@@ -13,10 +13,10 @@ class NotificationManager {
   std::unordered_map<std::string, GtkWidget *> notifications;
 
   // Notification Daemon Responses to Messages
-  Notification handleNotifyCall(DBusMessage *msg);
-  void handleGetCapabilitiesCall(DBusMessage *msg);
-  void handleGetServerInformationCall(DBusMessage *msg);
-  void handleCloseNotificationCall(DBusMessage *msg);
+  Notification handleNotifyCallDbus(DBusMessage *msg);
+  void handleGetCapabilitiesCallDbus(DBusMessage *msg);
+  void handleGetServerInformationCallDbus(DBusMessage *msg);
+  void handleCloseNotificationCallDbus(DBusMessage *msg);
 
   // Helper Functions
   GdkPixbuf *parseImageData(DBusMessageIter *hintsIter);
@@ -26,5 +26,5 @@ public:
   NotificationManager(AppContext *ctx);
 
   void setupDBus();
-  void handleDbusMessage(DBusMessage *msg);
+  void handleDbusMessageDbus(DBusMessage *msg);
 };

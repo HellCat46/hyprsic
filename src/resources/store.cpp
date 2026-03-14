@@ -1,5 +1,5 @@
 #include "store.hpp"
-#include "icons.h"
+#include "icons.hpp"
 #include <span>
 
 ResourceStore::ResourceStore() {

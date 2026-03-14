@@ -1,7 +1,7 @@
 #include "header/manager.hpp"
-#include "utils/helper_func.hpp"
 #include "dbus/dbus-protocol.h"
 #include "dbus/dbus.h"
+#include "utils/helper_func.hpp"
 #include <algorithm>
 #include <cstring>
 #include <string>
@@ -48,7 +48,7 @@ MprisManager::MprisManager(AppContext *appCtx) : ctx(appCtx) {
 
     dbus_message_iter_next(&subIter);
   }
-  
+
   dbus_message_unref(reply);
   dbus_message_unref(msg);
 }
@@ -230,12 +230,11 @@ void MprisManager::GetPlayerInfo() {
 
     if (res == 0 && !track.title.empty()) {
       playingTrack = track;
-      hasPlayer = true;
       return;
     }
   }
 
-  hasPlayer = false;
+  playingTrack.trackId = "";
 }
 
 bool MprisManager::GetPosition() {
@@ -368,4 +367,20 @@ void MprisManager::removePlayer(const std::string &playerName) {
 
   players.erase(it);
   ctx->logger.LogInfo(TAG, "Removed MPRIS Player: " + playerName);
+}
+
+bool MprisManager::hasPlayer() const { return !playingTrack.trackId.empty(); }
+
+PlayerTrack MprisManager::getPlayingTrack() const { return playingTrack; }
+
+void MprisManager::handlePlayerChangesDbus(const std::string_view name,
+                                           const std::string_view newOwner) {
+  if (HelperFunc::saferStrNCmp(name.data(), "org.mpris.MediaPlayer2", 22)) {
+
+    if (std::strlen(newOwner.data()) != 0) {
+      addPlayer(name.data());
+    } else {
+      removePlayer(name.data());
+    }
+  }
 }

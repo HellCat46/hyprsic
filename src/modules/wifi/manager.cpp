@@ -529,7 +529,7 @@ void WifiManager::SubmitPassphrase(const std::string &password) {
   authDev = "";
 }
 
-void WifiManager::addMatchRules() {
+void WifiManager::addMatchRulesDbus() {
   ctx->logger.LogInfo(TAG, "Adding D-Bus Match Rules for WifiManager");
 
   dbus_bus_add_match(ctx->dbus.sysConn,
@@ -594,7 +594,7 @@ void WifiManager::addMatchRules() {
                       "Successfully added D-Bus match rules for WifiManager");
 }
 
-void WifiManager::handleRequestPassphrase(DBusMessage *msg,
+void WifiManager::handleRequestPassphraseDbus(DBusMessage *msg,
                                           DBusMessageIter &rootIter) {
   if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_OBJECT_PATH) {
     ctx->logger.LogError(TAG,
@@ -614,7 +614,7 @@ void WifiManager::handleRequestPassphrase(DBusMessage *msg,
   }
 }
 
-void WifiManager::handleRequestCancel() {
+void WifiManager::handleRequestCancelDbus() {
   authDev = "";
   if (authMsg) {
     dbus_message_unref(authMsg);
@@ -622,7 +622,7 @@ void WifiManager::handleRequestCancel() {
   }
 }
 
-void WifiManager::handleInterfacesRemoved(DBusMessageIter &rootIter) {
+void WifiManager::handleInterfacesRemovedDbus(DBusMessageIter &rootIter) {
   char *objPath;
   if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_OBJECT_PATH) {
     ctx->logger.LogError(TAG,
@@ -648,7 +648,7 @@ void WifiManager::handleInterfacesRemoved(DBusMessageIter &rootIter) {
   }
 }
 
-void WifiManager::handlePropertiesChanged(DBusMessage *msg,
+void WifiManager::handlePropertiesChangedDbus(DBusMessage *msg,
                                           DBusMessageIter &rootIter) {
 
   char *iface;

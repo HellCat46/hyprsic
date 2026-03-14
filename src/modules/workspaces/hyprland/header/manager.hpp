@@ -43,6 +43,10 @@ class HyprWSManager {
 
   long parseWorkspaceId(std::string_view);
   Json::Value executeQuery(const std::string &, std::string &);
+  
+  int SwitchToWS(int wsId);
+  int MoveToWS(int wsId, unsigned char monitorId, bool forw);
+  int SwitchSPWS(int wsId, std::string name);
 
 public:
   long activeWorkspaceId;
@@ -61,7 +65,4 @@ public:
   int GetWorkspaces();
   int GetMonitors();
   
-  int SwitchToWS(int wsId);
-  int MoveToWS(int wsId, unsigned char monitorId, bool forw);
-  int SwitchSPWS(int wsId, std::string name);
 };

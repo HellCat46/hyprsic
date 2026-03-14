@@ -40,21 +40,10 @@ struct RemoveCallback {
 class StatusNotifierManager {
   AppContext *ctx;
   std::string SNWXML;
-
-public:
   std::vector<RemoveCallback> removeCallbacks;
   std::map<std::string, StatusApp> registeredItems;
-  StatusNotifierManager(AppContext *appCtx);
-
-  void setupDBus();
-  void handleDbusMessage(DBusMessage *msg);
-
-  // DBus Introspectable and Properties Handler
-  void handleIntrospectCall(DBusMessage *msg);
-  void handleGetAllPropertiesCall(DBusMessage *msg);
-  void handleGetPropertyCall(DBusMessage *msg);
-  void handleNameOwnerChangedSignal(const char* name, const char* newOwner);
-
+  
+  
   // Functions to get Additional Info about Registered Items
   void getItemInfo(const std::string &itemService, StatusApp &outApp);
   void getMenuActions(const std::string &itemService, StatusApp &outApp);
@@ -65,4 +54,18 @@ public:
   // DBus Message Handler for Status Notifier Watcher Interface
   void handleRegisterStatusNotifierHost(DBusMessage *msg);
   void handleRegisterStatusNotifierItem(DBusMessage *msg);
+  
+  
+
+public:
+  StatusNotifierManager(AppContext *appCtx);
+
+  void setupDBus();
+  void handleDbusMessage(DBusMessage *msg);
+  
+  // DBus Introspectable and Properties Handler
+  void handleIntrospectCallDbus(DBusMessage *msg);
+  void handleGetAllPropertiesCallDbus(DBusMessage *msg);
+  void handleGetPropertyCallDbus(DBusMessage *msg);
+  void handleNameOwnerChangedSignalDbus(const char* name, const char* newOwner);
 };
