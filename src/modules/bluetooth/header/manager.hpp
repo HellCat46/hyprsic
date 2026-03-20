@@ -26,6 +26,60 @@ enum DevicePropFlags {
   DEVICE_TYPE = 32,
 };
 
+
+struct BtConnectRequest {
+    bool state;
+    std::string_view devPath;
+    
+    long int correlationId;
+};
+
+struct BtConnectResponse {
+    bool success;
+    std::string_view devPath;
+    
+    long int correlationId;
+};
+
+struct BtTrustRequest {
+    bool state;
+    std::string_view devPath;
+    
+    long int correlationId;
+};
+
+struct BtTrustResponse {
+    bool success;
+    std::string_view devPath;
+    
+    long int correlationId;
+};
+
+struct BtRemoveRequest {
+    std::string_view devPath;
+    
+    long int correlationId;
+};
+
+struct BtRemoveResponse {
+    bool success;
+    std::string_view devPath;
+    
+    long int correlationId;
+};
+
+struct BtSwitchDiscoveryRequest {
+    bool on;
+    
+    long int correlationId;
+};
+
+struct BtSwitchPowerRequest {
+    bool on;
+    
+    long int correlationId;
+};
+
 class BluetoothManager {
 private:
   AppContext *ctx;
@@ -36,17 +90,19 @@ private:
   
   
   // Device Operations
-  int connectDevice(bool state, std::string_view devPath);
-  int trustDevice(bool state, std::string_view devPath);
-  int removeDevice(std::string_view devPath);
+  int connectDevice(BtConnectRequest req);
+  int trustDevice(BtTrustRequest req);
+  int removeDevice(BtRemoveRequest req);
   int getDeviceList();
+  
+  int switchDiscovery(BtSwitchDiscoveryRequest req);
+  int switchPower(BtSwitchPowerRequest req);
 
 public:
   bool discovering, power;
   std::unordered_map<std::string, Device> devices;
 
-  int switchDiscovery(bool on);
-  int switchPower(bool on);
+
   
   // Monitor Changes Functions
   void addMatchRulesDbus();

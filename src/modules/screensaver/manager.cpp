@@ -6,7 +6,7 @@
 
 ScreenSaverManager::ScreenSaverManager(AppContext *ctx) : ctx(ctx){}
 
-int ScreenSaverManager::activateScreenSaver() {
+int ScreenSaverManager::activateScreenSaver(ScrnSvrActivateRequest req) {
 
   DBusMessage *msg = dbus_message_new_method_call(
       "org.freedesktop.ScreenSaver", "/org/freedesktop/ScreenSaver",
@@ -54,7 +54,7 @@ int ScreenSaverManager::activateScreenSaver() {
   return 0;
 }
 
-int ScreenSaverManager::deactivateScreenSaver() {
+int ScreenSaverManager::deactivateScreenSaver(ScrnSvrDeActivateRequest req) {
   DBusMessage *msg = dbus_message_new_method_call(
       "org.freedesktop.ScreenSaver", "/org/freedesktop/ScreenSaver",
       "org.freedesktop.ScreenSaver", "UnInhibit");

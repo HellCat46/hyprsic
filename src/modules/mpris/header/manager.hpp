@@ -13,6 +13,32 @@ struct PlayerTrack {
   uint64_t currPos, length;
 };
 
+struct MprisPlayPauseRequest {
+    long int correlationId;
+};
+
+struct MprisGetPlayerInfoRequest {
+    long int correlationId;
+};
+
+struct MprisGetPositionRequest {
+    long int correlationId;
+};
+
+struct MprisSetPositionRequest {
+    uint64_t position;
+    
+    long int correlationId;
+};
+
+struct MprisPreviousTrackRequest {
+    long int correlationId;
+};
+
+struct MprisNextTrackRequest {
+    long int correlationId;
+};
+
 class MprisManager {
   AppContext *ctx;
   std::vector<std::string> players;
@@ -21,18 +47,18 @@ class MprisManager {
   void addPlayer(const std::string &playerName);
   void removePlayer(const std::string &playerName);
 
-  bool PlayPause();
+  bool PlayPause(MprisPlayPauseRequest req);
   bool PlayPauseDbusCall(const char *player);
 
-  void GetPlayerInfo();
+  void GetPlayerInfo(MprisGetPlayerInfoRequest req);
   int GetPlayerInfoDbusCall(const char *player, PlayerTrack *track);
 
-  bool GetPosition();
+  bool GetPosition(MprisGetPositionRequest req);
   int GetCurrentPositionDbusCall();
 
-  int SetPosition(uint64_t position);
-  int PreviousTrack();
-  int NextTrack();
+  int SetPosition(MprisSetPositionRequest req);
+  int PreviousTrack(MprisPreviousTrackRequest req);
+  int NextTrack(MprisNextTrackRequest req);
 
 public:
   MprisManager(AppContext *appCtx);

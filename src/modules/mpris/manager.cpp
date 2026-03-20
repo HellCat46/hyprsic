@@ -53,7 +53,7 @@ MprisManager::MprisManager(AppContext *appCtx) : ctx(appCtx) {
   dbus_message_unref(msg);
 }
 
-bool MprisManager::PlayPause() {
+bool MprisManager::PlayPause(MprisPlayPauseRequest req) {
   if (playingTrack.playerName.empty()) {
     ctx->logger.LogError(TAG, "No player available to send PlayPause command.");
     return 1;
@@ -222,7 +222,7 @@ int MprisManager::GetCurrentPositionDbusCall() {
   return 0;
 }
 
-void MprisManager::GetPlayerInfo() {
+void MprisManager::GetPlayerInfo(MprisGetPlayerInfoRequest req) {
   for (const auto &player : players) {
 
     PlayerTrack track;
@@ -237,7 +237,7 @@ void MprisManager::GetPlayerInfo() {
   playingTrack.trackId = "";
 }
 
-bool MprisManager::GetPosition() {
+bool MprisManager::GetPosition(MprisGetPositionRequest req) {
   if (GetCurrentPositionDbusCall())
     return 1;
 
@@ -246,7 +246,7 @@ bool MprisManager::GetPosition() {
   return 0;
 }
 
-int MprisManager::SetPosition(uint64_t position) {
+int MprisManager::SetPosition(MprisSetPositionRequest req) {
   if (playingTrack.playerName.empty() || playingTrack.trackId.empty()) {
     ctx->logger.LogError(TAG, "No player available to set position.");
     return 1;
@@ -257,7 +257,7 @@ int MprisManager::SetPosition(uint64_t position) {
       "org.mpris.MediaPlayer2.Player", "SetPosition");
 
   const char *trackId = playingTrack.trackId.c_str();
-  int64_t pos = static_cast<int64_t>(position * 1000000);
+  int64_t pos = static_cast<int64_t>(req.position * 1000000);
 
   dbus_message_append_args(msg, DBUS_TYPE_OBJECT_PATH, &trackId,
                            DBUS_TYPE_INT64, &pos, DBUS_TYPE_INVALID);
@@ -275,7 +275,7 @@ int MprisManager::SetPosition(uint64_t position) {
   }
 
   ctx->logger.LogInfo(TAG,
-                      "Set position to " + std::to_string(position) + "s.");
+                      "Set position to " + std::to_string(req.position) + "s.");
 
   dbus_message_unref(msg);
   dbus_message_ref(reply);
@@ -283,7 +283,7 @@ int MprisManager::SetPosition(uint64_t position) {
   return 0;
 }
 
-int MprisManager::PreviousTrack() {
+int MprisManager::PreviousTrack(MprisPreviousTrackRequest req) {
   if (playingTrack.playerName.empty()) {
     ctx->logger.LogError(TAG,
                          "No player available to send PreviousTrack command.");
@@ -320,7 +320,7 @@ int MprisManager::PreviousTrack() {
   return 0;
 }
 
-int MprisManager::NextTrack() {
+int MprisManager::NextTrack(MprisNextTrackRequest req) {
   if (playingTrack.playerName.empty()) {
     ctx->logger.LogError(TAG, "No player available to send NextTrack command.");
     return 1;

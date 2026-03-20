@@ -1,9 +1,9 @@
 #pragma once
 
-#include "services/header/logging.hpp"
 #include "cstdlib"
 #include "cstring"
 #include "gtk/gtk.h"
+#include "services/header/logging.hpp"
 #include "string"
 #include <functional>
 #include <json/reader.h>
@@ -25,6 +25,27 @@ struct WSListenerData {
   unsigned char windowId;
 };
 
+struct HyprSwitchWSRequest {
+  int wsId;
+
+  long int correlationId;
+};
+
+struct HyprMoveWSRequest {
+  int wsId;
+  unsigned char monitorId;
+  bool forw;
+
+  long int correlationId;
+};
+
+struct HyprSwitchSPWSRequest {
+  int wsId;
+  std::string name;
+
+  long int correlationId;
+};
+
 class HyprWSManager {
   std::string sockPath;
   int evtSockfd;
@@ -43,10 +64,10 @@ class HyprWSManager {
 
   long parseWorkspaceId(std::string_view);
   Json::Value executeQuery(const std::string &, std::string &);
-  
-  int SwitchToWS(int wsId);
-  int MoveToWS(int wsId, unsigned char monitorId, bool forw);
-  int SwitchSPWS(int wsId, std::string name);
+
+  int SwitchToWS(HyprSwitchWSRequest req);
+  int MoveToWS(HyprMoveWSRequest req);
+  int SwitchSPWS(HyprSwitchSPWSRequest req);
 
 public:
   long activeWorkspaceId;
@@ -60,9 +81,8 @@ public:
                                     GtkWidget *spWSBox, unsigned char windowId)>
                      updateFunc,
                  GtkWidget *wsBox, GtkWidget *spWSBox, unsigned char windowId);
-  
+
   void liveEventListener();
   int GetWorkspaces();
   int GetMonitors();
-  
 };

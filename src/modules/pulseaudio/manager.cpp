@@ -177,15 +177,14 @@ void PulseAudioManager::getDevices() {
   pa_threaded_mainloop_unlock(mainLoop);
 }
 
-void PulseAudioManager::setVolume(const std::string &devName, bool isOutput,
-                                  uint32_t volume) {
+void PulseAudioManager::setVolume(PASetVolumeRequest req) {
   pa_cvolume paVolume;
-  pa_cvolume_set(&paVolume, 2, (uint32_t)((float)volume / 100 * 65535));
+  pa_cvolume_set(&paVolume, 2, (uint32_t)((float)req.volume / 100 * 65535));
 
   pa_threaded_mainloop_lock(mainLoop);
 
-  if (isOutput) {
-    auto it = outDevs.find(devName);
+  if (req.isOutput) {
+    auto it = outDevs.find(req.devName);
     if (it == outDevs.end()) {
       pa_threaded_mainloop_unlock(mainLoop);
       return;
@@ -198,7 +197,7 @@ void PulseAudioManager::setVolume(const std::string &devName, bool isOutput,
       pa_operation_unref(op);
 
   } else {
-    auto it = inDevs.find(devName);
+    auto it = inDevs.find(req.devName);
     if (it == inDevs.end()) {
       pa_threaded_mainloop_unlock(mainLoop);
       return;
@@ -214,12 +213,12 @@ void PulseAudioManager::setVolume(const std::string &devName, bool isOutput,
   pa_threaded_mainloop_unlock(mainLoop);
 }
 
-short PulseAudioManager::toggleMute(const std::string &devName, bool isOutput) {
+short PulseAudioManager::toggleMute(PAToggleMuteRequest req) {
   pa_threaded_mainloop_lock(mainLoop);
   bool ret = -1;
 
-  if (isOutput) {
-    auto it = outDevs.find(devName);
+  if (req.isOutput) {
+    auto it = outDevs.find(req.devName);
     if (it == outDevs.end()) {
       pa_threaded_mainloop_unlock(mainLoop);
       return -1;
@@ -234,7 +233,7 @@ short PulseAudioManager::toggleMute(const std::string &devName, bool isOutput) {
       ret = it->second.mute;
     }
   } else {
-    auto it = inDevs.find(devName);
+    auto it = inDevs.find(req.devName);
     if (it == inDevs.end()) {
       pa_threaded_mainloop_unlock(mainLoop);
       return -1;
@@ -254,33 +253,32 @@ short PulseAudioManager::toggleMute(const std::string &devName, bool isOutput) {
   return ret;
 }
 
-bool PulseAudioManager::updateDefDevice(const std::string &devName,
-                                        bool isOutput) {
+bool PulseAudioManager::updateDefDevice(PAUpdateDefDeviceRequest req) {
   pa_threaded_mainloop_lock(mainLoop);
   bool ret = false;
 
-  if (isOutput) {
-    auto it = outDevs.find(devName);
+  if (req.isOutput) {
+    auto it = outDevs.find(req.devName);
     if (it != outDevs.end()) {
 
-      auto op = pa_context_set_default_sink(pulseCtx, devName.c_str(),
+      auto op = pa_context_set_default_sink(pulseCtx, req.devName.c_str(),
                                             nullptr, nullptr);
       if (op) {
         pa_operation_unref(op);
-        defOutput = devName;
+        defOutput = req.devName;
         ret = true;
       }
     }
   } else {
 
-    auto it = inDevs.find(devName);
+    auto it = inDevs.find(req.devName);
     if (it != inDevs.end()) {
 
-      auto op = pa_context_set_default_source(pulseCtx, devName.c_str(),
+      auto op = pa_context_set_default_source(pulseCtx, req.devName.c_str(),
                                               nullptr, nullptr);
       if (op) {
         pa_operation_unref(op);
-        defInput = devName;
+        defInput = req.devName;
         ret = true;
       }
     }

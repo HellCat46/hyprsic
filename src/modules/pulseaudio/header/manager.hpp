@@ -17,6 +17,28 @@ struct PulseAudioDevice {
   std::vector<uint32_t> volume;
 };
 
+struct PASetVolumeRequest {
+    std::string devName;
+    bool isOutput;
+    uint32_t volume;
+    
+    long int correlationId;
+};
+
+struct PAToggleMuteRequest {
+    std::string devName;
+    bool isOutput;
+    
+    long int correlationId;
+};
+
+struct PAUpdateDefDeviceRequest {
+    std::string devName;
+    bool isOutput;
+    
+    long int correlationId;
+};
+
 class PulseAudioManager {
   AppContext *ctx;
   pa_context *pulseCtx;
@@ -33,9 +55,9 @@ class PulseAudioManager {
                                  const pa_source_info *info, int eol,
                                  void *data);
 
-  void setVolume(const std::string &devName, bool isOutput, uint32_t volume);
-  short toggleMute(const std::string &devName, bool isOutput);
-  bool updateDefDevice(const std::string &devName, bool isOutput);
+  void setVolume(PASetVolumeRequest req);
+  short toggleMute(PAToggleMuteRequest req);
+  bool updateDefDevice(PAUpdateDefDeviceRequest req);
 
   void getDevices();
 
