@@ -1,6 +1,7 @@
 #include "header/manager.hpp"
 #include "dbus/dbus-protocol.h"
 #include "dbus/dbus.h"
+#include "services/header/comm_types.hpp"
 #include "utils/helper_func.hpp"
 #include <algorithm>
 #include <cstring>
@@ -53,10 +54,14 @@ MprisManager::MprisManager(AppContext *appCtx) : ctx(appCtx) {
   dbus_message_unref(msg);
 }
 
-bool MprisManager::PlayPause(MprisPlayPauseRequest req) {
+ResponseMessage MprisManager::PlayPause(MprisPlayPauseRequest req) {
+    ResponseMessage resp{.success = false, .errMsg = "", .correlationId = req.correlationId};
+    
   if (playingTrack.playerName.empty()) {
-    ctx->logger.LogError(TAG, "No player available to send PlayPause command.");
-    return 1;
+    resp.errMsg = "No player available to send PlayPause command.";
+    ctx->logger.LogError(TAG, resp.errMsg);
+    
+    return resp;
   }
 
   DBusMessage *msg = dbus_message_new_method_call(
@@ -64,20 +69,23 @@ bool MprisManager::PlayPause(MprisPlayPauseRequest req) {
       "org.mpris.MediaPlayer2.Player", "PlayPause");
 
   if (!msg) {
-    ctx->logger.LogError(TAG, "Failed to create PlayPause message for player.");
-    return 1;
+    resp.errMsg =  "Failed to create PlayPause message for player.";
+    ctx->logger.LogError(TAG, resp.errMsg);
+    
+    return resp;
   }
 
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
       ctx->dbus.ssnConn, msg, -1, &ctx->dbus.ssnErr);
 
   if (!reply && dbus_error_is_set(&ctx->dbus.ssnErr)) {
-    std::string errMsg = "Failed to get a reply for PlayPause. ";
-    errMsg += ctx->dbus.ssnErr.message;
-    ctx->logger.LogError(TAG, errMsg);
+    resp.errMsg = "Failed to get a reply for PlayPause. ";
+    resp.errMsg += ctx->dbus.ssnErr.message;
+    ctx->logger.LogError(TAG, resp.errMsg);
     dbus_error_free(&ctx->dbus.ssnErr);
     dbus_message_unref(msg);
-    return 1;
+    
+    return resp;
   }
 
   ctx->logger.LogInfo(TAG, "Sent PlayPause command to player.");
@@ -85,7 +93,8 @@ bool MprisManager::PlayPause(MprisPlayPauseRequest req) {
   dbus_message_unref(msg);
   dbus_message_ref(reply);
 
-  return 0;
+  resp.success = true;
+  return resp;
 }
 
 int MprisManager::GetPlayerInfoDbusCall(const char *player,
@@ -222,7 +231,9 @@ int MprisManager::GetCurrentPositionDbusCall() {
   return 0;
 }
 
-void MprisManager::GetPlayerInfo(MprisGetPlayerInfoRequest req) {
+ResponseMessage MprisManager::GetPlayerInfo(MprisGetPlayerInfoRequest req) {
+    ResponseMessage resp{.success = false, .errMsg = "", .correlationId = req.correlationId};
+    
   for (const auto &player : players) {
 
     PlayerTrack track;
@@ -230,26 +241,41 @@ void MprisManager::GetPlayerInfo(MprisGetPlayerInfoRequest req) {
 
     if (res == 0 && !track.title.empty()) {
       playingTrack = track;
-      return;
+      resp.success = true;
+      return resp;
     }
   }
 
   playingTrack.trackId = "";
+  resp.errMsg = "No Player Found";
+  return resp;
 }
 
-bool MprisManager::GetPosition(MprisGetPositionRequest req) {
-  if (GetCurrentPositionDbusCall())
-    return 1;
+ResponseMessage MprisManager::GetPosition(MprisGetPositionRequest req) {
+    ResponseMessage resp{
+        .success = false, .errMsg = "", .correlationId = req.correlationId};
+
+  if (GetCurrentPositionDbusCall()){
+    resp.errMsg = "Failed to get Current Position from Dbus Interface";
+    return resp;
+  }
 
   playingTrack.currPos /= 1000000;
   playingTrack.length /= 1000000;
-  return 0;
+  
+  resp.success = true;
+  return resp;
 }
 
-int MprisManager::SetPosition(MprisSetPositionRequest req) {
+ResponseMessage MprisManager::SetPosition(MprisSetPositionRequest req) {
+    ResponseMessage resp{
+        .success = false, .errMsg = "", .correlationId = req.correlationId};
+
   if (playingTrack.playerName.empty() || playingTrack.trackId.empty()) {
-    ctx->logger.LogError(TAG, "No player available to set position.");
-    return 1;
+      resp.errMsg = "No player available to set position.";
+    ctx->logger.LogError(TAG, resp.errMsg);
+    
+    return resp;
   }
 
   DBusMessage *msg = dbus_message_new_method_call(
@@ -266,12 +292,13 @@ int MprisManager::SetPosition(MprisSetPositionRequest req) {
       ctx->dbus.ssnConn, msg, -1, &ctx->dbus.ssnErr);
 
   if (!reply && dbus_error_is_set(&ctx->dbus.ssnErr)) {
-    std::string errMsg = "Failed to get a reply for SetPosition. ";
-    errMsg += ctx->dbus.ssnErr.message;
-    ctx->logger.LogError(TAG, errMsg);
+    resp.errMsg = "Failed to get a reply for SetPosition. ";
+    resp.errMsg += ctx->dbus.ssnErr.message;
+    ctx->logger.LogError(TAG, resp.errMsg);
     dbus_error_free(&ctx->dbus.ssnErr);
     dbus_message_unref(msg);
-    return 1;
+    
+    return resp;
   }
 
   ctx->logger.LogInfo(TAG,
@@ -280,14 +307,19 @@ int MprisManager::SetPosition(MprisSetPositionRequest req) {
   dbus_message_unref(msg);
   dbus_message_ref(reply);
 
-  return 0;
+  resp.success = true;
+  return resp;
 }
 
-int MprisManager::PreviousTrack(MprisPreviousTrackRequest req) {
+ResponseMessage MprisManager::PreviousTrack(MprisPreviousTrackRequest req) {
+    ResponseMessage resp{.success = false, .errMsg = "", .correlationId = req.correlationId};
+    
   if (playingTrack.playerName.empty()) {
+      resp.errMsg = "No player available to send PreviousTrack command."; 
     ctx->logger.LogError(TAG,
-                         "No player available to send PreviousTrack command.");
-    return 1;
+        resp.errMsg);
+    
+    return resp;
   }
 
   DBusMessage *msg = dbus_message_new_method_call(
@@ -295,21 +327,25 @@ int MprisManager::PreviousTrack(MprisPreviousTrackRequest req) {
       "org.mpris.MediaPlayer2.Player", "Previous");
 
   if (!msg) {
+      resp.errMsg = "Failed to create PreviousTrack message for player."; 
     ctx->logger.LogError(TAG,
-                         "Failed to create PreviousTrack message for player.");
-    return 1;
+        resp.errMsg);
+    
+    return resp;
   }
 
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
       ctx->dbus.ssnConn, msg, -1, &ctx->dbus.ssnErr);
 
   if (!reply && dbus_error_is_set(&ctx->dbus.ssnErr)) {
-    std::string errMsg = "Failed to get a reply for PreviousTrack. ";
-    errMsg += ctx->dbus.ssnErr.message;
-    ctx->logger.LogError(TAG, errMsg);
+    resp.errMsg = "Failed to get a reply for PreviousTrack. ";
+    resp.errMsg += ctx->dbus.ssnErr.message;
+    
+    ctx->logger.LogError(TAG, resp.errMsg);
     dbus_error_free(&ctx->dbus.ssnErr);
     dbus_message_unref(msg);
-    return 1;
+    
+    return resp;
   }
 
   ctx->logger.LogInfo(TAG, "Sent PreviousTrack command to player.");
@@ -317,13 +353,18 @@ int MprisManager::PreviousTrack(MprisPreviousTrackRequest req) {
   dbus_message_unref(msg);
   dbus_message_ref(reply);
 
-  return 0;
+  resp.success = true;
+  return resp;
 }
 
-int MprisManager::NextTrack(MprisNextTrackRequest req) {
+ResponseMessage MprisManager::NextTrack(MprisNextTrackRequest req) {
+    ResponseMessage resp{.success = false, .errMsg = "", .correlationId = req.correlationId};
+    
   if (playingTrack.playerName.empty()) {
-    ctx->logger.LogError(TAG, "No player available to send NextTrack command.");
-    return 1;
+    resp.errMsg = "No player available to send NextTrack command.";
+    ctx->logger.LogError(TAG, resp.errMsg);
+    
+    return resp;
   }
 
   DBusMessage *msg = dbus_message_new_method_call(
@@ -331,20 +372,24 @@ int MprisManager::NextTrack(MprisNextTrackRequest req) {
       "org.mpris.MediaPlayer2.Player", "Next");
 
   if (!msg) {
-    ctx->logger.LogError(TAG, "Failed to create NextTrack message for player.");
-    return 1;
+    resp.errMsg = "Failed to create NextTrack message for player.";
+    ctx->logger.LogError(TAG, resp.errMsg);
+    
+    return resp;
   }
 
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
       ctx->dbus.ssnConn, msg, -1, &ctx->dbus.ssnErr);
 
   if (!reply && dbus_error_is_set(&ctx->dbus.ssnErr)) {
-    std::string errMsg = "Failed to get a reply for NextTrack. ";
-    errMsg += ctx->dbus.ssnErr.message;
-    ctx->logger.LogError(TAG, errMsg);
+    resp.errMsg = "Failed to get a reply for NextTrack. ";
+    resp.errMsg += ctx->dbus.ssnErr.message;
+    
+    ctx->logger.LogError(TAG, resp.errMsg);
     dbus_error_free(&ctx->dbus.ssnErr);
     dbus_message_unref(msg);
-    return 1;
+    
+    return resp;
   }
 
   ctx->logger.LogInfo(TAG, "Sent NextTrack command to player.");
@@ -352,7 +397,8 @@ int MprisManager::NextTrack(MprisNextTrackRequest req) {
   dbus_message_unref(msg);
   dbus_message_ref(reply);
 
-  return 0;
+  resp.success = true;
+  return resp;
 }
 
 void MprisManager::addPlayer(const std::string &playerName) {

@@ -55,14 +55,18 @@ int BluetoothManager::setup() {
   return 0;
 }
 
-int BluetoothManager::switchPower(BtSwitchPowerRequest req) {
+ResponseMessage BluetoothManager::switchPower(BtSwitchPowerRequest req) {
+  ResponseMessage resp{
+      .success = false, .errMsg = "", .correlationId = req.correlationId};
+
   DBusMessage *msg = dbus_message_new_method_call(
       "org.bluez", "/org/bluez/hci0", "org.freedesktop.DBus.Properties", "Set");
   if (!msg) {
-    std::string errMsg = "Failed to create a message. ";
-    errMsg += ctx->dbus.sysErr.message;
-    ctx->logger.LogError(TAG, errMsg);
-    return 1;
+    resp.errMsg = "Failed to create a message. ";
+    resp.errMsg += ctx->dbus.sysErr.message;
+    ctx->logger.LogError(TAG, resp.errMsg);
+
+    return resp;
   }
 
   const char *iface = "org.bluez.Adapter1";
@@ -82,11 +86,12 @@ int BluetoothManager::switchPower(BtSwitchPowerRequest req) {
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
       ctx->dbus.sysConn, msg, -1, &(ctx->dbus.sysErr));
   if (!reply && dbus_error_is_set(&(ctx->dbus.sysErr))) {
-    std::string errMsg = "Failed to get a reply. ";
-    errMsg += ctx->dbus.sysErr.message;
-    ctx->logger.LogError(TAG, errMsg);
+    resp.errMsg = "Failed to get a reply. ";
+    resp.errMsg += ctx->dbus.sysErr.message;
+    ctx->logger.LogError(TAG, resp.errMsg);
     dbus_error_free(&ctx->dbus.sysErr);
-    return 1;
+
+    return resp;
   }
 
   std::string logMsg = "Turned ";
@@ -97,27 +102,35 @@ int BluetoothManager::switchPower(BtSwitchPowerRequest req) {
   dbus_message_unref(msg);
   dbus_message_ref(reply);
   this->power = req.on;
-  return 0;
+
+  resp.success = true;
+  return resp;
 }
 
-int BluetoothManager::switchDiscovery(BtSwitchDiscoveryRequest req) {
+ResponseMessage
+BluetoothManager::switchDiscovery(BtSwitchDiscoveryRequest req) {
+  ResponseMessage resp{
+      .success = false, .errMsg = "", .correlationId = req.correlationId};
+
   DBusMessage *msg = dbus_message_new_method_call(
       "org.bluez", "/org/bluez/hci0", "org.bluez.Adapter1",
       req.on ? "StartDiscovery" : "StopDiscovery");
 
   if (!msg) {
-    ctx->logger.LogError(TAG, "Failed to create a message.");
-    return 1;
+    resp.errMsg = "Failed to create a dbus message.";
+
+    ctx->logger.LogError(TAG, resp.errMsg);
+    return resp;
   }
 
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
       ctx->dbus.sysConn, msg, -1, &(ctx->dbus.sysErr));
   if (!reply && dbus_error_is_set(&(ctx->dbus.sysErr))) {
-    std::string errMsg = "Failed to get a reply. ";
-    errMsg += ctx->dbus.sysErr.message;
-    ctx->logger.LogError(TAG, errMsg);
+    resp.errMsg = "Failed to get a reply. ";
+    resp.errMsg += ctx->dbus.sysErr.message;
+    ctx->logger.LogError(TAG, resp.errMsg);
     dbus_error_free(&ctx->dbus.sysErr);
-    return 1;
+    return resp;
   }
 
   dbus_message_unref(msg);
@@ -129,7 +142,8 @@ int BluetoothManager::switchDiscovery(BtSwitchDiscoveryRequest req) {
   ctx->logger.LogInfo(TAG, logMsg);
   this->discovering = req.on;
 
-  return 0;
+  resp.success = true;
+  return resp;
 }
 
 void BluetoothManager::addMatchRulesDbus() {
@@ -259,7 +273,7 @@ void BluetoothManager::handleInterfacesRemovedDbus(DBusMessageIter &rootIter) {
 }
 
 void BluetoothManager::handlePropertiesChangedDbus(DBusMessage *msg,
-                                               DBusMessageIter &rootIter) {
+                                                   DBusMessageIter &rootIter) {
   const char *path = dbus_message_get_path(msg);
   if (std::strlen(path) > 37)
     return;
@@ -272,7 +286,7 @@ void BluetoothManager::handlePropertiesChangedDbus(DBusMessage *msg,
                            "Unknown Format. Skipping.");
     return;
   }
-  
+
   std::string addr = path + 4; // Move past "dev_"
   for (unsigned long i = 0; i < addr.length(); i++) {
     if (addr[i] == '_')
@@ -509,7 +523,10 @@ int BluetoothManager::getPropertyVal(const char *prop) {
   return -1;
 }
 
-int BluetoothManager::connectDevice(BtConnectRequest req) {
+ResponseMessage BluetoothManager::connectDevice(BtConnectRequest req) {
+  ResponseMessage resp{
+      .success = false, .errMsg = "", .correlationId = req.correlationId};
+
   std::string logMsg = req.state ? "Connecting" : "Disconnecting";
   logMsg += " to Device: ";
   logMsg += req.devPath;
@@ -519,18 +536,21 @@ int BluetoothManager::connectDevice(BtConnectRequest req) {
       "org.bluez", req.devPath.data(), "org.bluez.Device1",
       req.state ? "Connect" : "Disconnect");
   if (!msg) {
-    ctx->logger.LogError(TAG, "Failed to create a message.");
-    return 1;
+    resp.errMsg = "Failed to create a dbus message.";
+    ctx->logger.LogError(TAG, resp.errMsg);
+    
+    return resp;
   }
 
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
       ctx->dbus.sysConn, msg, -1, &(ctx->dbus.sysErr));
   if (!reply && dbus_error_is_set(&(ctx->dbus.sysErr))) {
-    std::string errMsg = "Failed to get a reply. ";
-    errMsg += ctx->dbus.sysErr.message;
-    ctx->logger.LogError(TAG, errMsg);
+    resp.errMsg = "Failed to get a reply. ";
+    resp.errMsg += ctx->dbus.sysErr.message;
+    ctx->logger.LogError(TAG, resp.errMsg);
     dbus_error_free(&ctx->dbus.sysErr);
-    return 1;
+    
+    return resp;
   }
 
   dbus_message_unref(msg);
@@ -541,10 +561,13 @@ int BluetoothManager::connectDevice(BtConnectRequest req) {
   successMsg += req.devPath;
   ctx->logger.LogInfo(TAG, successMsg);
 
-  return 0;
+  resp.success = true;
+  return resp;
 }
 
-int BluetoothManager::trustDevice(BtTrustRequest req) {
+ResponseMessage BluetoothManager::trustDevice(BtTrustRequest req) {
+    ResponseMessage resp{.success = false, .errMsg = "", .correlationId = req.correlationId};
+    
   std::string logMsg = "Trying to ";
   logMsg += req.state ? "Trust" : "Untrust";
   logMsg += " Device: ";
@@ -553,10 +576,11 @@ int BluetoothManager::trustDevice(BtTrustRequest req) {
 
   size_t pos = req.devPath.find('_');
   if (pos == std::string_view::npos) {
-    std::string errMsg = "Invalid Device Path Format: ";
-    errMsg += req.devPath;
-    ctx->logger.LogError(TAG, errMsg);
-    return 1;
+    resp.errMsg = "Invalid Device Path Format: ";
+    resp.errMsg += req.devPath;
+    ctx->logger.LogError(TAG, resp.errMsg);
+    
+    return resp;
   }
 
   std::string path = std::string(req.devPath.substr(pos + 1));
@@ -564,17 +588,21 @@ int BluetoothManager::trustDevice(BtTrustRequest req) {
 
   const auto &devIt = devices.find(path.c_str());
   if (devIt == devices.end()) {
-    std::string errMsg = "Device not found in Device List: ";
-    errMsg += req.devPath;
-    ctx->logger.LogError(TAG, errMsg);
-    return 1;
+    resp.errMsg = "Device not found in Device List: ";
+    resp.errMsg += req.devPath;
+    ctx->logger.LogError(TAG, resp.errMsg);
+    
+    return resp;
   }
 
-  DBusMessage *msg = dbus_message_new_method_call(
-      "org.bluez", req.devPath.data(), "org.freedesktop.DBus.Properties", "Set");
+  DBusMessage *msg =
+      dbus_message_new_method_call("org.bluez", req.devPath.data(),
+                                   "org.freedesktop.DBus.Properties", "Set");
   if (!msg) {
-    ctx->logger.LogError(TAG, "Failed to create a message.");
-    return 1;
+    resp.errMsg = "Failed to create a dbus message";
+    ctx->logger.LogError(TAG, resp.errMsg);
+    
+    return resp;
   }
 
   const char *iface = "org.bluez.Device1";
@@ -594,11 +622,11 @@ int BluetoothManager::trustDevice(BtTrustRequest req) {
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
       ctx->dbus.sysConn, msg, -1, &(ctx->dbus.sysErr));
   if (!reply && dbus_error_is_set(&(ctx->dbus.sysErr))) {
-    std::string errMsg = "Failed to get a reply. ";
-    errMsg += ctx->dbus.sysErr.message;
-    ctx->logger.LogError(TAG, errMsg);
+    resp.errMsg = "Failed to get a reply. ";
+    resp.errMsg += ctx->dbus.sysErr.message;
+    ctx->logger.LogError(TAG, resp.errMsg);
     dbus_error_free(&ctx->dbus.sysErr);
-    return 1;
+    return resp;
   }
 
   dbus_message_unref(msg);
@@ -608,17 +636,23 @@ int BluetoothManager::trustDevice(BtTrustRequest req) {
   successMsg += req.devPath;
   ctx->logger.LogInfo(TAG, successMsg);
 
-  return 0;
+  resp.success = true;
+  return resp;
 }
 
-int BluetoothManager::removeDevice(BtRemoveRequest req) {
-  ctx->logger.LogInfo(TAG, "Trying to Remove Device: " + std::string(req.devPath));
+ResponseMessage BluetoothManager::removeDevice(BtRemoveRequest req) {
+  ResponseMessage resp{
+      .success = false, .errMsg = "", .correlationId = req.correlationId};
+  ctx->logger.LogInfo(TAG,
+                      "Trying to Remove Device: " + std::string(req.devPath));
 
   DBusMessage *msg = dbus_message_new_method_call(
       "org.bluez", "/org/bluez/hci0", "org.bluez.Adapter1", "RemoveDevice");
   if (!msg) {
-    ctx->logger.LogError(TAG, "Failed to create a message.");
-    return 1;
+    resp.errMsg = "Failed to create a dbus message.";
+    ctx->logger.LogError(TAG, resp.errMsg);
+
+    return resp;
   }
 
   DBusMessageIter args;
@@ -629,17 +663,18 @@ int BluetoothManager::removeDevice(BtRemoveRequest req) {
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
       ctx->dbus.sysConn, msg, -1, &(ctx->dbus.sysErr));
   if (!reply && dbus_error_is_set(&(ctx->dbus.sysErr))) {
-    std::string errMsg = "Failed to get a reply. ";
-    errMsg += ctx->dbus.sysErr.message;
-    ctx->logger.LogError(TAG, errMsg);
+    resp.errMsg = "Failed to get a dbus reply.";
+    resp.errMsg += ctx->dbus.sysErr.message;
+    ctx->logger.LogError(TAG, resp.errMsg);
     dbus_error_free(&ctx->dbus.sysErr);
-    return 1;
+    return resp;
   }
 
   dbus_message_unref(msg);
   dbus_message_ref(reply);
 
-  return 0;
+  resp.success = true;
+  return resp;
 }
 
 unsigned char BluetoothManager::setDeviceProps(Device &dev,

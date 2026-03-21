@@ -1,4 +1,5 @@
 #pragma once
+#include "services/header/comm_types.hpp"
 #include "services/header/context.hpp"
 #include "string"
 #include <cstdint>
@@ -7,6 +8,7 @@
 #include <pulse/introspect.h>
 #include <pulse/thread-mainloop.h>
 #include <string>
+#include <variant>
 #include <vector>
 
 struct PulseAudioDevice {
@@ -39,6 +41,7 @@ struct PAUpdateDefDeviceRequest {
     long int correlationId;
 };
 
+using PARequest = std::variant<PASetVolumeRequest, PAToggleMuteRequest, PAUpdateDefDeviceRequest>;
 class PulseAudioManager {
   AppContext *ctx;
   pa_context *pulseCtx;
@@ -55,9 +58,9 @@ class PulseAudioManager {
                                  const pa_source_info *info, int eol,
                                  void *data);
 
-  void setVolume(PASetVolumeRequest req);
-  short toggleMute(PAToggleMuteRequest req);
-  bool updateDefDevice(PAUpdateDefDeviceRequest req);
+  ResponseMessage setVolume(PASetVolumeRequest req);
+  ResponseMessage toggleMute(PAToggleMuteRequest req);
+  ResponseMessage updateDefDevice(PAUpdateDefDeviceRequest req);
 
   void getDevices();
 
@@ -66,6 +69,8 @@ public:
 
   std::string defOutput, defInput;
   std::map<std::string, PulseAudioDevice> outDevs, inDevs;
+  
+  ResponseMessage handle(const PARequest& msg);
 
   ~PulseAudioManager();
 };

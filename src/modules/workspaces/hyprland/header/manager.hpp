@@ -3,6 +3,7 @@
 #include "cstdlib"
 #include "cstring"
 #include "gtk/gtk.h"
+#include "services/header/comm_types.hpp"
 #include "services/header/logging.hpp"
 #include "string"
 #include <functional>
@@ -10,6 +11,7 @@
 #include <string>
 #include <string_view>
 #include <thread>
+#include <variant>
 #include <vector>
 
 struct Workspace {
@@ -46,6 +48,8 @@ struct HyprSwitchSPWSRequest {
   long int correlationId;
 };
 
+using HyprRequest =
+    std::variant<HyprSwitchSPWSRequest, HyprSwitchWSRequest, HyprMoveWSRequest>;
 class HyprWSManager {
   std::string sockPath;
   int evtSockfd;
@@ -65,9 +69,9 @@ class HyprWSManager {
   long parseWorkspaceId(std::string_view);
   Json::Value executeQuery(const std::string &, std::string &);
 
-  int SwitchToWS(HyprSwitchWSRequest req);
-  int MoveToWS(HyprMoveWSRequest req);
-  int SwitchSPWS(HyprSwitchSPWSRequest req);
+  ResponseMessage SwitchToWS(HyprSwitchWSRequest req);
+  ResponseMessage MoveToWS(HyprMoveWSRequest req);
+  ResponseMessage SwitchSPWS(HyprSwitchSPWSRequest req);
 
 public:
   long activeWorkspaceId;
@@ -85,4 +89,6 @@ public:
   void liveEventListener();
   int GetWorkspaces();
   int GetMonitors();
+
+  ResponseMessage handle(const HyprRequest &msg);
 };

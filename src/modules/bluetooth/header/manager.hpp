@@ -1,5 +1,6 @@
 #pragma once
 
+#include "services/header/comm_types.hpp"
 #include "services/header/context.hpp"
 #include "cstring"
 #include "dbus/dbus.h"
@@ -8,6 +9,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <variant>
 
 struct Device {
   std::string addr, name, path, deviceType;
@@ -34,13 +36,6 @@ struct BtConnectRequest {
     long int correlationId;
 };
 
-struct BtConnectResponse {
-    bool success;
-    std::string_view devPath;
-    
-    long int correlationId;
-};
-
 struct BtTrustRequest {
     bool state;
     std::string_view devPath;
@@ -48,21 +43,7 @@ struct BtTrustRequest {
     long int correlationId;
 };
 
-struct BtTrustResponse {
-    bool success;
-    std::string_view devPath;
-    
-    long int correlationId;
-};
-
 struct BtRemoveRequest {
-    std::string_view devPath;
-    
-    long int correlationId;
-};
-
-struct BtRemoveResponse {
-    bool success;
     std::string_view devPath;
     
     long int correlationId;
@@ -80,6 +61,8 @@ struct BtSwitchPowerRequest {
     long int correlationId;
 };
 
+
+using BtRequest = std::variant<BtConnectRequest, BtTrustRequest, BtRemoveRequest, BtSwitchDiscoveryRequest, BtSwitchPowerRequest>;
 class BluetoothManager {
 private:
   AppContext *ctx;
@@ -90,15 +73,15 @@ private:
   
   
   // Device Operations
-  int connectDevice(BtConnectRequest req);
-  int trustDevice(BtTrustRequest req);
-  int removeDevice(BtRemoveRequest req);
-  int getDeviceList();
+  ResponseMessage connectDevice(BtConnectRequest req);
+  ResponseMessage trustDevice(BtTrustRequest req);
+  ResponseMessage removeDevice(BtRemoveRequest req);
+  ResponseMessage switchDiscovery(BtSwitchDiscoveryRequest req);
+  ResponseMessage switchPower(BtSwitchPowerRequest req);
   
-  int switchDiscovery(BtSwitchDiscoveryRequest req);
-  int switchPower(BtSwitchPowerRequest req);
-
+  int getDeviceList();
 public:
+
   bool discovering, power;
   std::unordered_map<std::string, Device> devices;
 
@@ -112,4 +95,6 @@ public:
 
   BluetoothManager(AppContext *ctx);
   int setup();
+  
+  ResponseMessage handle(const BtRequest& msg);
 };

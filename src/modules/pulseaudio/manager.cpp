@@ -1,4 +1,5 @@
 #include "header/manager.hpp"
+#include "services/header/comm_types.hpp"
 #include <pulse/context.h>
 #include <pulse/introspect.h>
 #include <pulse/operation.h>
@@ -177,7 +178,10 @@ void PulseAudioManager::getDevices() {
   pa_threaded_mainloop_unlock(mainLoop);
 }
 
-void PulseAudioManager::setVolume(PASetVolumeRequest req) {
+ResponseMessage PulseAudioManager::setVolume(PASetVolumeRequest req) {
+    ResponseMessage resp{
+        .success = false, .errMsg = "", .correlationId = req.correlationId};
+
   pa_cvolume paVolume;
   pa_cvolume_set(&paVolume, 2, (uint32_t)((float)req.volume / 100 * 65535));
 
@@ -187,7 +191,9 @@ void PulseAudioManager::setVolume(PASetVolumeRequest req) {
     auto it = outDevs.find(req.devName);
     if (it == outDevs.end()) {
       pa_threaded_mainloop_unlock(mainLoop);
-      return;
+      
+      resp.errMsg = "Failed to Set Volume. Output Device Not Found: " + req.devName;
+      return resp;
     }
 
     auto op = pa_context_set_sink_volume_by_index(
@@ -200,7 +206,9 @@ void PulseAudioManager::setVolume(PASetVolumeRequest req) {
     auto it = inDevs.find(req.devName);
     if (it == inDevs.end()) {
       pa_threaded_mainloop_unlock(mainLoop);
-      return;
+      
+      resp.errMsg = "Failed to Set Volume. Input Device Not Found: " + req.devName;
+      return resp;
     }
 
     auto op = pa_context_set_source_volume_by_index(
@@ -211,17 +219,24 @@ void PulseAudioManager::setVolume(PASetVolumeRequest req) {
   }
 
   pa_threaded_mainloop_unlock(mainLoop);
+  
+  resp.success = true;
+  return resp;
 }
 
-short PulseAudioManager::toggleMute(PAToggleMuteRequest req) {
+ResponseMessage PulseAudioManager::toggleMute(PAToggleMuteRequest req) {
+    ResponseMessage resp{
+        .success = false, .errMsg = "", .correlationId = req.correlationId};
+
   pa_threaded_mainloop_lock(mainLoop);
-  bool ret = -1;
 
   if (req.isOutput) {
     auto it = outDevs.find(req.devName);
     if (it == outDevs.end()) {
       pa_threaded_mainloop_unlock(mainLoop);
-      return -1;
+      
+      resp.errMsg = "Failed to Toggle Mute. Output Device Not Found: " + req.devName;
+      return resp;
     }
 
     auto op = pa_context_set_sink_mute_by_index(
@@ -230,13 +245,15 @@ short PulseAudioManager::toggleMute(PAToggleMuteRequest req) {
     if (op) {
       it->second.mute = !it->second.mute;
       pa_operation_unref(op);
-      ret = it->second.mute;
+      resp.success = it->second.mute;
     }
   } else {
     auto it = inDevs.find(req.devName);
     if (it == inDevs.end()) {
       pa_threaded_mainloop_unlock(mainLoop);
-      return -1;
+      
+      resp.errMsg = "Failed to Toggle Mute. Input Device Not Found: " + req.devName;
+      return resp;
     }
 
     auto op = pa_context_set_source_mute_by_index(
@@ -245,17 +262,20 @@ short PulseAudioManager::toggleMute(PAToggleMuteRequest req) {
     if (op) {
       it->second.mute = !it->second.mute;
       pa_operation_unref(op);
-      ret = it->second.mute;
+      resp.success = it->second.mute;
     }
   }
 
   pa_threaded_mainloop_unlock(mainLoop);
-  return ret;
+  
+  return resp;
 }
 
-bool PulseAudioManager::updateDefDevice(PAUpdateDefDeviceRequest req) {
+ResponseMessage PulseAudioManager::updateDefDevice(PAUpdateDefDeviceRequest req) {
+    ResponseMessage resp{
+        .success = false, .errMsg = "Failed to update default device", .correlationId = req.correlationId};
+
   pa_threaded_mainloop_lock(mainLoop);
-  bool ret = false;
 
   if (req.isOutput) {
     auto it = outDevs.find(req.devName);
@@ -266,7 +286,7 @@ bool PulseAudioManager::updateDefDevice(PAUpdateDefDeviceRequest req) {
       if (op) {
         pa_operation_unref(op);
         defOutput = req.devName;
-        ret = true;
+        resp.success = true;
       }
     }
   } else {
@@ -279,13 +299,13 @@ bool PulseAudioManager::updateDefDevice(PAUpdateDefDeviceRequest req) {
       if (op) {
         pa_operation_unref(op);
         defInput = req.devName;
-        ret = true;
+        resp.success = true;
       }
     }
   }
 
   pa_threaded_mainloop_unlock(mainLoop);
-  return ret;
+  return resp;
 }
 
 PulseAudioManager::~PulseAudioManager() {

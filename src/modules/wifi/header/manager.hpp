@@ -1,9 +1,11 @@
 #pragma once
 
 #include "dbus/dbus.h"
+#include "services/header/comm_types.hpp"
 #include "services/header/context.hpp"
 #include <string>
 #include <unordered_map>
+#include <variant>
 
 struct WifiScanRequest {
   long int correlationId;
@@ -37,6 +39,8 @@ struct WifiStation {
   short rssi;
 };
 
+
+using WifiRequest = std::variant<WifiConnectRequest, WifiDisconnectRequest, WifiForgetRequest, WifiScanRequest, WifiSubmitPassphraseRequest>;
 class WifiManager {
   AppContext *ctx;
   std::string devPath, devAddr, devName, devAdapter, agentPath;
@@ -52,11 +56,11 @@ class WifiManager {
   int GetDeviceInfo(std::string devPath, WifiStation &station);
 
   // Action methods
-  void Scan(WifiScanRequest req);
-  void Connect(WifiConnectRequest req);
-  void Disconnect(WifiDisconnectRequest req);
-  void Forget(WifiForgetRequest req);
-  void SubmitPassphrase(WifiSubmitPassphraseRequest req);
+  ResponseMessage Scan(WifiScanRequest req);
+  ResponseMessage Connect(WifiConnectRequest req);
+  ResponseMessage Disconnect(WifiDisconnectRequest req);
+  ResponseMessage Forget(WifiForgetRequest req);
+  ResponseMessage SubmitPassphrase(WifiSubmitPassphraseRequest req);
 
 public:
   std::unordered_map<std::string, WifiStation> devices;
@@ -74,4 +78,6 @@ public:
   void handleRequestCancelDbus();
   void handleInterfacesRemovedDbus(DBusMessageIter &rootIter);
   void handlePropertiesChangedDbus(DBusMessage *msg, DBusMessageIter &rootIter);
+  
+  ResponseMessage handle(const WifiRequest& msg);
 };

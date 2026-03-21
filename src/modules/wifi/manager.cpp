@@ -1,7 +1,8 @@
 #include "header/manager.hpp"
-#include "utils/helper_func.hpp"
 #include "dbus/dbus-protocol.h"
 #include "dbus/dbus.h"
+#include "services/header/comm_types.hpp"
+#include "utils/helper_func.hpp"
 #include <cstddef>
 #include <cstring>
 #include <string>
@@ -221,28 +222,38 @@ void WifiManager::GetManagedObjects() {
                                std::to_string(devices.size()));
 }
 
-void WifiManager::Scan() {
+ResponseMessage WifiManager::Scan(WifiScanRequest req) {
+  ResponseMessage resp{
+      .success = false, .errMsg = "", .correlationId = req.correlationId};
+
   DBusMessage *msg = dbus_message_new_method_call(
       "net.connman.iwd", devPath.c_str(), "net.connman.iwd.Station", "Scan");
   if (!msg) {
-    ctx->logger.LogError(TAG, "Failed to create D-Bus message for Scan");
-    return;
+    resp.errMsg = "Failed to create D-Bus message for Scan";
+    ctx->logger.LogError(TAG, resp.errMsg);
+    return resp;
   }
 
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
       ctx->dbus.sysConn, msg, -1, &ctx->dbus.sysErr);
   if (dbus_error_is_set(&ctx->dbus.sysErr) && !reply) {
-    ctx->logger.LogError(TAG, std::string("D-Bus Scan call failed: ") +
-                                  ctx->dbus.sysErr.message);
+    resp.errMsg = "D-Bus Scan call failed: ";
+    resp.errMsg += ctx->dbus.sysErr.message;
+
+    ctx->logger.LogError(TAG, resp.errMsg);
     dbus_error_free(&ctx->dbus.sysErr);
     dbus_message_unref(msg);
-    return;
+
+    return resp;
   }
 
   dbus_message_unref(msg);
   dbus_message_unref(reply);
 
   scanning = true;
+
+  resp.success = true;
+  return resp;
 }
 
 int WifiManager::GetConnectedDevice() {
@@ -427,106 +438,146 @@ int WifiManager::GetDeviceInfo(std::string dev, WifiStation &station) {
 bool WifiManager::IsPowered() const { return powered; }
 bool WifiManager::IsScanning() const { return scanning; }
 
-void WifiManager::Connect(const std::string &networkPath) {
-  std::string path = devPath + "/" + networkPath;
+ResponseMessage WifiManager::Connect(WifiConnectRequest req) {
+  ResponseMessage resp{
+      .success = false, .errMsg = "", .correlationId = req.correlationId};
+
+  std::string path = devPath + "/" + req.netPath;
 
   DBusMessage *msg = dbus_message_new_method_call(
       "net.connman.iwd", path.c_str(), "net.connman.iwd.Network", "Connect");
   if (!msg) {
-    ctx->logger.LogError(TAG, "Failed to create D-Bus message for Connect");
-    return;
+    resp.errMsg = "Failed to create D-Bus message for Connect";
+    ctx->logger.LogError(TAG, resp.errMsg);
+
+    return resp;
   }
 
   if (!dbus_connection_send(ctx->dbus.sysConn, msg, 0)) {
-    ctx->logger.LogError(TAG, std::string("D-Bus Connect call failed: "));
-
+    resp.errMsg = "D-Bus Connect call failed";
+    ctx->logger.LogError(TAG, resp.errMsg);
     dbus_message_unref(msg);
-    return;
+
+    return resp;
   }
 
   dbus_message_unref(msg);
+
+  resp.success = true;
+  return resp;
 }
 
-void WifiManager::Disconnect() {
+ResponseMessage WifiManager::Disconnect(WifiDisconnectRequest req) {
+  ResponseMessage resp{
+      .success = false, .errMsg = "", .correlationId = req.correlationId};
+
   DBusMessage *msg =
       dbus_message_new_method_call("net.connman.iwd", devPath.c_str(),
                                    "net.connman.iwd.Station", "Disconnect");
   if (!msg) {
-    ctx->logger.LogError(TAG, "Failed to create D-Bus message for Disconnect");
-    return;
+    resp.errMsg = "Failed to create D-Bus message for Disconnect";
+    ctx->logger.LogError(TAG, resp.errMsg);
+
+    return resp;
   }
 
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
       ctx->dbus.sysConn, msg, -1, &ctx->dbus.sysErr);
   if (dbus_error_is_set(&ctx->dbus.sysErr) && !reply) {
-    ctx->logger.LogError(TAG, std::string("D-Bus Disconnect call failed: ") +
-                                  ctx->dbus.sysErr.message);
+    resp.errMsg = "D-Bus Disconnect call failed: ";
+    resp.errMsg += ctx->dbus.sysErr.message;
+
+    ctx->logger.LogError(TAG, resp.errMsg);
     dbus_error_free(&ctx->dbus.sysErr);
     dbus_message_unref(msg);
-    return;
+
+    return resp;
   }
 
   dbus_message_unref(msg);
   dbus_message_unref(reply);
+
+  resp.success = true;
+  return resp;
 }
 
-void WifiManager::Forget(const std::string &networkPath) {
-  std::string path = "/net/connman/iwd/" + networkPath;
+ResponseMessage WifiManager::Forget(WifiForgetRequest req) {
+  ResponseMessage resp{
+      .success = false, .errMsg = "", .correlationId = req.correlationId};
+
+  std::string path = "/net/connman/iwd/" + req.netPath;
 
   DBusMessage *msg =
       dbus_message_new_method_call("net.connman.iwd", path.c_str(),
                                    "net.connman.iwd.KnownNetwork", "Forget");
   if (!msg) {
-    ctx->logger.LogError(TAG, "Failed to create D-Bus message for Forget");
-    return;
+    resp.errMsg = "Failed to create D-Bus message for Forget";
+    ctx->logger.LogError(TAG, resp.errMsg);
+    return resp;
   }
 
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
       ctx->dbus.sysConn, msg, -1, &ctx->dbus.sysErr);
   if (dbus_error_is_set(&ctx->dbus.sysErr) && !reply) {
-    ctx->logger.LogError(TAG, std::string("D-Bus Forget call failed: ") +
-                                  ctx->dbus.sysErr.message);
+    resp.errMsg = "D-Bus Forget call failed: ";
+    resp.errMsg += ctx->dbus.sysErr.message;
+
+    ctx->logger.LogError(TAG, resp.errMsg);
     dbus_error_free(&ctx->dbus.sysErr);
     dbus_message_unref(msg);
-    return;
+
+    return resp;
   }
 
   dbus_message_unref(msg);
   dbus_message_unref(reply);
+
+  resp.success = true;
+  return resp;
 }
 
-void WifiManager::SubmitPassphrase(const std::string &password) {
+ResponseMessage WifiManager::SubmitPassphrase(WifiSubmitPassphraseRequest req) {
+  ResponseMessage resp{
+      .success = false, .errMsg = "", .correlationId = req.correlationId};
+
   if (authMsg == nullptr || authDev.empty()) {
-    return;
+    resp.errMsg = "The Connection has been cancelled";
+    return resp;
   }
 
   DBusMessage *reply = dbus_message_new_method_return(authMsg);
   if (!reply) {
-    ctx->logger.LogError(
-        TAG, "Failed to create reply for Passphrase Method Response");
-    return;
+    resp.errMsg = "Failed to create reply for Passphrase Method Response";
+    ctx->logger.LogError(TAG, resp.errMsg);
+
+    return resp;
   }
 
   DBusMessageIter args;
   dbus_message_iter_init_append(reply, &args);
 
-  const char *passphrase = password.c_str();
+  const char *passphrase = req.password.c_str();
   dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &passphrase);
   dbus_message_iter_init_closed(&args);
 
   if (!dbus_connection_send(ctx->dbus.sysConn, reply, 0)) {
-    ctx->logger.LogError(TAG, "Failed to send Passphrase Method Response");
+    resp.errMsg = "Failed to send Passphrase Method Response";
+    ctx->logger.LogError(TAG, resp.errMsg);
     dbus_message_unref(reply);
-    return;
+
+    return resp;
   }
 
   dbus_connection_flush(ctx->dbus.sysConn);
   ctx->logger.LogInfo(TAG, "Submitted passphrase for device: " + authDev);
-  
+
   dbus_message_unref(reply);
   dbus_message_unref(authMsg);
   authMsg = nullptr;
   authDev = "";
+
+  resp.success = true;
+  return resp;
 }
 
 void WifiManager::addMatchRulesDbus() {
@@ -595,7 +646,7 @@ void WifiManager::addMatchRulesDbus() {
 }
 
 void WifiManager::handleRequestPassphraseDbus(DBusMessage *msg,
-                                          DBusMessageIter &rootIter) {
+                                              DBusMessageIter &rootIter) {
   if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_OBJECT_PATH) {
     ctx->logger.LogError(TAG,
                          "Failed to parse RequestPassphrase signal: expected "
@@ -649,7 +700,7 @@ void WifiManager::handleInterfacesRemovedDbus(DBusMessageIter &rootIter) {
 }
 
 void WifiManager::handlePropertiesChangedDbus(DBusMessage *msg,
-                                          DBusMessageIter &rootIter) {
+                                              DBusMessageIter &rootIter) {
 
   char *iface;
   if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_STRING) {
