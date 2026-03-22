@@ -1,6 +1,9 @@
 #include "header/comm_bus.hpp"
 #include "modules/bluetooth/header/manager.hpp"
 #include "modules/workspaces/hyprland/header/manager.hpp"
+#include "services/header/comm_types.hpp"
+#include <mutex>
+#include <thread>
 #include <typeindex>
 
 CommunicationBus::CommunicationBus(AppContext *ctx, BluetoothManager *btMgr,
@@ -12,32 +15,62 @@ CommunicationBus::CommunicationBus(AppContext *ctx, BluetoothManager *btMgr,
       scrnsvrMgr(scrnsvrMgr), wifiMgr(wifiMgr), hyprMgr(hyprMgr) {
 
   dispatchTable.insert(
-      {std::type_index(typeid(BtRequest)), [&](const RequestMessage &msg) {
-         resBus.push(btMgr->handle(std::get<BtRequest>(msg)));
+      {std::type_index(typeid(BtRequest)), [&](const RequestWrapper &wrap) {
+         resBus.push(ResponseWrapper{
+             .msg = btMgr->handle(std::get<BtRequest>(wrap.msg)),
+             .priority = wrap.priority});
        }});
 
   dispatchTable.insert(
-      {std::type_index(typeid(MprisRequest)), [&](const RequestMessage &msg) {
-         resBus.push(mprisMgr->handle(std::get<MprisRequest>(msg)));
+      {std::type_index(typeid(MprisRequest)), [&](const RequestWrapper &wrap) {
+         resBus.push(ResponseWrapper{
+             .msg = mprisMgr->handle(std::get<MprisRequest>(wrap.msg)),
+             .priority = wrap.priority});
        }});
 
   dispatchTable.insert(
-      {std::type_index(typeid(PARequest)), [&](const RequestMessage &msg) {
-         resBus.push(paMgr->handle(std::get<PARequest>(msg)));
+      {std::type_index(typeid(PARequest)), [&](const RequestWrapper &wrap) {
+         resBus.push(ResponseWrapper{
+             .msg = paMgr->handle(std::get<PARequest>(wrap.msg)),
+             .priority = wrap.priority});
        }});
 
   dispatchTable.insert(
-      {std::type_index(typeid(ScrnSvrRequest)), [&](const RequestMessage &msg) {
-         resBus.push(scrnsvrMgr->handle(std::get<ScrnSvrRequest>(msg)));
+      {std::type_index(typeid(ScrnSvrRequest)),
+       [&](const RequestWrapper &wrap) {
+         resBus.push(ResponseWrapper{
+             .msg = scrnsvrMgr->handle(std::get<ScrnSvrRequest>(wrap.msg)),
+             .priority = wrap.priority});
        }});
 
   dispatchTable.insert(
-      {std::type_index(typeid(WifiRequest)), [&](const RequestMessage &msg) {
-         resBus.push(wifiMgr->handle(std::get<WifiRequest>(msg)));
+      {std::type_index(typeid(WifiRequest)), [&](const RequestWrapper &wrap) {
+         resBus.push(ResponseWrapper{
+             .msg = wifiMgr->handle(std::get<WifiRequest>(wrap.msg)),
+             .priority = wrap.priority});
        }});
 
   dispatchTable.insert(
-      {std::type_index(typeid(HyprRequest)), [&](const RequestMessage &msg) {
-         resBus.push(hyprMgr->handle(std::get<HyprRequest>(msg)));
+      {std::type_index(typeid(HyprRequest)), [&](const RequestWrapper &wrap) {
+         resBus.push(ResponseWrapper{
+             .msg = hyprMgr->handle(std::get<HyprRequest>(wrap.msg)),
+             .priority = wrap.priority});
        }});
+  
+  busThread = std::thread(&CommunicationBus::handleMessages, this);
+}
+
+void CommunicationBus::handleMessages(){
+    
+    std::unique_lock ulock(reqBusLock);
+    while(true){
+        reqBusCV.wait(ulock, []{});
+    }
+}
+
+void CommunicationBus::SendMessage(RequestMessage msg, Priority priority){
+    std::lock_guard lg(reqBusLock);
+    reqBus.push(RequestWrapper{.msg = msg, .priority = priority});
+    
+    reqBusCV.notify_one();
 }

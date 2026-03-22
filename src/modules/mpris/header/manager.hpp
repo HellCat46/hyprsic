@@ -16,29 +16,29 @@ struct PlayerTrack {
 };
 
 struct MprisPlayPauseRequest {
-  long int correlationId;
+  uint64_t correlationId;
 };
 
 struct MprisGetPlayerInfoRequest {
-  long int correlationId;
+  uint64_t correlationId;
 };
 
 struct MprisGetPositionRequest {
-  long int correlationId;
+  uint64_t correlationId;
 };
 
 struct MprisSetPositionRequest {
   uint64_t position;
 
-  long int correlationId;
+  uint64_t correlationId;
 };
 
 struct MprisPreviousTrackRequest {
-  long int correlationId;
+  uint64_t correlationId;
 };
 
 struct MprisNextTrackRequest {
-  long int correlationId;
+  uint64_t correlationId;
 };
 
 using MprisRequest =

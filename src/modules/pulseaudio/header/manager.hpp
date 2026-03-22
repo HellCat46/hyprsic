@@ -24,21 +24,21 @@ struct PASetVolumeRequest {
     bool isOutput;
     uint32_t volume;
     
-    long int correlationId;
+    uint64_t correlationId;
 };
 
 struct PAToggleMuteRequest {
     std::string devName;
     bool isOutput;
     
-    long int correlationId;
+    uint64_t correlationId;
 };
 
 struct PAUpdateDefDeviceRequest {
     std::string devName;
     bool isOutput;
     
-    long int correlationId;
+    uint64_t correlationId;
 };
 
 using PARequest = std::variant<PASetVolumeRequest, PAToggleMuteRequest, PAUpdateDefDeviceRequest>;

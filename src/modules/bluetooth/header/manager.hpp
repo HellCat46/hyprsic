@@ -33,32 +33,32 @@ struct BtConnectRequest {
     bool state;
     std::string_view devPath;
     
-    long int correlationId;
+    uint64_t correlationId;
 };
 
 struct BtTrustRequest {
     bool state;
     std::string_view devPath;
     
-    long int correlationId;
+    uint64_t correlationId;
 };
 
 struct BtRemoveRequest {
     std::string_view devPath;
     
-    long int correlationId;
+    uint64_t correlationId;
 };
 
 struct BtSwitchDiscoveryRequest {
     bool on;
     
-    long int correlationId;
+    uint64_t correlationId;
 };
 
 struct BtSwitchPowerRequest {
     bool on;
     
-    long int correlationId;
+    uint64_t correlationId;
 };
 
 

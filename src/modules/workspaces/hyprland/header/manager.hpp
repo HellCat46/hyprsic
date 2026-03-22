@@ -30,7 +30,7 @@ struct WSListenerData {
 struct HyprSwitchWSRequest {
   int wsId;
 
-  long int correlationId;
+  uint64_t correlationId;
 };
 
 struct HyprMoveWSRequest {
@@ -38,14 +38,14 @@ struct HyprMoveWSRequest {
   unsigned char monitorId;
   bool forw;
 
-  long int correlationId;
+  uint64_t correlationId;
 };
 
 struct HyprSwitchSPWSRequest {
   int wsId;
   std::string name;
 
-  long int correlationId;
+  uint64_t correlationId;
 };
 
 using HyprRequest =

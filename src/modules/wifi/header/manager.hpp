@@ -8,29 +8,29 @@
 #include <variant>
 
 struct WifiScanRequest {
-  long int correlationId;
+  uint64_t correlationId;
 };
 
 struct WifiConnectRequest {
   std::string netPath;
 
-  long int correlationId;
+  uint64_t correlationId;
 };
 
 struct WifiDisconnectRequest {
-  long int correlationId;
+  uint64_t correlationId;
 };
 
 struct WifiForgetRequest {
   std::string netPath;
   
-  long int correlationId;
+  uint64_t correlationId;
 };
 
 struct WifiSubmitPassphraseRequest {
   std::string password;
   
-  long int correlationId;
+  uint64_t correlationId;
 };
 
 struct WifiStation {

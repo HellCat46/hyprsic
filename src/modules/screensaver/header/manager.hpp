@@ -5,11 +5,11 @@
 #include <variant>
 
 struct ScrnSvrActivateRequest {
-  long int correlationId;
+  uint64_t correlationId;
 };
 
 struct ScrnSvrDeActivateRequest {
-  long int correlationId;
+  uint64_t correlationId;
 };
 
 using ScrnSvrRequest = std::variant<ScrnSvrActivateRequest, ScrnSvrDeActivateRequest>;
