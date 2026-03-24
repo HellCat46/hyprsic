@@ -94,7 +94,7 @@ void Application::captureSystemDBus() {
       if (HelperFunc::saferStrNCmp(path, "/org/bluez", 10)) {
         btManager.handleInterfacesRemovedDbus(rootIter);
       } else {
-        wifiManager.handleInterfacesRemoved(rootIter);
+        wifiManager.handleInterfacesRemovedDbus(rootIter);
       }
 
       dbus_message_unref(msg);
@@ -107,16 +107,16 @@ void Application::captureSystemDBus() {
         btManager.handlePropertiesChangedDbus(msg, rootIter);
       } else if (HelperFunc::saferStrNCmp(path, "/net/connman/iwd", 16)) {
 
-        wifiManager.handlePropertiesChanged(msg, rootIter);
+        wifiManager.handlePropertiesChangedDbus(msg, rootIter);
       }
 
       dbus_message_unref(msg);
     } else if (dbus_message_is_method_call(msg, "net.connman.iwd.Agent",
                                            "RequestPassphrase")) {
-      wifiManager.handleRequestPassphrase(msg, rootIter);
+      wifiManager.handleRequestPassphraseDbus(msg, rootIter);
     } else if (dbus_message_is_method_call(msg, "net.connman.iwd.Agent",
                                            "Cancel")) {
-      wifiManager.handleRequestCancel();
+      wifiManager.handleRequestCancelDbus();
     } else {
       ctx.logger.LogInfo(TAG, "Received Unknown Signal on System Bus");
     }

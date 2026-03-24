@@ -1,18 +1,21 @@
 #include "header/comm_bus.hpp"
 #include "modules/bluetooth/header/manager.hpp"
+#include "modules/brightness/header/manager.hpp"
 #include "modules/workspaces/hyprland/header/manager.hpp"
 #include "services/header/comm_types.hpp"
+#include <cstdint>
 #include <mutex>
 #include <thread>
 #include <typeindex>
 
-CommunicationBus::CommunicationBus(AppContext *ctx, BluetoothManager *btMgr,
+CommunicationBus::CommunicationBus(BluetoothManager *btMgr,
                                    MprisManager *mprisMgr,
                                    PulseAudioManager *paMgr,
                                    ScreenSaverManager *scrnsvrMgr,
-                                   WifiManager *wifiMgr, HyprWSManager *hyprMgr)
-    : ctx(ctx), btMgr(btMgr), mprisMgr(mprisMgr), paMgr(paMgr),
-      scrnsvrMgr(scrnsvrMgr), wifiMgr(wifiMgr), hyprMgr(hyprMgr) {
+                                   WifiManager *wifiMgr, HyprWSManager *hyprMgr,
+                                   BrightnessManager *brtMgr)
+    : btMgr(btMgr), mprisMgr(mprisMgr), paMgr(paMgr), scrnsvrMgr(scrnsvrMgr),
+      wifiMgr(wifiMgr), hyprMgr(hyprMgr), idCounter(0) {
 
   dispatchTable.insert(
       {std::type_index(typeid(BtRequest)), [&](const RequestWrapper &wrap) {
@@ -56,21 +59,28 @@ CommunicationBus::CommunicationBus(AppContext *ctx, BluetoothManager *btMgr,
              .msg = hyprMgr->handle(std::get<HyprRequest>(wrap.msg)),
              .priority = wrap.priority});
        }});
-  
+
+  dispatchTable.insert(
+      {std::type_index(typeid(BrtRequest)), [&](const RequestWrapper &wrap) {
+         resBus.push(ResponseWrapper{.msg = brtMgr->handle(std::get<BrtRequest>(wrap.msg)), .priority = wrap.priority})
+       }});
+
   busThread = std::thread(&CommunicationBus::handleMessages, this);
 }
 
-void CommunicationBus::handleMessages(){
-    
-    std::unique_lock ulock(reqBusLock);
-    while(true){
-        reqBusCV.wait(ulock, []{});
-    }
+void CommunicationBus::handleMessages() {
+
+  std::unique_lock ulock(reqBusLock);
+  while (true) {
+    reqBusCV.wait(ulock, [] {});
+  }
 }
 
-void CommunicationBus::SendMessage(RequestMessage msg, Priority priority){
-    std::lock_guard lg(reqBusLock);
-    reqBus.push(RequestWrapper{.msg = msg, .priority = priority});
-    
-    reqBusCV.notify_one();
+void CommunicationBus::SendMessage(RequestMessage msg, Priority priority) {
+  std::lock_guard lg(reqBusLock);
+  reqBus.push(RequestWrapper{.msg = msg, .priority = priority});
+
+  reqBusCV.notify_one();
 }
+
+uint64_t CommunicationBus::GetNewCorId() { return idCounter++; }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "services/header/comm_bus.hpp"
 #include "services/header/context.hpp"
 #include "window.hpp"
 #include "gtk/gtk.h"
@@ -39,6 +40,8 @@ class Application {
 
   BrightnessManager brtManager;
   BrightnessWindow brtWindow;
+  
+  CommunicationBus commBus;
   
   // Threads for DBus and IPC
   std::thread ssnDBusThread, sysDBusThread, dataUpdateThread, cliIPCThread;

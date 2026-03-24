@@ -1,15 +1,16 @@
 #include "header/app.hpp"
 #include "header/window.hpp"
+#include "services/header/comm_bus.hpp"
 
 Application::Application()
     : stat(&ctx.logger), mem(&ctx.logger), load(&ctx.logger), battery(&ctx),
       tempManager(&ctx), btManager(&ctx), btWindow(&ctx, &btManager),
       notifManager(&ctx), notifWindow(&ctx, &notifManager), mprisManager(&ctx),
       mprisWindow(&ctx, &mprisManager), scrnsavrManager(&ctx),
-      hyprInstance(&ctx.logger), snManager(&ctx), paManager(&ctx.logger),
+      hyprInstance(&ctx.logger), snManager(&ctx), paManager(&ctx),
       paWindow(&ctx, &paManager), wifiManager(&ctx),
       wifiWindow(&ctx, &wifiManager), brtManager(&ctx),
-      brtWindow(&ctx, &brtManager) {
+      brtWindow(&ctx, &brtManager), commBus(&btManager, &mprisManager, &paManager,&scrnsavrManager,&wifiManager, &hyprInstance, &brtManager) {
 
   app = gtk_application_new("com.hellcat.hyprsic", G_APPLICATION_DEFAULT_FLAGS);
   g_signal_connect(app, "activate", G_CALLBACK(activate), this);
