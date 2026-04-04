@@ -4,8 +4,9 @@
 #define TAG "NotificationWindow"
 
 NotificationWindow::NotificationWindow(AppContext *ctx,
+                                       CommunicationBus *commBus,
                                        NotificationManager *manager)
-    : ctx(ctx), manager(manager) {}
+    : ctx(ctx), manager(manager), commBus(commBus) {}
 
 void NotificationWindow::init() {
   menuBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
@@ -129,8 +130,8 @@ void NotificationWindow::update(bool force) {
   }
 }
 
-void NotificationWindow::deleteNotificationCb([[maybe_unused]] GtkWidget *widget,
-                                              gpointer user_data) {
+void NotificationWindow::deleteNotificationCb(
+    [[maybe_unused]] GtkWidget *widget, gpointer user_data) {
   NotifFuncArgs *args = static_cast<NotifFuncArgs *>(user_data);
 
   auto it = args->notifLookup->find(args->notifId);
@@ -146,8 +147,8 @@ void NotificationWindow::deleteNotificationCb([[maybe_unused]] GtkWidget *widget
   // g_free(args);
 }
 
-void NotificationWindow::handleDndToggle([[maybe_unused]] GtkSwitch *widget, gboolean state,
-                                         gpointer user_data) {
+void NotificationWindow::handleDndToggle([[maybe_unused]] GtkSwitch *widget,
+                                         gboolean state, gpointer user_data) {
   NotificationWindow *self = static_cast<NotificationWindow *>(user_data);
   self->manager->dnd = state;
 
@@ -158,7 +159,8 @@ void NotificationWindow::handleDndToggle([[maybe_unused]] GtkSwitch *widget, gbo
                               state ? "dnd_on" : "dnd_off", msg);
 }
 
-void NotificationWindow::handleClearAll([[maybe_unused]] GtkWidget *widget, gpointer user_data) {
+void NotificationWindow::handleClearAll([[maybe_unused]] GtkWidget *widget,
+                                        gpointer user_data) {
   NotificationWindow *self = static_cast<NotificationWindow *>(user_data);
   self->ctx->dbManager.clearAllNotifications();
 

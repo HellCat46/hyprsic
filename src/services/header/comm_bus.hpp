@@ -5,9 +5,11 @@
 #include "modules/mpris/header/manager.hpp"
 #include "modules/pulseaudio/header/manager.hpp"
 #include "modules/screensaver/header/manager.hpp"
+#include "modules/statusnotifier/header/manager.hpp"
 #include "modules/wifi/header/manager.hpp"
 #include "modules/workspaces/hyprland/header/manager.hpp"
 #include "services/header/comm_types.hpp"
+#include "services/header/context.hpp"
 #include <condition_variable>
 #include <cstdint>
 #include <functional>
@@ -20,7 +22,7 @@
 #include <vector>
 
 using RequestMessage = std::variant<BtRequest, MprisRequest, PARequest,
-                                    ScrnSvrRequest, WifiRequest, HyprRequest, BrtRequest>;
+                                    ScrnSvrRequest, WifiRequest, HyprRequest, BrtRequest, SNIRequest>;
 
 struct RequestWrapper {
   RequestMessage msg;
@@ -34,6 +36,7 @@ struct RequestWrapperCmp {
 };
 
 class CommunicationBus {
+    AppContext*  ctx;
   BluetoothManager *btMgr;
   MprisManager *mprisMgr;
   PulseAudioManager *paMgr;
@@ -41,6 +44,7 @@ class CommunicationBus {
   WifiManager *wifiMgr;
   HyprWSManager *hyprMgr;
   BrightnessManager *brtMgr;
+  StatusNotifierManager *sniMgr;
   
   uint64_t idCounter;
 
@@ -66,9 +70,9 @@ class CommunicationBus {
       dispatchTable;
 
 public:
-  CommunicationBus(BluetoothManager *btMgr, MprisManager *mprisMgr,
+  CommunicationBus(AppContext *ctx,BluetoothManager *btMgr, MprisManager *mprisMgr,
              PulseAudioManager *paMgr, ScreenSaverManager *scrnsvrMgr,
-             WifiManager *wifiMgr, HyprWSManager *hyprMgr, BrightnessManager* brtMgr);
+             WifiManager *wifiMgr, HyprWSManager *hyprMgr, BrightnessManager* brtMgr, StatusNotifierManager* sniMgr);
 
   void SendMessage(RequestMessage msg, Priority priority);
   

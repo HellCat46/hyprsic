@@ -54,13 +54,14 @@ MprisManager::MprisManager(AppContext *appCtx) : ctx(appCtx) {
   dbus_message_unref(msg);
 }
 
-ResponseMessage MprisManager::PlayPause(MprisPlayPauseRequest req) {
-    ResponseMessage resp{.success = false, .errMsg = "", .correlationId = req.correlationId};
-    
+ResponseMessage MprisManager::PlayPause(const MprisPlayPauseRequest &req) {
+  ResponseMessage resp{
+      .success = false, .errMsg = "", .correlationId = req.correlationId};
+
   if (playingTrack.playerName.empty()) {
     resp.errMsg = "No player available to send PlayPause command.";
     ctx->logger.LogError(TAG, resp.errMsg);
-    
+
     return resp;
   }
 
@@ -69,9 +70,9 @@ ResponseMessage MprisManager::PlayPause(MprisPlayPauseRequest req) {
       "org.mpris.MediaPlayer2.Player", "PlayPause");
 
   if (!msg) {
-    resp.errMsg =  "Failed to create PlayPause message for player.";
+    resp.errMsg = "Failed to create PlayPause message for player.";
     ctx->logger.LogError(TAG, resp.errMsg);
-    
+
     return resp;
   }
 
@@ -84,7 +85,7 @@ ResponseMessage MprisManager::PlayPause(MprisPlayPauseRequest req) {
     ctx->logger.LogError(TAG, resp.errMsg);
     dbus_error_free(&ctx->dbus.ssnErr);
     dbus_message_unref(msg);
-    
+
     return resp;
   }
 
@@ -231,9 +232,11 @@ int MprisManager::GetCurrentPositionDbusCall() {
   return 0;
 }
 
-ResponseMessage MprisManager::GetPlayerInfo(MprisGetPlayerInfoRequest req) {
-    ResponseMessage resp{.success = false, .errMsg = "", .correlationId = req.correlationId};
-    
+ResponseMessage
+MprisManager::GetPlayerInfo(const MprisGetPlayerInfoRequest &req) {
+  ResponseMessage resp{
+      .success = false, .errMsg = "", .correlationId = req.correlationId};
+
   for (const auto &player : players) {
 
     PlayerTrack track;
@@ -251,30 +254,30 @@ ResponseMessage MprisManager::GetPlayerInfo(MprisGetPlayerInfoRequest req) {
   return resp;
 }
 
-ResponseMessage MprisManager::GetPosition(MprisGetPositionRequest req) {
-    ResponseMessage resp{
-        .success = false, .errMsg = "", .correlationId = req.correlationId};
+ResponseMessage MprisManager::GetPosition(const MprisGetPositionRequest &req) {
+  ResponseMessage resp{
+      .success = false, .errMsg = "", .correlationId = req.correlationId};
 
-  if (GetCurrentPositionDbusCall()){
+  if (GetCurrentPositionDbusCall()) {
     resp.errMsg = "Failed to get Current Position from Dbus Interface";
     return resp;
   }
 
   playingTrack.currPos /= 1000000;
   playingTrack.length /= 1000000;
-  
+
   resp.success = true;
   return resp;
 }
 
-ResponseMessage MprisManager::SetPosition(MprisSetPositionRequest req) {
-    ResponseMessage resp{
-        .success = false, .errMsg = "", .correlationId = req.correlationId};
+ResponseMessage MprisManager::SetPosition(const MprisSetPositionRequest &req) {
+  ResponseMessage resp{
+      .success = false, .errMsg = "", .correlationId = req.correlationId};
 
   if (playingTrack.playerName.empty() || playingTrack.trackId.empty()) {
-      resp.errMsg = "No player available to set position.";
+    resp.errMsg = "No player available to set position.";
     ctx->logger.LogError(TAG, resp.errMsg);
-    
+
     return resp;
   }
 
@@ -297,7 +300,7 @@ ResponseMessage MprisManager::SetPosition(MprisSetPositionRequest req) {
     ctx->logger.LogError(TAG, resp.errMsg);
     dbus_error_free(&ctx->dbus.ssnErr);
     dbus_message_unref(msg);
-    
+
     return resp;
   }
 
@@ -311,14 +314,15 @@ ResponseMessage MprisManager::SetPosition(MprisSetPositionRequest req) {
   return resp;
 }
 
-ResponseMessage MprisManager::PreviousTrack(MprisPreviousTrackRequest req) {
-    ResponseMessage resp{.success = false, .errMsg = "", .correlationId = req.correlationId};
-    
+ResponseMessage
+MprisManager::PreviousTrack(const MprisPreviousTrackRequest &req) {
+  ResponseMessage resp{
+      .success = false, .errMsg = "", .correlationId = req.correlationId};
+
   if (playingTrack.playerName.empty()) {
-      resp.errMsg = "No player available to send PreviousTrack command."; 
-    ctx->logger.LogError(TAG,
-        resp.errMsg);
-    
+    resp.errMsg = "No player available to send PreviousTrack command.";
+    ctx->logger.LogError(TAG, resp.errMsg);
+
     return resp;
   }
 
@@ -327,10 +331,9 @@ ResponseMessage MprisManager::PreviousTrack(MprisPreviousTrackRequest req) {
       "org.mpris.MediaPlayer2.Player", "Previous");
 
   if (!msg) {
-      resp.errMsg = "Failed to create PreviousTrack message for player."; 
-    ctx->logger.LogError(TAG,
-        resp.errMsg);
-    
+    resp.errMsg = "Failed to create PreviousTrack message for player.";
+    ctx->logger.LogError(TAG, resp.errMsg);
+
     return resp;
   }
 
@@ -340,11 +343,11 @@ ResponseMessage MprisManager::PreviousTrack(MprisPreviousTrackRequest req) {
   if (!reply && dbus_error_is_set(&ctx->dbus.ssnErr)) {
     resp.errMsg = "Failed to get a reply for PreviousTrack. ";
     resp.errMsg += ctx->dbus.ssnErr.message;
-    
+
     ctx->logger.LogError(TAG, resp.errMsg);
     dbus_error_free(&ctx->dbus.ssnErr);
     dbus_message_unref(msg);
-    
+
     return resp;
   }
 
@@ -357,13 +360,14 @@ ResponseMessage MprisManager::PreviousTrack(MprisPreviousTrackRequest req) {
   return resp;
 }
 
-ResponseMessage MprisManager::NextTrack(MprisNextTrackRequest req) {
-    ResponseMessage resp{.success = false, .errMsg = "", .correlationId = req.correlationId};
-    
+ResponseMessage MprisManager::NextTrack(const MprisNextTrackRequest &req) {
+  ResponseMessage resp{
+      .success = false, .errMsg = "", .correlationId = req.correlationId};
+
   if (playingTrack.playerName.empty()) {
     resp.errMsg = "No player available to send NextTrack command.";
     ctx->logger.LogError(TAG, resp.errMsg);
-    
+
     return resp;
   }
 
@@ -374,7 +378,7 @@ ResponseMessage MprisManager::NextTrack(MprisNextTrackRequest req) {
   if (!msg) {
     resp.errMsg = "Failed to create NextTrack message for player.";
     ctx->logger.LogError(TAG, resp.errMsg);
-    
+
     return resp;
   }
 
@@ -384,11 +388,11 @@ ResponseMessage MprisManager::NextTrack(MprisNextTrackRequest req) {
   if (!reply && dbus_error_is_set(&ctx->dbus.ssnErr)) {
     resp.errMsg = "Failed to get a reply for NextTrack. ";
     resp.errMsg += ctx->dbus.ssnErr.message;
-    
+
     ctx->logger.LogError(TAG, resp.errMsg);
     dbus_error_free(&ctx->dbus.ssnErr);
     dbus_message_unref(msg);
-    
+
     return resp;
   }
 
@@ -429,4 +433,32 @@ void MprisManager::handlePlayerChangesDbus(const std::string_view name,
       removePlayer(name.data());
     }
   }
+}
+
+ResponseMessage MprisManager::handle(const MprisRequest &req) {
+  ResponseMessage resp;
+
+  std::visit(
+      [&](auto &reqMsg) {
+        using T = std::decay_t<decltype(reqMsg)>;
+
+        if constexpr (std::is_same_v<T, MprisPlayPauseRequest>) {
+          resp = PlayPause(reqMsg);
+        } else if constexpr (std::is_same_v<T, MprisGetPlayerInfoRequest>) {
+          resp = GetPlayerInfo(reqMsg);
+        } else if constexpr (std::is_same_v<T, MprisSetPositionRequest>) {
+          resp = SetPosition(reqMsg);
+        } else if constexpr (std::is_same_v<T, MprisGetPositionRequest>) {
+          resp = GetPosition(reqMsg);
+        } else if constexpr (std::is_same_v<T, MprisGetPlayerInfoRequest>) {
+          resp = GetPlayerInfo(reqMsg);
+        } else if constexpr (std::is_same_v<T, MprisNextTrackRequest>) {
+          resp = NextTrack(reqMsg);
+        } else if constexpr (std::is_same_v<T, MprisPreviousTrackRequest>) {
+          resp = PreviousTrack(reqMsg);
+        }
+      },
+      req);
+
+  return resp;
 }

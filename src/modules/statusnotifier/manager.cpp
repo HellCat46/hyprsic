@@ -4,6 +4,7 @@
 #include "dbus/dbus-shared.h"
 #include "dbus/dbus.h"
 #include "gdk-pixbuf/gdk-pixbuf.h"
+#include "services/header/comm_types.hpp"
 #include <algorithm>
 #include <cstring>
 #include <sstream>
@@ -38,7 +39,7 @@ void StatusNotifierManager::setupDBus() {
 
   if (ret != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) {
     ctx->logger.LogError(TAG,
-                          "Another Notification Service is already running.");
+                         "Another Notification Service is already running.");
     return;
   }
 
@@ -105,8 +106,7 @@ void StatusNotifierManager::handleDbusMessage(DBusMessage *msg) {
       handleRegisterStatusNotifierItem(msg);
     else if (HelperFunc::saferStrCmp(member, "RegisterStatusNotifierHost"))
       handleRegisterStatusNotifierHost(msg);
-
-  } 
+  }
 }
 
 /*
@@ -129,7 +129,7 @@ void StatusNotifierManager::handleIntrospectCallDbus(DBusMessage *msg) {
 void StatusNotifierManager::handleGetAllPropertiesCallDbus(DBusMessage *msg) {
   DBusMessage *reply = dbus_message_new_method_return(msg);
   DBusMessageIter replyIter, arrayIter;
-  
+
   dbus_message_iter_init_append(reply, &replyIter);
   dbus_message_iter_open_container(&replyIter, DBUS_TYPE_ARRAY, "{sv}",
                                    &arrayIter);
@@ -304,7 +304,7 @@ void StatusNotifierManager::handleRegisterStatusNotifierItem(DBusMessage *msg) {
   registeredItems.insert({itemServiceStr, appInfo});
 
   ctx->logger.LogDebug(TAG, "Registered Status Notifier Item. New Count: " +
-                                 std::to_string(registeredItems.size()));
+                                std::to_string(registeredItems.size()));
 }
 
 // Collect Basic Info from the Status Notifier Item
@@ -391,7 +391,7 @@ void StatusNotifierManager::getMenuActions(const std::string &itemService,
                                            StatusApp &outApp) {
   if (outApp.menu_path.size() == 0) {
     ctx->logger.LogDebug(TAG, "No Menu Path available for the Item. Skipping "
-                               "Menu Actions retrieval.");
+                              "Menu Actions retrieval.");
     return;
   }
 
@@ -405,7 +405,7 @@ void StatusNotifierManager::getMenuActions(const std::string &itemService,
                                                   iface.c_str(), "GetLayout");
   if (!msg) {
     ctx->logger.LogError(TAG,
-                          "Failed to create a message to get Menu Actions.");
+                         "Failed to create a message to get Menu Actions.");
     return;
   }
 
@@ -517,8 +517,8 @@ void StatusNotifierManager::getMenuActions(const std::string &itemService,
   dbus_message_unref(msg);
 }
 
-void StatusNotifierManager::handleNameOwnerChangedSignalDbus(const char* name, const char* newOwner) {
-  
+void StatusNotifierManager::handleNameOwnerChangedSignalDbus(
+    const char *name, const char *newOwner) {
 
   std::string nameStr = std::string(name);
   if (registeredItems.find(nameStr) != registeredItems.end() &&
@@ -528,27 +528,29 @@ void StatusNotifierManager::handleNameOwnerChangedSignalDbus(const char* name, c
     for (auto &callback : removeCallbacks) {
       callback.callback(nameStr, callback.sniApps, callback.widget);
     }
-    ctx->logger.LogDebug(TAG,
-                          "Unregistered Status Notifier Item. New Count: " +
-                              std::to_string(registeredItems.size()));
+    ctx->logger.LogDebug(TAG, "Unregistered Status Notifier Item. New Count: " +
+                                  std::to_string(registeredItems.size()));
   }
 }
 
-void StatusNotifierManager::executeMenuAction(const std::string &itemService,
-                                              const std::string &menuPath,
-                                              u_int32_t timestamp,
-                                              int actionIndex) {
-  std::string iface = menuPath;
+ResponseMessage
+StatusNotifierManager::executeMenuAction(const SNIExecuteMenuAction &action) {
+  ResponseMessage resp{
+      .success = false, .errMsg = "", .correlationId = action.correlationId};
+
+  std::string iface = action.menuPath;
   std::replace(iface.begin(), iface.end(), '/', '.');
   if (iface[0] == '.')
     iface = iface.substr(1); // Remove leading dot
 
-  DBusMessage *msg = dbus_message_new_method_call(
-      itemService.c_str(), menuPath.c_str(), iface.c_str(), "EventGroup");
+  DBusMessage *msg = dbus_message_new_method_call(action.itemService.c_str(),
+                                                  action.menuPath.c_str(),
+                                                  iface.c_str(), "EventGroup");
   if (!msg) {
-    ctx->logger.LogError(TAG,
-                          "Failed to create a message to execute Menu Action.");
-    return;
+    resp.errMsg = "Failed to create a message to execute Menu Action.";
+    ctx->logger.LogError(TAG, resp.errMsg);
+
+    return resp;
   }
 
   DBusMessageIter args, arrayArgs, structArgs;
@@ -557,7 +559,7 @@ void StatusNotifierManager::executeMenuAction(const std::string &itemService,
                                    &arrayArgs);
   dbus_message_iter_open_container(&arrayArgs, DBUS_TYPE_STRUCT, nullptr,
                                    &structArgs);
-  dbus_uint32_t actionId = actionIndex;
+  dbus_uint32_t actionId = action.actionIndex;
   dbus_message_iter_append_basic(&structArgs, DBUS_TYPE_INT32, &actionId);
   const char *evtName = "clicked";
   dbus_message_iter_append_basic(&structArgs, DBUS_TYPE_STRING, &evtName);
@@ -570,21 +572,41 @@ void StatusNotifierManager::executeMenuAction(const std::string &itemService,
                                  &evtData);
   dbus_message_iter_close_container(&structArgs, &evtDataVariantIter);
 
-  dbus_message_iter_append_basic(&structArgs, DBUS_TYPE_UINT32, &timestamp);
+  dbus_message_iter_append_basic(&structArgs, DBUS_TYPE_UINT32,
+                                 &action.timestamp);
   dbus_message_iter_close_container(&arrayArgs, &structArgs);
   dbus_message_iter_close_container(&args, &arrayArgs);
 
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
       ctx->dbus.ssnConn, msg, -1, &(ctx->dbus.ssnErr));
   if (!reply && dbus_error_is_set(&(ctx->dbus.ssnErr))) {
-    std::string errMsg = "Failed to get a reply for Execute Menu Action. ";
-    errMsg += ctx->dbus.ssnErr.message;
-    ctx->logger.LogError(TAG, errMsg);
+    resp.errMsg = "Failed to get a reply for Execute Menu Action. ";
+    resp.errMsg += ctx->dbus.ssnErr.message;
+    ctx->logger.LogError(TAG, resp.errMsg);
     dbus_error_free(&ctx->dbus.ssnErr);
     dbus_message_unref(msg);
-    return;
+    return resp;
   }
 
   dbus_message_unref(msg);
   dbus_message_unref(reply);
+
+  resp.success = true;
+  return resp;
+}
+
+ResponseMessage StatusNotifierManager::handle(const SNIRequest &req) {
+  ResponseMessage resp;
+
+  std::visit(
+      [&](auto &reqMsg) {
+        using T = std::decay_t<decltype(reqMsg)>;
+
+        if constexpr (std::is_same_v<T, SNIExecuteMenuAction>) {
+          resp = executeMenuAction(reqMsg);
+        }
+      },
+      req);
+
+  return resp;
 }

@@ -1,11 +1,13 @@
 #pragma once
 
 #include "manager.hpp"
+#include "services/header/comm_bus.hpp"
 #include "services/header/context.hpp"
 
 class MprisWindow {
   AppContext *ctx;
   MprisManager *manager;
+  CommunicationBus *commBus;
 
   GtkWidget *menuWin;
   GtkWidget *progTtl;
@@ -31,7 +33,8 @@ class MprisWindow {
   static void handlePrevTrack(GtkWidget *widget, gpointer user_data);
 
 public:
-  MprisWindow(AppContext *ctx, MprisManager *mprisMgr);
+  MprisWindow(AppContext *ctx, CommunicationBus *commBus,
+              MprisManager *mprisMgr);
   void init();
   void update();
 

@@ -1,7 +1,8 @@
 #include "header/window.hpp"
+#include "modules/brightness/header/manager.hpp"
 
 
-BrightnessWindow::BrightnessWindow(AppContext *ctx, BrightnessManager* manager) : ctx(ctx), manager(manager){}
+BrightnessWindow::BrightnessWindow(AppContext *ctx, CommunicationBus* commbus, BrightnessManager* manager) : ctx(ctx), manager(manager), commBus(commbus){}
 
 void BrightnessWindow::init() {
     winBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
@@ -39,7 +40,6 @@ void BrightnessWindow::handleScaleChange([[maybe_unused]] GtkRange *range,[[mayb
                                          gdouble value, gpointer data) {
   BrightnessWindow *self = static_cast<BrightnessWindow *>(data);
 
-  if (self->manager->setLvl(static_cast<short>(value))) {
-    self->update();
-  }
+  self->commBus->SendMessage(BrtSetLevelRequest{.brightness = short(value), .correlationId = self->commBus->GetNewCorId()}, Priority::LOW);
+    // self->update();
 }

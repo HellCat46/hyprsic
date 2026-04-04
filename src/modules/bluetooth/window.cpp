@@ -1,10 +1,12 @@
 #include "header/window.hpp"
 #include "glib-object.h"
+#include "modules/bluetooth/header/manager.hpp"
 
 #define TAG "BluetoothWindow"
 
-BluetoothWindow::BluetoothWindow(AppContext *ctx, BluetoothManager *manager)
-    : ctx(ctx), manager(manager) {}
+BluetoothWindow::BluetoothWindow(AppContext *ctx, CommunicationBus *commBus,
+                                 BluetoothManager *manager)
+    : ctx(ctx), manager(manager), commBus(commBus) {}
 
 void BluetoothWindow::init() {
   menuBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -169,7 +171,7 @@ void BluetoothWindow::addDeviceEntry(const Device &dev, GtkWidget *parentBox) {
     // Connect Signal
     FuncArgs *rmvArgs = g_new0(FuncArgs, 1);
     rmvArgs->devIfacePath = g_strdup(dev.path.c_str());
-    rmvArgs->manager = manager;
+    rmvArgs->commBus = commBus;
     rmvArgs->ctx = ctx;
     g_signal_connect_data(devRemoveBtn, "clicked",
                           G_CALLBACK(BluetoothWindow::handleDeviceRemove),
@@ -185,7 +187,7 @@ void BluetoothWindow::addDeviceEntry(const Device &dev, GtkWidget *parentBox) {
     FuncArgs *trustArgs = g_new0(FuncArgs, 1);
     trustArgs->devIfacePath = g_strdup(dev.path.c_str());
     trustArgs->state = !dev.trusted;
-    trustArgs->manager = manager;
+    trustArgs->commBus = commBus;
     trustArgs->ctx = ctx;
     g_signal_connect_data(
         devTrustBtn, "clicked", G_CALLBACK(BluetoothWindow::handleDeviceTrust),
@@ -202,7 +204,7 @@ void BluetoothWindow::addDeviceEntry(const Device &dev, GtkWidget *parentBox) {
   FuncArgs *args = new FuncArgs();
   args->devIfacePath = dev.path;
   args->state = !dev.connected;
-  args->manager = manager;
+  args->commBus = commBus;
   args->ctx = ctx;
   g_signal_connect_data(devConnBtn, "clicked",
                         G_CALLBACK(BluetoothWindow::handleDeviceConnect), args,
@@ -219,15 +221,18 @@ void BluetoothWindow::handleDiscovery([[maybe_unused]] GtkWidget *widget,
   if (self->manager->discovering) {
     self->ctx->logger.LogInfo(TAG, "Stopping Bluetooth Discovery.");
 
-    if (self->manager->switchDiscovery(false) == 0)
-      self->ctx->logger.LogError(TAG, "Bluetooth Discovery Stopped.");
+    self->commBus->SendMessage(
+        BtSwitchDiscoveryRequest{.on = false,
+                                 .correlationId = self->commBus->GetNewCorId()},
+        Priority::LOW);
   } else {
     self->ctx->logger.LogInfo(TAG, "Starting Bluetooth Discovery.");
 
-    if (self->manager->switchDiscovery(true) == 0) {
-      self->ctx->logger.LogInfo(TAG, "Bluetooth Discovery Started.");
-      self->update();
-    }
+    self->commBus->SendMessage(
+        BtSwitchDiscoveryRequest{.on = true,
+                                 .correlationId = self->commBus->GetNewCorId()},
+        Priority::NORMAL);
+    // self->update();
   }
 
   gtk_button_set_label(GTK_BUTTON(self->scanBtn),
@@ -238,34 +243,48 @@ void BluetoothWindow::handlePower([[maybe_unused]] GtkSwitch *widget,
                                   gboolean state, gpointer user_data) {
   BluetoothWindow *self = static_cast<BluetoothWindow *>(user_data);
 
-  if (!self->manager->switchPower(state)) {
-    std::string msg = "Bluetooth Power Switched ";
-    msg += (state ? "ON" : "OFF");
-    self->ctx->logger.LogInfo(TAG, msg);
-    self->ctx->showUpdateWindow(UpdateModule::BLUETOOTH,
-                                state ? "base" : "disabled", msg);
-  }
+  self->commBus->SendMessage(
+      BtSwitchPowerRequest{.on = bool(state),
+                           .correlationId = self->commBus->GetNewCorId()},
+      Priority::NORMAL);
+
+  // std::string msg = "Bluetooth Power Switched ";
+  // msg += (state ? "ON" : "OFF");
+  // self->ctx->logger.LogInfo(TAG, msg);
+  // self->ctx->showUpdateWindow(UpdateModule::BLUETOOTH,
+  //                             state ? "base" : "disabled", msg);
 }
 
 void BluetoothWindow::handleDeviceTrust([[maybe_unused]] GtkWidget *widget,
                                         gpointer user_data) {
   FuncArgs *args = static_cast<FuncArgs *>(user_data);
 
-  args->manager->trustDevice(args->state, args->devIfacePath);
+  args->commBus->SendMessage(
+      BtTrustRequest{.state = args->state,
+                     .devPath = args->devIfacePath,
+                     .correlationId = args->commBus->GetNewCorId()},
+      Priority::LOW);
 }
 
 void BluetoothWindow::handleDeviceRemove([[maybe_unused]] GtkWidget *widget,
                                          gpointer user_data) {
   FuncArgs *args = static_cast<FuncArgs *>(user_data);
 
-  args->manager->removeDevice(args->devIfacePath);
+  args->commBus->SendMessage(
+      BtRemoveRequest{.devPath = args->devIfacePath,
+                      .correlationId = args->commBus->GetNewCorId()},
+      Priority::LOW);
 }
 
 void BluetoothWindow::handleDeviceConnect([[maybe_unused]] GtkWidget *widget,
                                           gpointer user_data) {
   FuncArgs *args = static_cast<FuncArgs *>(user_data);
 
-  args->manager->connectDevice(args->state, args->devIfacePath);
+  args->commBus->SendMessage(
+      BtConnectRequest{.state = args->state,
+                       .devPath = args->devIfacePath,
+                       .correlationId = args->commBus->GetNewCorId()},
+      Priority::LOW);
 }
 
 void BluetoothWindow::FreeArgs(gpointer data,

@@ -58,13 +58,13 @@ class PulseAudioManager {
                                  const pa_source_info *info, int eol,
                                  void *data);
 
-  ResponseMessage setVolume(PASetVolumeRequest req);
-  ResponseMessage toggleMute(PAToggleMuteRequest req);
-  ResponseMessage updateDefDevice(PAUpdateDefDeviceRequest req);
+  ResponseMessage setVolume(const PASetVolumeRequest& req);
+  ResponseMessage toggleMute(const PAToggleMuteRequest& req);
+  ResponseMessage updateDefDevice(const PAUpdateDefDeviceRequest& req);
 
-  void getDevices();
 
 public:
+  void getDevices(); // Only for Main Manager Thread Use
   PulseAudioManager(AppContext *ctx);
 
   std::string defOutput, defInput;

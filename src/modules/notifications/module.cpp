@@ -4,9 +4,10 @@
 #define TAG "NotificationModule"
 
 NotificationModule::NotificationModule(AppContext *ctx,
+                                       CommunicationBus *commBus,
                                        NotificationManager *notifInstance,
                                        NotificationWindow *window)
-    : manager(notifInstance), window(window), ctx(ctx) {}
+    : manager(notifInstance), window(window), ctx(ctx), commBus(commBus) {}
 
 GtkWidget *NotificationModule::setup() {
   GtkWidget *notifEBox = gtk_event_box_new();
@@ -20,7 +21,8 @@ GtkWidget *NotificationModule::setup() {
   return notifEBox;
 }
 
-void NotificationModule::chgVisibiltyWin([[maybe_unused]] GtkWidget *widget,[[maybe_unused]] GdkEvent *e,
+void NotificationModule::chgVisibiltyWin([[maybe_unused]] GtkWidget *widget,
+                                         [[maybe_unused]] GdkEvent *e,
                                          gpointer user_data) {
   NotificationModule *self = static_cast<NotificationModule *>(user_data);
 

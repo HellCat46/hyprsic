@@ -8,7 +8,7 @@
 ScreenSaverManager::ScreenSaverManager(AppContext *ctx) : ctx(ctx) {}
 
 ResponseMessage
-ScreenSaverManager::activateScreenSaver(ScrnSvrActivateRequest req) {
+ScreenSaverManager::activateScreenSaver(const ScrnSvrActivateRequest &req) {
   ResponseMessage resp{
       .success = false, .errMsg = "", .correlationId = req.correlationId};
 
@@ -65,7 +65,7 @@ ScreenSaverManager::activateScreenSaver(ScrnSvrActivateRequest req) {
 }
 
 ResponseMessage
-ScreenSaverManager::deactivateScreenSaver(ScrnSvrDeActivateRequest req) {
+ScreenSaverManager::deactivateScreenSaver(const ScrnSvrDeActivateRequest &req) {
   ResponseMessage resp{
       .success = false, .errMsg = "", .correlationId = req.correlationId};
 
@@ -107,5 +107,25 @@ ScreenSaverManager::deactivateScreenSaver(ScrnSvrDeActivateRequest req) {
   inhibitCookie = -1;
 
   resp.success = true;
+  return resp;
+}
+
+bool ScreenSaverManager::isActive() { return inhibitCookie != -1; }
+
+ResponseMessage ScreenSaverManager::handle(const ScrnSvrRequest &req) {
+  ResponseMessage resp;
+
+  std::visit(
+      [&](auto &reqMsg) {
+        using T = std::decay_t<decltype(reqMsg)>;
+
+        if constexpr (std::is_same_v<T, ScrnSvrActivateRequest>) {
+          resp = activateScreenSaver(reqMsg);
+        } else if constexpr (std::is_same_v<T, ScrnSvrDeActivateRequest>) {
+          resp = deactivateScreenSaver(reqMsg);
+        }
+      },
+      req);
+
   return resp;
 }

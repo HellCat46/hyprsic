@@ -1,11 +1,13 @@
 #pragma once
 
-#include "services/header/context.hpp"
 #include "manager.hpp"
+#include "services/header/comm_bus.hpp"
+#include "services/header/context.hpp"
 
 class PulseAudioWindow {
-  PulseAudioManager *manager;
   AppContext *ctx;
+  PulseAudioManager *manager;
+  CommunicationBus *commBus;
 
   GtkWidget *outMuteBtn;
   GtkWidget *outIcon;
@@ -18,7 +20,7 @@ class PulseAudioWindow {
   GtkWidget *inScale;
   GtkWidget *inDropdown;
   GtkListStore *inStore;
-  
+
   void updateControls(bool mute, const std::vector<uint32_t> &volume,
                       GtkWidget *icon, GtkWidget *scale);
 
@@ -33,7 +35,8 @@ public:
   GdkPixbuf *inMuteIcon;
   GdkPixbuf *inUnmuteIcon;
 
-  PulseAudioWindow(AppContext *ctx, PulseAudioManager *manager);
+  PulseAudioWindow(AppContext *ctx, CommunicationBus *commBus,
+                   PulseAudioManager *manager);
   void setupIcons();
   void init();
   void update();

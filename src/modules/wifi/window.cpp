@@ -1,6 +1,9 @@
 #include "header/window.hpp"
 #include "glib-object.h"
 #include "gtk/gtk.h"
+#include "modules/wifi/header/manager.hpp"
+#include "services/header/comm_bus.hpp"
+#include "services/header/comm_types.hpp"
 #include <algorithm>
 #include <cstring>
 #include <functional>
@@ -10,8 +13,8 @@
 
 #define TAG "WifiWindow"
 
-WifiWindow::WifiWindow(AppContext *ctx, WifiManager *mgr)
-    : ctx(ctx), manager(mgr) {}
+WifiWindow::WifiWindow(AppContext *ctx, CommunicationBus *commBus, WifiManager *mgr)
+    : ctx(ctx), manager(mgr), commBus(commBus) {}
 
 void WifiWindow::init() {
   mainBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
@@ -66,7 +69,7 @@ void WifiWindow::init() {
   gtk_box_pack_end(GTK_BOX(connDevIBox), frgtBtn, false, false, 5);
   connDevFrgtId = g_signal_connect_data(
       frgtBtn, "clicked", G_CALLBACK(handleForget),
-      new ActionArgs{.manager = manager, .devPath = manager->connDev},
+      new ActionArgs{.commBus = commBus, .devPath = manager->getConnDev()},
       (GClosureNotify)FreeActionArgs, (GConnectFlags)0);
 
   GtkWidget *disCBtn = gtk_button_new_with_label("Disconnect");
@@ -122,7 +125,7 @@ void WifiWindow::update() {
     gtk_widget_set_sensitive(scanBtn, true);
   }
 
-  if (!manager->authDev.empty()) {
+  if (!manager->getAuthDev().empty()) {
     gtk_widget_show(passEntBox);
   } else {
     gtk_widget_hide(passEntBox);
@@ -136,7 +139,7 @@ void WifiWindow::update() {
 
   std::vector<std::pair<short, GtkWidget *>> devWids;
   for (const auto &[devPath, station] : manager->devices) {
-    if (devPath == manager->connDev)
+    if (devPath == manager->getConnDev())
       continue;
 
     devWids.push_back({station.rssi, addDevList(devPath, station)});
@@ -158,7 +161,7 @@ void WifiWindow::update() {
 
 void WifiWindow::updateConnDev() {
 
-  auto it = manager->devices.find(manager->connDev);
+  auto it = manager->devices.find(manager->getConnDev());
   if (it != manager->devices.end()) {
 
     WifiStation station = it->second;
@@ -171,7 +174,7 @@ void WifiWindow::updateConnDev() {
     g_signal_handler_disconnect(frgtBtn, connDevFrgtId);
     connDevFrgtId = g_signal_connect_data(
         frgtBtn, "clicked", G_CALLBACK(handleForget),
-        new ActionArgs{.manager = manager, .devPath = manager->connDev},
+        new ActionArgs{.commBus = commBus, .devPath = manager->getConnDev()},
         (GClosureNotify)FreeActionArgs, (GConnectFlags)0);
 
     gtk_widget_show_all(connDevBox);
@@ -195,7 +198,7 @@ GtkWidget *WifiWindow::addDevList(const std::string &devPath,
   GtkWidget *connBtn = gtk_button_new_with_label("Connect");
   gtk_box_pack_end(GTK_BOX(devRow), connBtn, false, false, 5);
   g_signal_connect_data(connBtn, "clicked", G_CALLBACK(handleConnect),
-                        new ActionArgs{.manager = manager, .devPath = devPath},
+                        new ActionArgs{.commBus = commBus, .devPath = devPath},
                         (GClosureNotify)FreeActionArgs, (GConnectFlags)0);
 
   if (station.known) {
@@ -203,7 +206,7 @@ GtkWidget *WifiWindow::addDevList(const std::string &devPath,
     gtk_box_pack_end(GTK_BOX(devRow), frgtBtn, false, false, 5);
     g_signal_connect_data(
         frgtBtn, "clicked", G_CALLBACK(handleForget),
-        new ActionArgs{.manager = manager, .devPath = devPath},
+        new ActionArgs{.commBus = commBus, .devPath = devPath},
         (GClosureNotify)FreeActionArgs, (GConnectFlags)0);
   }
 
@@ -230,29 +233,46 @@ void WifiWindow::addTooltip(GtkWidget *widget, const WifiStation &station) {
 void WifiWindow::handleConnect([[maybe_unused]] GtkWidget *widget,
                                gpointer user_data) {
   ActionArgs *args = static_cast<ActionArgs *>(user_data);
-  args->manager->Connect(args->devPath);
+
+  args->commBus->SendMessage(
+      WifiConnectRequest{.netPath = args->devPath,
+                         .correlationId = args->commBus->GetNewCorId()},
+      Priority::NORMAL);
 }
 
 void WifiWindow::handleDisconnect([[maybe_unused]] GtkWidget *widget,
                                   gpointer user_data) {
   WifiWindow *self = static_cast<WifiWindow *>(user_data);
-  self->manager->Disconnect();
+
+  // I think It should be immediate??? My Mental Image of this is just
+  // dramatically pulling out ethernet cable for some reason.
+  self->commBus->SendMessage(
+      WifiDisconnectRequest{.correlationId = self->commBus->GetNewCorId()},
+      Priority::IMMEDIATE);
 }
 
 void WifiWindow::handleForget([[maybe_unused]] GtkWidget *widget,
                               gpointer user_data) {
   ActionArgs *args = static_cast<ActionArgs *>(user_data);
-  args->manager->Forget(args->devPath);
+
+  args->commBus->SendMessage(
+      WifiForgetRequest{.netPath = args->devPath,
+                        .correlationId = args->commBus->GetNewCorId()},
+      Priority::NORMAL);
 }
 
 void WifiWindow::handleScan([[maybe_unused]] GtkWidget *widget,
                             gpointer user_data) {
   WifiWindow *self = static_cast<WifiWindow *>(user_data);
-  self->manager->Scan();
 
-  if (self->manager->IsScanning()) {
-    gtk_widget_set_sensitive(self->scanBtn, false);
-  }
+  self->commBus->SendMessage(
+      WifiScanRequest{.correlationId = self->commBus->GetNewCorId()},
+      Priority::HIGH);
+
+  // TODO
+  // if (self->manager->IsScanning()) {
+  //   gtk_widget_set_sensitive(self->scanBtn, false);
+  // }
 }
 
 void WifiWindow::handlePassSubmit([[maybe_unused]] GtkWidget *widget,
@@ -261,7 +281,12 @@ void WifiWindow::handlePassSubmit([[maybe_unused]] GtkWidget *widget,
   const char *password = gtk_entry_get_text(GTK_ENTRY(self->passEntry));
 
   if (password && std::strlen(password) > 0) {
-    self->manager->SubmitPassphrase(password);
+
+    self->commBus->SendMessage(
+        WifiSubmitPassphraseRequest{.password = password,
+                                    .correlationId =
+                                        self->commBus->GetNewCorId()},
+        Priority::IMMEDIATE);
   }
 }
 

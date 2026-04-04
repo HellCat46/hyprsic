@@ -56,11 +56,11 @@ class WifiManager {
   int GetDeviceInfo(std::string devPath, WifiStation &station);
 
   // Action methods
-  ResponseMessage Scan(WifiScanRequest req);
-  ResponseMessage Connect(WifiConnectRequest req);
-  ResponseMessage Disconnect(WifiDisconnectRequest req);
-  ResponseMessage Forget(WifiForgetRequest req);
-  ResponseMessage SubmitPassphrase(WifiSubmitPassphraseRequest req);
+  ResponseMessage Scan(const WifiScanRequest& req);
+  ResponseMessage Connect(const WifiConnectRequest& req);
+  ResponseMessage Disconnect(const WifiDisconnectRequest& req);
+  ResponseMessage Forget(const WifiForgetRequest& req);
+  ResponseMessage SubmitPassphrase(const WifiSubmitPassphraseRequest& req);
 
 public:
   std::unordered_map<std::string, WifiStation> devices;
@@ -71,6 +71,9 @@ public:
 
   bool IsPowered() const;
   bool IsScanning() const;
+  
+  std::string getConnDev() const;
+  std::string getAuthDev() const;
 
   // Monitor Changes Functions
   void addMatchRulesDbus();

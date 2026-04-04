@@ -1,4 +1,6 @@
 #include "header/app.hpp"
+#include "modules/mpris/header/manager.hpp"
+#include "services/header/comm_types.hpp"
 #include <sys/socket.h>
 #include <sys/un.h>
 
@@ -108,7 +110,7 @@ void Application::IPCToggleView(std::string_view module) {
 
 void Application::IPCCtrlAudioDev(std::string_view args) {
   if (args == "play-pause") {
-    mprisManager.PlayPause();
+    commBus.SendMessage(MprisPlayPauseRequest{.correlationId = commBus.GetNewCorId()}, Priority::IMMEDIATE);
   } else if (args == "toggle-mic") {
     paWindow.toggleMute(nullptr, nullptr, false);
   } else if (args == "toggle-output") {

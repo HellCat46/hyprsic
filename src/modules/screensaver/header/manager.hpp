@@ -17,12 +17,12 @@ class ScreenSaverManager {
   AppContext *ctx;
   long int inhibitCookie = -1;
 
-  ResponseMessage activateScreenSaver(ScrnSvrActivateRequest req);
-  ResponseMessage deactivateScreenSaver(ScrnSvrDeActivateRequest req);
+  ResponseMessage activateScreenSaver(const ScrnSvrActivateRequest& req);
+  ResponseMessage deactivateScreenSaver(const ScrnSvrDeActivateRequest& req);
 
 public:
   ScreenSaverManager(AppContext *ctx);
   
-  
+  bool isActive();
   ResponseMessage handle(const ScrnSvrRequest& msg);
 };

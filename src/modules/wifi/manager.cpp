@@ -222,7 +222,7 @@ void WifiManager::GetManagedObjects() {
                                std::to_string(devices.size()));
 }
 
-ResponseMessage WifiManager::Scan(WifiScanRequest req) {
+ResponseMessage WifiManager::Scan(const WifiScanRequest& req) {
   ResponseMessage resp{
       .success = false, .errMsg = "", .correlationId = req.correlationId};
 
@@ -438,7 +438,7 @@ int WifiManager::GetDeviceInfo(std::string dev, WifiStation &station) {
 bool WifiManager::IsPowered() const { return powered; }
 bool WifiManager::IsScanning() const { return scanning; }
 
-ResponseMessage WifiManager::Connect(WifiConnectRequest req) {
+ResponseMessage WifiManager::Connect(const WifiConnectRequest& req) {
   ResponseMessage resp{
       .success = false, .errMsg = "", .correlationId = req.correlationId};
 
@@ -467,7 +467,7 @@ ResponseMessage WifiManager::Connect(WifiConnectRequest req) {
   return resp;
 }
 
-ResponseMessage WifiManager::Disconnect(WifiDisconnectRequest req) {
+ResponseMessage WifiManager::Disconnect(const WifiDisconnectRequest& req) {
   ResponseMessage resp{
       .success = false, .errMsg = "", .correlationId = req.correlationId};
 
@@ -501,7 +501,7 @@ ResponseMessage WifiManager::Disconnect(WifiDisconnectRequest req) {
   return resp;
 }
 
-ResponseMessage WifiManager::Forget(WifiForgetRequest req) {
+ResponseMessage WifiManager::Forget(const WifiForgetRequest& req) {
   ResponseMessage resp{
       .success = false, .errMsg = "", .correlationId = req.correlationId};
 
@@ -536,7 +536,7 @@ ResponseMessage WifiManager::Forget(WifiForgetRequest req) {
   return resp;
 }
 
-ResponseMessage WifiManager::SubmitPassphrase(WifiSubmitPassphraseRequest req) {
+ResponseMessage WifiManager::SubmitPassphrase(const WifiSubmitPassphraseRequest& req) {
   ResponseMessage resp{
       .success = false, .errMsg = "", .correlationId = req.correlationId};
 
@@ -810,4 +810,36 @@ void WifiManager::handlePropertiesChangedDbus(DBusMessage *msg,
   }
 }
 
+std::string WifiManager::getAuthDev() const {
+    return authDev;
+}
+
+std::string WifiManager::getConnDev() const {
+    return connDev;
+}
+
 WifiManager::~WifiManager() { RegisterAgent(false); }
+
+ResponseMessage WifiManager::handle(const WifiRequest &req) {
+  ResponseMessage resp;
+
+  std::visit(
+      [&](auto &reqMsg) {
+        using T = std::decay_t<decltype(reqMsg)>;
+
+        if constexpr (std::is_same_v<T, WifiConnectRequest>) {
+          resp = Connect(reqMsg);
+        } else if constexpr (std::is_same_v<T, WifiDisconnectRequest>) {
+          resp = Disconnect(reqMsg);
+        } else if constexpr (std::is_same_v<T, WifiForgetRequest>) {
+          resp = Forget(reqMsg);
+        } else if constexpr (std::is_same_v<T, WifiScanRequest>) {
+          resp = Scan(reqMsg);
+        } else if constexpr (std::is_same_v<T, WifiSubmitPassphraseRequest>) {
+          resp = SubmitPassphrase(reqMsg);
+        }
+      },
+      req);
+
+  return resp;
+}

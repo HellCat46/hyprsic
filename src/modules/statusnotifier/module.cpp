@@ -3,23 +3,24 @@
 #include "glib-object.h"
 #include "glib.h"
 #include "gtk/gtk.h"
+#include "modules/statusnotifier/header/manager.hpp"
 #include <map>
 #include <string>
 
 #define TAG "StatusNotifierModule"
 
 StatusNotifierModule::StatusNotifierModule(
-    AppContext *ctx, StatusNotifierManager *snManagerInstance) {
-  snManager = snManagerInstance;
-  logger = &ctx->logger;
-}
+    AppContext *ctx, CommunicationBus *commBus,
+    StatusNotifierManager *snManagerInstance)
+    : logger(&ctx->logger), snManager(snManagerInstance), commBus(commBus) {}
 
-GtkWidget* StatusNotifierModule::setup() {
+GtkWidget *StatusNotifierModule::setup() {
   sniBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
 
-  snManager->removeCallbacks.push_back(
-      {StatusNotifierModule::remove, sniBox, &sniApps});
-  
+  // TODO: Replace with CommunicationBus...
+  // snManager->removeCallbacks.push_back(
+  //     {StatusNotifierModule::remove, sniBox, &sniApps});
+
   return sniBox;
 }
 
@@ -42,6 +43,7 @@ void StatusNotifierModule::update() {
 
     MenuActionArgs *args = g_new0(MenuActionArgs, 1);
     args->snManager = snManager;
+    args->commBus = commBus;
     args->itemId = servicePath;
     args->logger = logger;
     args->sniApp = app;
@@ -70,9 +72,9 @@ void StatusNotifierModule::remove(std::string servicePath,
   }
 }
 
-void StatusNotifierModule::handleContextMenuOpen([[maybe_unused]] GtkWidget *widget,
-                                                 GdkEventButton *event,
-                                                 gpointer user_data) {
+void StatusNotifierModule::handleContextMenuOpen(
+    [[maybe_unused]] GtkWidget *widget, GdkEventButton *event,
+    gpointer user_data) {
 
   MenuActionArgs *args = (MenuActionArgs *)user_data;
   if (gtk_widget_get_visible(args->sniApp.popOver)) {
@@ -110,17 +112,18 @@ void StatusNotifierModule::handleContextMenuOpen([[maybe_unused]] GtkWidget *wid
 
       gtk_box_pack_start(GTK_BOX(args->sniApp.parentBox), menuEvtBox, false,
                          false, 0);
-      
-        EvtBtnPressArgs *btnArgs = g_new0(EvtBtnPressArgs, 1);
-        btnArgs->snManager = args->snManager;
-        btnArgs->itemId = args->itemId;
-        btnArgs->logger = args->logger;
-        btnArgs->sniApp = args->sniApp;
-        btnArgs->evtIdx = index;
-        g_signal_connect_data(
-            menuEvtBox, "button-press-event",
-            G_CALLBACK(StatusNotifierModule::handleEvtButtonPress), btnArgs,
-            (GClosureNotify)g_free, (GConnectFlags)0);
+
+      EvtBtnPressArgs *btnArgs = g_new0(EvtBtnPressArgs, 1);
+      btnArgs->snManager = args->snManager;
+      btnArgs->commBus = args->commBus;
+      btnArgs->itemId = args->itemId;
+      btnArgs->logger = args->logger;
+      btnArgs->sniApp = args->sniApp;
+      btnArgs->evtIdx = index;
+      g_signal_connect_data(
+          menuEvtBox, "button-press-event",
+          G_CALLBACK(StatusNotifierModule::handleEvtButtonPress), btnArgs,
+          (GClosureNotify)g_free, (GConnectFlags)0);
     }
   }
   gtk_widget_show_all(args->sniApp.parentBox);
@@ -128,18 +131,22 @@ void StatusNotifierModule::handleContextMenuOpen([[maybe_unused]] GtkWidget *wid
   gtk_popover_popup(GTK_POPOVER(args->sniApp.popOver));
 }
 
-void StatusNotifierModule::handleEvtButtonPress([[maybe_unused]] GtkWidget *widget,
-                                                 GdkEventButton *event,
-                                                 gpointer user_data) {
+void StatusNotifierModule::handleEvtButtonPress(
+    [[maybe_unused]] GtkWidget *widget, GdkEventButton *event,
+    gpointer user_data) {
   if (event->type != GDK_BUTTON_PRESS || event->button != 1)
     return;
-  
-  
+
   EvtBtnPressArgs *args = (EvtBtnPressArgs *)user_data;
   auto item = args->snManager->registeredItems.find(args->itemId);
   if (item == args->snManager->registeredItems.end())
     return;
 
-  args->snManager->executeMenuAction(args->itemId, item->second.menu_path,
-      event->time, args->evtIdx);
+  args->commBus->SendMessage(SNIExecuteMenuAction {
+      .itemService = args->itemId,
+      .menuPath = item->second.menu_path,
+      .timestamp = event->time,
+      .actionIndex = args->evtIdx,
+      .correlationId = args->commBus->GetNewCorId()
+  }, Priority::HIGH);
 }

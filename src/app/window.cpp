@@ -1,4 +1,5 @@
 #include "header/window.hpp"
+#include "services/header/comm_bus.hpp"
 #include <cstring>
 #include <ctime>
 #include <sys/socket.h>
@@ -7,7 +8,7 @@
 
 #define TAG "Application"
 
-Window::Window(AppContext *ctx, HyprWSManager *hyprMgr,
+Window::Window(AppContext *ctx, CommunicationBus* commBus, HyprWSManager *hyprMgr,
                StatusNotifierManager *snManager, Stats *stat, Memory *mem,
                SysLoad *load, BatteryInfo *battery, TemperatureManager *tempMgr,
                ScreenSaverManager *scrnsavrMgr, MprisManager *mprisMgr,
@@ -18,9 +19,9 @@ Window::Window(AppContext *ctx, HyprWSManager *hyprMgr,
                PulseAudioWindow *paWindow, WifiManager *wifiMgr,
                WifiWindow *wifiWin)
     : sysinfoModule(ctx, stat, mem, load, battery, tempMgr),
-      mprisModule(ctx, mprisMgr, mprisWindow), hyprModule(ctx, hyprMgr),
-      scrnsavrModule(ctx, scrnsavrMgr), btModule(ctx, btMgr, btWindow),
-      notifModule(ctx, notifInstance, notifWindow), snModule(ctx, snManager),
+      mprisModule(ctx, mprisMgr, commBus, mprisWindow), hyprModule(ctx, commBus, hyprMgr),
+      scrnsavrModule(ctx, commBus, scrnsavrMgr), btModule(ctx, btMgr, btWindow),
+      notifModule(ctx, commBus, notifInstance, notifWindow), snModule(ctx, commBus, snManager),
       paModule(paMgr, ctx, paWindow), brtModule(ctx, brtMgr, brtWindow),
       wifiModule(ctx, wifiMgr, wifiWin) {}
 

@@ -1,13 +1,14 @@
 #include "header/module.hpp"
-#include "utils/helper_func.hpp"
 #include "gtk/gtk.h"
+#include "modules/mpris/header/manager.hpp"
+#include "utils/helper_func.hpp"
 #include <string>
 
 #define TAG "MprisModule"
 
 MprisModule::MprisModule(AppContext *ctx, MprisManager *mprisMgr,
-                         MprisWindow *mprisWindow)
-    : ctx(ctx), manager(mprisMgr), window(mprisWindow) {}
+                         CommunicationBus *commBus, MprisWindow *mprisWindow)
+    : ctx(ctx), manager(mprisMgr), window(mprisWindow), commBus(commBus) {}
 
 GtkWidget *MprisModule::setup() {
   mainLbl = gtk_label_new(nullptr);
@@ -25,10 +26,11 @@ GtkWidget *MprisModule::setup() {
 }
 
 void MprisModule::update() {
-  if (!manager->hasPlayer)
+  if (!manager->hasPlayer())
     return;
 
-  gchar *finalText = HelperFunc::ValidString(manager->playingTrack.title);
+  auto track = manager->getPlayingTrack();
+  gchar *finalText = HelperFunc::ValidString(track.title);
   std::string title = "<span foreground='green'><b>";
   title += finalText;
   title += "</b></span>";
@@ -37,8 +39,8 @@ void MprisModule::update() {
   gtk_label_set_markup(GTK_LABEL(mainLbl), title.c_str());
 }
 
-void MprisModule::chgVisibilityMenu([[maybe_unused]] GtkWidget *widget, GdkEvent *e,
-                                    gpointer user_data) {
+void MprisModule::chgVisibilityMenu([[maybe_unused]] GtkWidget *widget,
+                                    GdkEvent *e, gpointer user_data) {
   MprisModule *self = static_cast<MprisModule *>(user_data);
 
   if (self->window->isVisible()) {
@@ -54,6 +56,6 @@ void MprisModule::chgVisibilityMenu([[maybe_unused]] GtkWidget *widget, GdkEvent
     self->update();
     self->window->chgVisibility(true);
   } else {
-    self->manager->PlayPause();
+    self->commBus->SendMessage(MprisPlayPauseRequest{.correlationId= self->commBus->GetNewCorId()}, Priority::HIGH);
   }
 }

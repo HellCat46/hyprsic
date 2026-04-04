@@ -10,12 +10,13 @@ class MprisModule {
   AppContext *ctx;
   MprisManager *manager;
   MprisWindow *window;
+  CommunicationBus *commBus;
 
   GtkWidget *mainLbl;
 
 public:
   MprisModule(AppContext *ctx, MprisManager *mprisMgr,
-              MprisWindow *mprisWindow);
+              CommunicationBus *commBus, MprisWindow *mprisWindow);
 
   GtkWidget *setup();
   void update();

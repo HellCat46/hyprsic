@@ -1,5 +1,6 @@
 #pragma once
 
+#include "gdk/gdk.h"
 #include "modules/bluetooth/header/module.hpp"
 #include "modules/brightness/header/module.hpp"
 #include "modules/mpris/header/module.hpp"
@@ -7,11 +8,10 @@
 #include "modules/pulseaudio/header/module.hpp"
 #include "modules/screensaver/header/module.hpp"
 #include "modules/statusnotifier/header/module.hpp"
+#include "modules/sysinfo/header/manager/temperature.hpp"
 #include "modules/sysinfo/header/module.hpp"
 #include "modules/wifi/header/module.hpp"
 #include "modules/workspaces/hyprland/header/module.hpp"
-#include "gdk/gdk.h"
-#include "modules/sysinfo/header/manager/temperature.hpp"
 #include <gtk-layer-shell.h>
 #include <gtk/gtk.h>
 
@@ -29,7 +29,7 @@ struct Window {
   BrightnessModule brtModule;
   WifiModule wifiModule;
 
-  Window(AppContext *ctx, HyprWSManager *hyprMgr,
+  Window(AppContext *ctx, CommunicationBus *commBus, HyprWSManager *hyprMgr,
          StatusNotifierManager *snManager, Stats *stat, Memory *mem,
          SysLoad *load, BatteryInfo *battery, TemperatureManager *tempMgr,
          ScreenSaverManager *scrnsavrMgr, MprisManager *mprisMgr,

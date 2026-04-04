@@ -82,6 +82,7 @@ service_sources = files(
   'src/services/context.cpp',
   'src/services/database.cpp',
   'src/services/logging.cpp',
+  'src/services/comm_bus.cpp',
 )
 
 app_sources = files(

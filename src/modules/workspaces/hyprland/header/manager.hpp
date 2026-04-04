@@ -6,13 +6,13 @@
 #include "services/header/comm_types.hpp"
 #include "services/header/logging.hpp"
 #include "string"
-#include <functional>
+#include <cstdint>
 #include <json/reader.h>
 #include <string>
 #include <string_view>
+#include <sys/types.h>
 #include <thread>
 #include <variant>
-#include <vector>
 
 struct Workspace {
   long int id;
@@ -28,13 +28,12 @@ struct WSListenerData {
 };
 
 struct HyprSwitchWSRequest {
-  int wsId;
+  unsigned int wsId;
 
   uint64_t correlationId;
 };
 
 struct HyprMoveWSRequest {
-  int wsId;
   unsigned char monitorId;
   bool forw;
 
@@ -42,7 +41,7 @@ struct HyprMoveWSRequest {
 };
 
 struct HyprSwitchSPWSRequest {
-  int wsId;
+  unsigned int wsId;
   std::string name;
 
   uint64_t correlationId;
@@ -58,33 +57,34 @@ class HyprWSManager {
   LoggingManager *logger;
   bool failed;
 
-  std::vector<
-      std::pair<std::function<void(HyprWSManager *wsInstance, GtkWidget *wsBox,
-                                   GtkWidget *spWSBox, unsigned char windowId)>,
-                WSListenerData>>
-      listeners;
+  // TODO: Replace it with CommunicationBus.... Not sure how tho... 
+  // std::vector<
+  //     std::pair<std::function<void(CommunicationBus *commBus,HyprWSManager *wsInstance, GtkWidget *wsBox,
+  //                                  GtkWidget *spWSBox, unsigned char windowId)>,
+  //               WSListenerData>>
+  //     listeners;
 
   int getPath();
 
   long parseWorkspaceId(std::string_view);
   Json::Value executeQuery(const std::string &, std::string &);
 
-  ResponseMessage SwitchToWS(HyprSwitchWSRequest req);
-  ResponseMessage MoveToWS(HyprMoveWSRequest req);
-  ResponseMessage SwitchSPWS(HyprSwitchSPWSRequest req);
+  ResponseMessage SwitchToWS(const HyprSwitchWSRequest& req);
+  ResponseMessage MoveToWS(const HyprMoveWSRequest& req);
+  ResponseMessage SwitchSPWS(const HyprSwitchSPWSRequest& req);
 
 public:
-  long activeWorkspaceId;
+  unsigned int activeWorkspaceId;
   std::map<long, Workspace> workspaces;
   std::map<std::string, unsigned int> monitors;
 
   HyprWSManager(LoggingManager *logMgr);
   ~HyprWSManager();
 
-  void subscribe(std::function<void(HyprWSManager *wsInstance, GtkWidget *wsBox,
-                                    GtkWidget *spWSBox, unsigned char windowId)>
-                     updateFunc,
-                 GtkWidget *wsBox, GtkWidget *spWSBox, unsigned char windowId);
+  // void subscribe(std::function<void(const HyprWSManager *wsInstance, GtkWidget *wsBox,
+  //                                   GtkWidget *spWSBox, unsigned char windowId)>
+  //                    updateFunc,
+  //                GtkWidget *wsBox, GtkWidget *spWSBox, unsigned char windowId);
 
   void liveEventListener();
   int GetWorkspaces();

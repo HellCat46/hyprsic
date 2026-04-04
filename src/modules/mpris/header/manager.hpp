@@ -43,7 +43,7 @@ struct MprisNextTrackRequest {
 
 using MprisRequest =
     std::variant<MprisPlayPauseRequest, MprisGetPlayerInfoRequest,
-                 MprisGetPositionRequest, MprisGetPlayerInfoRequest,
+                 MprisGetPositionRequest, MprisSetPositionRequest, MprisGetPlayerInfoRequest,
                  MprisNextTrackRequest, MprisPreviousTrackRequest>;
 
 class MprisManager {
@@ -54,18 +54,18 @@ class MprisManager {
   void addPlayer(const std::string &playerName);
   void removePlayer(const std::string &playerName);
 
-  ResponseMessage PlayPause(MprisPlayPauseRequest req);
+  ResponseMessage PlayPause(const MprisPlayPauseRequest& req);
   bool PlayPauseDbusCall(const char *player);
 
-  ResponseMessage GetPlayerInfo(MprisGetPlayerInfoRequest req);
+  ResponseMessage GetPlayerInfo(const MprisGetPlayerInfoRequest& req);
   int GetPlayerInfoDbusCall(const char *player, PlayerTrack *track);
 
-  ResponseMessage GetPosition(MprisGetPositionRequest req);
+  ResponseMessage GetPosition(const MprisGetPositionRequest& req);
   int GetCurrentPositionDbusCall();
 
-  ResponseMessage SetPosition(MprisSetPositionRequest req);
-  ResponseMessage PreviousTrack(MprisPreviousTrackRequest req);
-  ResponseMessage NextTrack(MprisNextTrackRequest req);
+  ResponseMessage SetPosition(const MprisSetPositionRequest& req);
+  ResponseMessage PreviousTrack(const MprisPreviousTrackRequest& req);
+  ResponseMessage NextTrack(const MprisNextTrackRequest& req);
 
 public:
   MprisManager(AppContext *appCtx);

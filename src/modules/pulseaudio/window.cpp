@@ -1,10 +1,13 @@
 #include "header/window.hpp"
 #include "gtk/gtk.h"
+#include "modules/pulseaudio/header/manager.hpp"
+#include "services/header/comm_bus.hpp"
 
 #define TAG "PulseAudioWindow"
 
-PulseAudioWindow::PulseAudioWindow(AppContext *ctx, PulseAudioManager *manager)
-    : manager(manager), ctx(ctx) {}
+PulseAudioWindow::PulseAudioWindow(AppContext *ctx, CommunicationBus *commBus,
+                                   PulseAudioManager *manager)
+    : ctx(ctx), manager(manager), commBus(commBus) {}
 
 void PulseAudioWindow::init() {
   GtkWidget *mainBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
@@ -285,16 +288,30 @@ void PulseAudioWindow::updateControls(bool mute,
                       (uint32_t)(((float)avgVol / 65535) * 100));
 }
 
-void PulseAudioWindow::handleChgVolume(GtkRange *range, [[maybe_unused]] GtkScrollType *scroll,
-                                       [[maybe_unused]] gdouble value, gpointer data) {
+void PulseAudioWindow::handleChgVolume(GtkRange *range,
+                                       [[maybe_unused]] GtkScrollType *scroll,
+                                       [[maybe_unused]] gdouble value,
+                                       gpointer data) {
   PulseAudioWindow *self = static_cast<PulseAudioWindow *>(data);
 
   if (range == GTK_RANGE(self->outScale)) {
     uint32_t volume = (uint32_t)gtk_range_get_value(range);
-    self->manager->setVolume(self->manager->defOutput, true, volume);
+
+    self->commBus->SendMessage(
+        PASetVolumeRequest{.devName = self->manager->defOutput,
+                           .isOutput = true,
+                           .volume = volume,
+                           .correlationId = self->commBus->GetNewCorId()},
+        Priority::NORMAL);
   } else if (range == GTK_RANGE(self->inScale)) {
     uint32_t volume = (uint32_t)gtk_range_get_value(range);
-    self->manager->setVolume(self->manager->defInput, false, volume);
+
+    self->commBus->SendMessage(
+        PASetVolumeRequest{.devName = self->manager->defInput,
+                           .isOutput = false,
+                           .volume = volume,
+                           .correlationId = self->commBus->GetNewCorId()},
+        Priority::NORMAL);
   }
 }
 
@@ -307,9 +324,25 @@ void PulseAudioWindow::chgDevice(GtkComboBox *combo, gpointer data) {
     gtk_tree_model_get(GTK_TREE_MODEL(gtk_combo_box_get_model(combo)), &iter, 0,
                        &devName, -1);
 
-    self->manager->updateDefDevice(std::string(devName),
-                                   combo == GTK_COMBO_BOX(self->outDropdown));
+    if (combo == GTK_COMBO_BOX(self->outDropdown) &&
+        self->manager->defOutput != devName) {
 
+      self->commBus->SendMessage(
+          PAUpdateDefDeviceRequest{.devName = devName,
+                                   .isOutput = true,
+                                   .correlationId =
+                                       self->commBus->GetNewCorId()},
+          Priority::IMMEDIATE);
+    } else if (combo == GTK_COMBO_BOX(self->inDropdown) &&
+               self->manager->defInput != devName) {
+
+      self->commBus->SendMessage(
+          PAUpdateDefDeviceRequest{.devName = devName,
+                                   .isOutput = false,
+                                   .correlationId =
+                                       self->commBus->GetNewCorId()},
+          Priority::IMMEDIATE);
+    }
     g_free(devName);
   }
 }
@@ -324,37 +357,49 @@ void PulseAudioWindow::handleToggleMute(GtkWidget *widget, gpointer data) {
   }
 }
 
-void PulseAudioWindow::toggleMute([[maybe_unused]] GtkWidget *widget, [[maybe_unused]] gpointer data,
+void PulseAudioWindow::toggleMute([[maybe_unused]] GtkWidget *widget,
+                                  [[maybe_unused]] gpointer data,
                                   bool isOutput) {
   if (isOutput) {
-    short res = manager->toggleMute(manager->defOutput, true);
-    if (res == 1) {
-      if (GDK_IS_PIXBUF(outUnmuteIcon))
-        gtk_image_set_from_pixbuf(GTK_IMAGE(outIcon), outUnmuteIcon);
+    commBus->SendMessage(
+        PAToggleMuteRequest{.devName = manager->defOutput,
+                            .isOutput = true,
+                            .correlationId = commBus->GetNewCorId()},
+        Priority::IMMEDIATE);
+    // TODO
+    // if (res == 1) {
+    //   if (GDK_IS_PIXBUF(outUnmuteIcon))
+    //     gtk_image_set_from_pixbuf(GTK_IMAGE(outIcon), outUnmuteIcon);
 
-      ctx->showUpdateWindow(UpdateModule::PULSEAUDIO, "speaker_mute",
-                            "Output Device Muted");
-    } else if (res == 0) {
-      if (GDK_IS_PIXBUF(outMuteIcon))
-        gtk_image_set_from_pixbuf(GTK_IMAGE(outIcon), outMuteIcon);
+    //   ctx->showUpdateWindow(UpdateModule::PULSEAUDIO, "speaker_mute",
+    //                         "Output Device Muted");
+    // } else if (res == 0) {
+    //   if (GDK_IS_PIXBUF(outMuteIcon))
+    //     gtk_image_set_from_pixbuf(GTK_IMAGE(outIcon), outMuteIcon);
 
-      ctx->showUpdateWindow(UpdateModule::PULSEAUDIO, "speaker_unmute",
-                            "Output Device Unmuted");
-    }
+    //   ctx->showUpdateWindow(UpdateModule::PULSEAUDIO, "speaker_unmute",
+    //                         "Output Device Unmuted");
+    // }
   } else {
-    short res = manager->toggleMute(manager->defInput, false);
-    if (res == 1) {
-      if (GDK_IS_PIXBUF(inUnmuteIcon))
-        gtk_image_set_from_pixbuf(GTK_IMAGE(inIcon), inUnmuteIcon);
+    commBus->SendMessage(
+        PAToggleMuteRequest{.devName = manager->defInput,
+                            .isOutput = false,
+                            .correlationId = commBus->GetNewCorId()},
+        Priority::IMMEDIATE);
 
-      ctx->showUpdateWindow(UpdateModule::PULSEAUDIO, "mic_mute",
-                            "Input Device Muted");
-    } else if (res == 0) {
-      if (GDK_IS_PIXBUF(inMuteIcon))
-        gtk_image_set_from_pixbuf(GTK_IMAGE(inIcon), inMuteIcon);
+    // TODO
+    // if (res == 1) {
+    //   if (GDK_IS_PIXBUF(inUnmuteIcon))
+    //     gtk_image_set_from_pixbuf(GTK_IMAGE(inIcon), inUnmuteIcon);
 
-      ctx->showUpdateWindow(UpdateModule::PULSEAUDIO, "mic_unmute",
-                            "Input Device Unmuted");
-    }
+    //   ctx->showUpdateWindow(UpdateModule::PULSEAUDIO, "mic_mute",
+    //                         "Input Device Muted");
+    // } else if (res == 0) {
+    //   if (GDK_IS_PIXBUF(inMuteIcon))
+    //     gtk_image_set_from_pixbuf(GTK_IMAGE(inIcon), inMuteIcon);
+
+    //   ctx->showUpdateWindow(UpdateModule::PULSEAUDIO, "mic_unmute",
+    //                         "Input Device Unmuted");
+    // }
   }
 }

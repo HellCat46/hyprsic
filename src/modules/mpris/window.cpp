@@ -1,9 +1,12 @@
 #include "header/window.hpp"
 #include "../../utils/helper_func.hpp"
 #include "gtk-layer-shell.h"
+#include "modules/mpris/header/manager.hpp"
+#include "services/header/comm_bus.hpp"
 
-MprisWindow::MprisWindow(AppContext *ctx, MprisManager *mprisMgr)
-    : ctx(ctx), manager(mprisMgr) {}
+MprisWindow::MprisWindow(AppContext *ctx, CommunicationBus *commBus,
+                         MprisManager *mprisMgr)
+    : ctx(ctx), manager(mprisMgr), commBus(commBus) {}
 
 void MprisWindow::init() {
 
@@ -36,7 +39,7 @@ void MprisWindow::init() {
   GtkWidget *titlePrev = gtk_button_new_with_label("<");
   gtk_box_pack_start(GTK_BOX(titleBox), titlePrev, false, false, 0);
   g_signal_connect(titlePrev, "clicked",
-                   G_CALLBACK(MprisWindow::handlePrevTrack), this);
+                   G_CALLBACK(MprisWindow::handlePrevTrack), commBus);
 
   GtkWidget *progEventListener = gtk_event_box_new();
   progTtl = gtk_label_new(nullptr);
@@ -45,13 +48,13 @@ void MprisWindow::init() {
   gtk_container_add(GTK_CONTAINER(progEventListener), progTtl);
   gtk_box_pack_start(GTK_BOX(titleBox), progEventListener, false, false, 0);
   g_signal_connect(progEventListener, "button-press-event",
-                   G_CALLBACK(MprisWindow::handlePlayPause), manager);
+                   G_CALLBACK(MprisWindow::handlePlayPause), commBus);
 
   // Next Button
   GtkWidget *titleNext = gtk_button_new_with_label(">");
   gtk_box_pack_end(GTK_BOX(titleBox), titleNext, false, false, 0);
   g_signal_connect(titleNext, "clicked",
-                   G_CALLBACK(MprisWindow::handleNextTrack), this);
+                   G_CALLBACK(MprisWindow::handleNextTrack), commBus);
 
   // Scale for Track Progress
   progBarBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
@@ -64,7 +67,7 @@ void MprisWindow::init() {
   scale = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, scaleAdj);
   gtk_box_pack_start(GTK_BOX(progBarBox), scale, true, true, 0);
   g_signal_connect(scale, "change-value",
-                   G_CALLBACK(MprisWindow::handleScaleChange), manager);
+                   G_CALLBACK(MprisWindow::handleScaleChange), commBus);
   g_signal_connect(scale, "format-value",
                    G_CALLBACK(MprisWindow::handleFormatValue), nullptr);
 
@@ -73,25 +76,26 @@ void MprisWindow::init() {
 
 void MprisWindow::update() {
   // Save Resources by Not Updating if Menu is Not Visible
-  if (!(manager->hasPlayer && gtk_widget_is_visible(menuWin)))
+  if (!(manager->hasPlayer() && gtk_widget_is_visible(menuWin)))
     return;
 
-  gchar *finalText = HelperFunc::ValidString(manager->playingTrack.title);
+  auto track = manager->getPlayingTrack();
+  gchar *finalText = HelperFunc::ValidString(track.title);
   std::string title = "<span foreground='green'><b>";
   title += finalText;
   title += "</b></span>";
 
   gtk_label_set_markup(GTK_LABEL(progTtl), title.c_str());
-  manager->GetPosition();
+  // TODO: Maybe run it periodically in the manager main thread.
+  // manager->GetPosition();
 
   // If Length is 64 Bit Int Max Value, The Track is Probably a Stream
-  if (manager->playingTrack.length != 9223372036854775807) {
-    gtk_label_set_label(
-        GTK_LABEL(scaleMax),
-        MprisWindow::timeToStr(manager->playingTrack.length).c_str());
+  if (track.length != 9223372036854775807) {
+    gtk_label_set_label(GTK_LABEL(scaleMax),
+                        MprisWindow::timeToStr(track.length).c_str());
 
-    gtk_adjustment_set_upper(scaleAdj, manager->playingTrack.length);
-    gtk_adjustment_set_value(scaleAdj, manager->playingTrack.currPos);
+    gtk_adjustment_set_upper(scaleAdj, track.length);
+    gtk_adjustment_set_value(scaleAdj, track.currPos);
     gtk_adjustment_set_page_increment(scaleAdj, 5);
     gtk_adjustment_set_page_size(scaleAdj, 10);
     gtk_adjustment_set_step_increment(scaleAdj, 5);
@@ -102,33 +106,51 @@ void MprisWindow::update() {
   }
 }
 
-void MprisWindow::handlePlayPause([[maybe_unused]] GtkWidget *widget,[[maybe_unused]]  GdkEvent *e,
+void MprisWindow::handlePlayPause([[maybe_unused]] GtkWidget *widget,
+                                  [[maybe_unused]] GdkEvent *e,
                                   gpointer user_data) {
-  MprisManager *mprisInstance = static_cast<MprisManager *>(user_data);
-  mprisInstance->PlayPause();
+  CommunicationBus *commBus = static_cast<CommunicationBus *>(user_data);
+
+  commBus->SendMessage(
+      MprisPlayPauseRequest{.correlationId = commBus->GetNewCorId()},
+      Priority::HIGH);
 }
 
-gchar *MprisWindow::handleFormatValue([[maybe_unused]] GtkScale *scale, gdouble value,
+gchar *MprisWindow::handleFormatValue([[maybe_unused]] GtkScale *scale,
+                                      gdouble value,
                                       [[maybe_unused]] gpointer user_data) {
   uint64_t totalSeconds = static_cast<uint64_t>(value);
 
   return g_strdup(timeToStr(totalSeconds).c_str());
 }
 
-gboolean MprisWindow::handleScaleChange([[maybe_unused]]  GtkRange *range,[[maybe_unused]]  GtkScrollType *scroll,
+gboolean MprisWindow::handleScaleChange([[maybe_unused]] GtkRange *range,
+                                        [[maybe_unused]] GtkScrollType *scroll,
                                         gdouble value, gpointer user_data) {
-  MprisManager *mprisInstance = static_cast<MprisManager *>(user_data);
-  mprisInstance->SetPosition(static_cast<int>(value));
+  CommunicationBus *commBus = static_cast<CommunicationBus *>(user_data);
+
+  commBus->SendMessage(
+      MprisSetPositionRequest{.position = static_cast<uint64_t>(value),
+                              .correlationId = commBus->GetNewCorId()},
+      Priority::HIGH);
   return false;
 }
 
-void MprisWindow::handleNextTrack([[maybe_unused]] GtkWidget *widget, gpointer user_data) {
-  MprisManager *mprisInstance = static_cast<MprisManager *>(user_data);
-  mprisInstance->NextTrack();
+void MprisWindow::handleNextTrack([[maybe_unused]] GtkWidget *widget,
+                                  gpointer user_data) {
+  CommunicationBus *commBus = static_cast<CommunicationBus *>(user_data);
+
+  commBus->SendMessage(
+      MprisNextTrackRequest{.correlationId = commBus->GetNewCorId()},
+      Priority::HIGH);
 }
-void MprisWindow::handlePrevTrack([[maybe_unused]] GtkWidget *widget, gpointer user_data) {
-  MprisManager *mprisInstance = static_cast<MprisManager *>(user_data);
-  mprisInstance->PreviousTrack();
+void MprisWindow::handlePrevTrack([[maybe_unused]] GtkWidget *widget,
+                                  gpointer user_data) {
+  CommunicationBus *commBus = static_cast<CommunicationBus *>(user_data);
+
+  commBus->SendMessage(
+      MprisPreviousTrackRequest{.correlationId = commBus->GetNewCorId()},
+      Priority::HIGH);
 }
 
 std::string MprisWindow::timeToStr(uint64_t totalSeconds) {

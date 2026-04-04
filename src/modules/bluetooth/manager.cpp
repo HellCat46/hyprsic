@@ -2,6 +2,7 @@
 #include "cstring"
 #include "dbus/dbus-protocol.h"
 #include "dbus/dbus.h"
+#include "services/header/comm_types.hpp"
 #include "unordered_map"
 #include "utils/dbus_utils.hpp"
 #include "utils/helper_func.hpp"
@@ -55,7 +56,7 @@ int BluetoothManager::setup() {
   return 0;
 }
 
-ResponseMessage BluetoothManager::switchPower(BtSwitchPowerRequest req) {
+ResponseMessage BluetoothManager::switchPower(const BtSwitchPowerRequest &req) {
   ResponseMessage resp{
       .success = false, .errMsg = "", .correlationId = req.correlationId};
 
@@ -108,7 +109,7 @@ ResponseMessage BluetoothManager::switchPower(BtSwitchPowerRequest req) {
 }
 
 ResponseMessage
-BluetoothManager::switchDiscovery(BtSwitchDiscoveryRequest req) {
+BluetoothManager::switchDiscovery(const BtSwitchDiscoveryRequest &req) {
   ResponseMessage resp{
       .success = false, .errMsg = "", .correlationId = req.correlationId};
 
@@ -523,7 +524,7 @@ int BluetoothManager::getPropertyVal(const char *prop) {
   return -1;
 }
 
-ResponseMessage BluetoothManager::connectDevice(BtConnectRequest req) {
+ResponseMessage BluetoothManager::connectDevice(const BtConnectRequest &req) {
   ResponseMessage resp{
       .success = false, .errMsg = "", .correlationId = req.correlationId};
 
@@ -538,7 +539,7 @@ ResponseMessage BluetoothManager::connectDevice(BtConnectRequest req) {
   if (!msg) {
     resp.errMsg = "Failed to create a dbus message.";
     ctx->logger.LogError(TAG, resp.errMsg);
-    
+
     return resp;
   }
 
@@ -549,7 +550,7 @@ ResponseMessage BluetoothManager::connectDevice(BtConnectRequest req) {
     resp.errMsg += ctx->dbus.sysErr.message;
     ctx->logger.LogError(TAG, resp.errMsg);
     dbus_error_free(&ctx->dbus.sysErr);
-    
+
     return resp;
   }
 
@@ -565,9 +566,10 @@ ResponseMessage BluetoothManager::connectDevice(BtConnectRequest req) {
   return resp;
 }
 
-ResponseMessage BluetoothManager::trustDevice(BtTrustRequest req) {
-    ResponseMessage resp{.success = false, .errMsg = "", .correlationId = req.correlationId};
-    
+ResponseMessage BluetoothManager::trustDevice(const BtTrustRequest &req) {
+  ResponseMessage resp{
+      .success = false, .errMsg = "", .correlationId = req.correlationId};
+
   std::string logMsg = "Trying to ";
   logMsg += req.state ? "Trust" : "Untrust";
   logMsg += " Device: ";
@@ -579,7 +581,7 @@ ResponseMessage BluetoothManager::trustDevice(BtTrustRequest req) {
     resp.errMsg = "Invalid Device Path Format: ";
     resp.errMsg += req.devPath;
     ctx->logger.LogError(TAG, resp.errMsg);
-    
+
     return resp;
   }
 
@@ -591,7 +593,7 @@ ResponseMessage BluetoothManager::trustDevice(BtTrustRequest req) {
     resp.errMsg = "Device not found in Device List: ";
     resp.errMsg += req.devPath;
     ctx->logger.LogError(TAG, resp.errMsg);
-    
+
     return resp;
   }
 
@@ -601,7 +603,7 @@ ResponseMessage BluetoothManager::trustDevice(BtTrustRequest req) {
   if (!msg) {
     resp.errMsg = "Failed to create a dbus message";
     ctx->logger.LogError(TAG, resp.errMsg);
-    
+
     return resp;
   }
 
@@ -640,7 +642,7 @@ ResponseMessage BluetoothManager::trustDevice(BtTrustRequest req) {
   return resp;
 }
 
-ResponseMessage BluetoothManager::removeDevice(BtRemoveRequest req) {
+ResponseMessage BluetoothManager::removeDevice(const BtRemoveRequest &req) {
   ResponseMessage resp{
       .success = false, .errMsg = "", .correlationId = req.correlationId};
   ctx->logger.LogInfo(TAG,
@@ -755,4 +757,28 @@ unsigned char BluetoothManager::setDeviceProps(Device &dev,
   }
 
   return propFlags;
+}
+
+ResponseMessage BluetoothManager::handle(const BtRequest &req) {
+  ResponseMessage resp;
+
+  std::visit(
+      [&](auto &reqMsg) {
+        using T = std::decay_t<decltype(reqMsg)>;
+
+        if constexpr (std::is_same_v<T, BtConnectRequest>) {
+          resp = connectDevice(reqMsg);
+        } else if constexpr (std::is_same_v<T, BtTrustRequest>) {
+          resp = trustDevice(reqMsg);
+        } else if constexpr (std::is_same_v<T, BtRemoveRequest>) {
+          resp = removeDevice(reqMsg);
+        } else if constexpr (std::is_same_v<T, BtSwitchDiscoveryRequest>) {
+          resp = switchDiscovery(reqMsg);
+        } else if constexpr (std::is_same_v<T, BtSwitchPowerRequest>) {
+          resp = switchPower(reqMsg);
+        }
+      },
+      req);
+
+  return resp;
 }

@@ -22,10 +22,12 @@ class BrightnessManager {
 
   ResponseMessage setLvl(const BrtSetLevelRequest& req);
 
-  void update();
 
 public:
   BrightnessManager(AppContext *ctx);
+  
+  
+  void update(); // Only for Main Manager Thread Use
 
   short getLvl() const;
 

@@ -4,7 +4,8 @@
 
 #define TAG "PulseAudioModule"
 
-PulseAudioModule::PulseAudioModule(PulseAudioManager *paMgr, AppContext *ctx, PulseAudioWindow *window)
+PulseAudioModule::PulseAudioModule(PulseAudioManager *paMgr, AppContext *ctx,
+                                   PulseAudioWindow *window)
     : manager(paMgr), window(window), ctx(ctx), setupComp(false) {}
 
 std::vector<GtkWidget *> PulseAudioModule::setup() {
@@ -13,7 +14,7 @@ std::vector<GtkWidget *> PulseAudioModule::setup() {
   inEvtBox = gtk_event_box_new();
   barInIcon = gtk_image_new_from_pixbuf(nullptr);
   gtk_container_add(GTK_CONTAINER(inEvtBox), barInIcon);
-  if(GDK_IS_PIXBUF(window->inUnmuteIcon)) {
+  if (GDK_IS_PIXBUF(window->inUnmuteIcon)) {
     gtk_image_set_from_pixbuf(GTK_IMAGE(barInIcon), window->inUnmuteIcon);
   }
 
@@ -22,10 +23,10 @@ std::vector<GtkWidget *> PulseAudioModule::setup() {
   outEvtBox = gtk_event_box_new();
   barOutIcon = gtk_image_new_from_pixbuf(nullptr);
   gtk_container_add(GTK_CONTAINER(outEvtBox), barOutIcon);
-  if(GDK_IS_PIXBUF(window->outUnmuteIcon)) {
+  if (GDK_IS_PIXBUF(window->outUnmuteIcon)) {
     gtk_image_set_from_pixbuf(GTK_IMAGE(barOutIcon), window->outUnmuteIcon);
   }
-  
+
   widgets.push_back(outEvtBox);
 
   gtk_widget_show_all(inEvtBox);
@@ -56,7 +57,8 @@ void PulseAudioModule::update() {
 }
 
 void PulseAudioModule::updateControls(bool mute, GtkWidget *icon) {
-  if (icon == barOutIcon && GDK_IS_PIXBUF(window->outUnmuteIcon) && GDK_IS_PIXBUF(window->outMuteIcon)) {
+  if (icon == barOutIcon && GDK_IS_PIXBUF(window->outUnmuteIcon) &&
+      GDK_IS_PIXBUF(window->outMuteIcon)) {
     gtk_image_set_from_pixbuf(GTK_IMAGE(icon), mute ? window->outUnmuteIcon
                                                     : window->outMuteIcon);
   } else if (icon == barInIcon && GDK_IS_PIXBUF(window->inUnmuteIcon) &&
@@ -80,4 +82,3 @@ void PulseAudioModule::handleIconClick(GtkWidget *widget,
     self->window->toggleMute(widget, data, false);
   }
 }
-
