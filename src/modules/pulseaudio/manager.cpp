@@ -171,7 +171,7 @@ void PulseAudioManager::sourceInfoCallBack(
                std::to_string(self->inDevs.size()) + " Devices)");
 }
 
-void PulseAudioManager::getDevices() {
+void PulseAudioManager::updateDevices() {
   pa_threaded_mainloop_lock(mainLoop);
   pa_context_get_sink_info_list(pulseCtx, sinkInfoCallBack, this);
   pa_context_get_source_info_list(pulseCtx, sourceInfoCallBack, this);

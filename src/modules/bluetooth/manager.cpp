@@ -8,7 +8,9 @@
 #include "utils/helper_func.hpp"
 #include <algorithm>
 #include <cstddef>
+#include <mutex>
 #include <string>
+#include <unordered_map>
 
 #define TAG "BluetoothManager"
 
@@ -51,7 +53,7 @@ int BluetoothManager::setup() {
     discovering = false;
   }
 
-  getDeviceList();
+  updateDevList();
 
   return 0;
 }
@@ -382,7 +384,7 @@ void BluetoothManager::handlePropertiesChangedDbus(DBusMessage *msg,
   ctx->logger.LogInfo(TAG, updateMsg);
 }
 
-int BluetoothManager::getDeviceList() {
+int BluetoothManager::updateDevList() {
   devices.clear();
 
   DBusMessage *reply = dbus_connection_send_with_reply_and_block(
@@ -470,6 +472,12 @@ int BluetoothManager::getDeviceList() {
   }
 
   return 0;
+}
+
+std::unordered_map<std::string, Device> BluetoothManager::getDeviceList(){
+    std::lock_guard<std::mutex> lock(devicesMtx);
+    
+    return devices;
 }
 
 int BluetoothManager::getPropertyVal(const char *prop) {

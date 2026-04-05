@@ -6,6 +6,7 @@
 #include "services/header/context.hpp"
 #include "string"
 #include "unordered_map"
+#include <mutex>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -67,6 +68,9 @@ class BluetoothManager {
 private:
   AppContext *ctx;
   DBusMessage *devListMsg;
+  
+  std::mutex devicesMtx;
+  std::unordered_map<std::string, Device> devices;
 
   unsigned char setDeviceProps(Device &dev, DBusMessageIter &propsIter);
   int getPropertyVal(const char *prop);
@@ -79,10 +83,9 @@ private:
   ResponseMessage switchPower(const BtSwitchPowerRequest &req);
 
 public:
-  int getDeviceList(); // Only for Manager Main Thread Use
+  int updateDevList(); // Only for Manager Main Thread Use
 
   bool discovering, power;
-  std::unordered_map<std::string, Device> devices;
 
   // Monitor Changes Functions
   void addMatchRulesDbus();
@@ -92,6 +95,8 @@ public:
 
   BluetoothManager(AppContext *ctx);
   int setup();
+  
+  std::unordered_map<std::string, Device> getDeviceList();
 
   ResponseMessage handle(const BtRequest &msg);
 };

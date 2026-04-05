@@ -105,8 +105,10 @@ void BluetoothWindow::update(bool force) {
 
   // Repopulate Device List
   int pairedDevs = 0, availDevs = 0;
-  if (manager->devices.size() > 0) {
-    for (auto [_, device] : manager->devices) {
+  auto devices = manager->getDeviceList();
+  
+  if (devices.size() > 0) {
+    for (auto [_, device] : devices) {
 
       if (device.paired) {
         addDeviceEntry(device, pairedDevList);

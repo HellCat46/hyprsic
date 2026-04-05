@@ -64,7 +64,7 @@ class PulseAudioManager {
 
 
 public:
-  void getDevices(); // Only for Main Manager Thread Use
+  void updateDevices(); // Only for Main Manager Thread Use
   PulseAudioManager(AppContext *ctx);
 
   std::string defOutput, defInput;

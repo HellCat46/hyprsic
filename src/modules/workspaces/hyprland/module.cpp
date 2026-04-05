@@ -31,8 +31,10 @@ GtkWidget *HyprWSModule::setup(unsigned char monitorId) {
 
   this->monitorId = monitorId;
   updateWorkspaces(commBus, hyprInstance, wsWid, spWSWid, monitorId);
-  // hyprInstance->subscribe(HyprWSModule::updateWorkspaces, wsWid, spWSWid,
-  //                         monitorId);
+  hyprInstance->subscribe([this]() {
+    this->updateWorkspaces(this->commBus, this->hyprInstance, this->wsWid,
+                           this->spWSWid, this->monitorId);
+  });
 
   return mainBox;
 }
@@ -45,8 +47,7 @@ void HyprWSModule::updateWorkspaces(CommunicationBus *commBus,
   if (!hyprInstance->GetWorkspaces()) {
 
     // Man... Circular Dependency protection could be pain sometime.... ;-;
-    auto data =
-        new UpdateWSData{commBus, hyprInstance, wsBox, spWSBox, monitorId};
+    auto data = new UpdateWSData{commBus, hyprInstance, wsBox, spWSBox, monitorId};
     g_idle_add_full(G_PRIORITY_HIGH_IDLE, updateWorkspaceUI, data,
                     (GDestroyNotify) nullptr);
   }

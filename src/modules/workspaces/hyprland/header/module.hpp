@@ -36,8 +36,10 @@ public:
                HyprWSManager *hyprInstance);
 
   GtkWidget *setup(unsigned char monitorId);
-  static void updateWorkspaces(CommunicationBus* commBus, HyprWSManager *hyprInstance, GtkWidget *wsBox,
+  static void updateWorkspaces(CommunicationBus *commBus,
+                               HyprWSManager *hyprInstance, GtkWidget *wsBox,
                                GtkWidget *spWSBox, unsigned char monitorId);
+  
   static void chgWS(GtkWidget *widget, GdkEvent *e, gpointer user_data);
   static void chgSPWS(GtkWidget *widget, GdkEvent *e, gpointer user_data);
   static void handleWSScroll(GtkWidget *widget, GdkEventScroll *e,

@@ -199,11 +199,10 @@ void HyprWSManager::liveEventListener() {
         }
 
         if (chngMade) {
-          // 
-          // for (auto &listener : listeners) {
-          //   listener.first(this, listener.second.wsBox, listener.second.spWSBox,
-          //                  listener.second.windowId);
-          // }
+          
+          for (auto &listener : listeners) {
+            listener();
+          }
         }
       }
     }
@@ -320,7 +319,7 @@ ResponseMessage HyprWSManager::SwitchToWS(const HyprSwitchWSRequest& req) {
 ResponseMessage HyprWSManager::MoveToWS(const HyprMoveWSRequest& req) {
   ResponseMessage resp{
       .success = false, .errMsg = "", .correlationId = req.correlationId};
-  unsigned int wsId = activeWorkspaceId;
+  unsigned long wsId = activeWorkspaceId;
   
   auto srtPt = workspaces.find(wsId);
   if (srtPt == workspaces.end()) {
@@ -464,13 +463,11 @@ int HyprWSManager::GetMonitors() {
   return 0;
 }
 
-// void HyprWSManager::subscribe(
-//     std::function<void(HyprWSManager *wsInstance, GtkWidget *wsBox,
-//                        GtkWidget *spWSBox, unsigned char monitorId)>
-//         updateFunc,
-//     GtkWidget *wsBox, GtkWidget *spWSBox, unsigned char windowId) {
-//   listeners.push_back({updateFunc, WSListenerData{wsBox, spWSBox, windowId}});
-// }
+void HyprWSManager::subscribe(
+    std::function<void()>
+        updateFunc) {
+  listeners.push_back(updateFunc);
+}
 
 ResponseMessage HyprWSManager::handle(const HyprRequest &req) {
   ResponseMessage resp;

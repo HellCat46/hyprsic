@@ -64,10 +64,10 @@ void Application::activate(GtkApplication *app, gpointer user_data) {
 
 void Application::UpdateData() {
   while (true) {
-    btManager.getDeviceList();
+    btManager.updateDevList();
     stat.UpdateData();
     tempManager.update();
-    paManager.getDevices();
+    paManager.updateDevices();
     // mprisManager.GetPlayerInfo(); Might Not be needed??? TODO for now i suppose
     brtManager.update();
     wifiManager.update();
