@@ -29,13 +29,15 @@ void StatusNotifierModule::update() {
     if (sniApps.find(servicePath) != sniApps.end())
       return; // Already Added
 
-    GdkPixbuf *scaledPixbuf =
-        gdk_pixbuf_scale_simple(appInfo.pixmap, 24, 24, GDK_INTERP_BILINEAR);
+    // TODO
+    // GdkPixbuf *scaledPixbuf =
+    //     gdk_pixbuf_scale_simple(appInfo.pixmap, 24, 24, GDK_INTERP_BILINEAR);
     SNIApp app;
 
     app.icon = gtk_event_box_new();
-    GtkWidget *iconImg = gtk_image_new_from_pixbuf(scaledPixbuf);
-    gtk_container_add(GTK_CONTAINER(app.icon), iconImg);
+    // TODO
+    // GtkWidget *iconImg = gtk_image_new_from_pixbuf(scaledPixbuf);
+    // gtk_container_add(GTK_CONTAINER(app.icon), iconImg);
 
     app.popOver = gtk_popover_new(app.icon);
     gtk_widget_set_size_request(app.popOver, 200, -1);

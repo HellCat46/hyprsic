@@ -1,3 +1,4 @@
+#include "gdk/gdk.h"
 #include "header/app.hpp"
 #include "header/window.hpp"
 #include "services/header/comm_bus.hpp"
@@ -31,8 +32,8 @@ void Application::activate(GtkApplication *app, gpointer user_data) {
 
   self->btManager.setup();
   self->hyprInstance.liveEventListener();
-  self->ssnDBusThread = std::thread(&Application::captureSessionDBus, self);
-  self->sysDBusThread = std::thread(&Application::captureSystemDBus, self);
+  self->captureSessionDBus();
+  self->captureSystemDBus();
   self->cliIPCThread = std::thread(&Application::captureCLIIPC, self);
 
   self->ctx.initWindows();
@@ -45,6 +46,7 @@ void Application::activate(GtkApplication *app, gpointer user_data) {
   self->wifiWindow.init();
   // clipboardManager.init(display);
 
+  
   int mCount = gdk_display_get_n_monitors(display);
   for (int idx = 0; idx < mCount; idx++) {
     self->mainWindows.push_back(std::unique_ptr<Window>(new Window(
@@ -68,7 +70,7 @@ void Application::UpdateData() {
     stat.UpdateData();
     tempManager.update();
     paManager.updateDevices();
-    // mprisManager.GetPlayerInfo(); Might Not be needed??? TODO for now i suppose
+    mprisManager.update();
     brtManager.update();
     wifiManager.update();
 

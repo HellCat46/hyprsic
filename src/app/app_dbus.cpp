@@ -1,124 +1,64 @@
 #include "header/app.hpp"
-#include "dbus/dbus.h"
-#include "utils/helper_func.hpp"
+#include <sdbus-c++/Error.h>
+#include <sdbus-c++/Message.h>
 
 #define TAG "Application_DBUS"
 
 void Application::captureSessionDBus() {
-  notifManager.setupDBus();
-  snManager.setupDBus();
+  ctx.dbus.ssnConn->addMatch(
+      "type='signal', sender='org.freedesktop.DBus', "
+      "interface='org.freedesktop.DBus', member='NameOwnerChanged', "
+      "path='/org/freedesktop/DBus'",
+      [this](sdbus::Message msg) {
+        std::string name, oldOwner, newOwner;
+        msg >> name >> oldOwner >> newOwner;
 
-  DBusMessage *msg;
-  while (1) {
-    if (!dbus_connection_read_write_dispatch(ctx.dbus.ssnConn, 100)) {
-      ctx.logger.LogError(
-          TAG, "Connection Closed while Waiting for Notification Messages");
-      return;
-    }
+        mprisManager.handlePlayerChangesDbus(name, newOwner);
+        snManager.handleNameOwnerChangedSignalDbus(name, newOwner);
+      });
 
-    msg = dbus_connection_pop_message(ctx.dbus.ssnConn);
-    if (!msg) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
-      continue;
-    }
-
-    const char *interface = dbus_message_get_interface(msg);
-    const char *path = dbus_message_get_path(msg);
-    const char *member = dbus_message_get_member(msg);
-
-    if (HelperFunc::saferStrCmp(interface, "org.freedesktop.Notifications")) {
-      notifManager.handleDbusMessageDbus(msg);
-    } else if (HelperFunc::saferStrCmp(interface, "org.freedesktop.DBus") &&
-               HelperFunc::saferStrCmp(member, "NameOwnerChanged") &&
-               HelperFunc::saferStrCmp(path, "/org/freedesktop/DBus")) {
-
-      DBusMessageIter args;
-      dbus_message_iter_init(msg, &args);
-
-      const char *name, *oldOwner, *newOwner;
-      dbus_message_iter_get_basic(&args, &name);
-      dbus_message_iter_next(&args);
-      dbus_message_iter_get_basic(&args, &oldOwner);
-      dbus_message_iter_next(&args);
-      dbus_message_iter_get_basic(&args, &newOwner);
-
-      mprisManager.handlePlayerChangesDbus(name, newOwner);
-
-      snManager.handleNameOwnerChangedSignalDbus(name, newOwner);
-    }
-    {
-      snManager.handleDbusMessage(msg);
-    }
-
-    dbus_message_unref(msg);
-  }
+  ctx.dbus.ssnConn->enterEventLoopAsync();
 }
 
 void Application::captureSystemDBus() {
-  btManager.addMatchRulesDbus();
+  wifiManager.addMatchRulesDbus();
 
-  DBusMessage *msg;
-  while (true) {
-    // Blocks the thread until new message received
-    if (!dbus_connection_read_write(ctx.dbus.sysConn, 0)) {
-      ctx.logger.LogError(
-          TAG, "Connection Closed while Waiting for Signal Messages");
-      return;
-    }
+  ctx.dbus.sysConn->addMatch(
+      "type='signal', interface='org.freedesktop.DBus.ObjectManager', "
+      "member='InterfacesAdded'",
+      [this](sdbus::Message msg) {
+        std::string path;
+        msg >> path;
 
-    msg = dbus_connection_pop_message(ctx.dbus.sysConn);
-    if (!msg) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
-      continue;
-    }
+        if (path.compare(0, 10, "/org/bluez") == 0) {
+          btManager.handleInterfacesAddedDbus(msg);
+        }
+      });
 
-    DBusMessageIter rootIter;
-    dbus_message_iter_init(msg, &rootIter);
+  ctx.dbus.sysConn->addMatch(
+      "type='signal', interface='org.freedesktop.DBus.ObjectManager', "
+      "member='InterfacesRemoved'",
+      [this](sdbus::Message msg) {
+        std::string path;
+        msg >> path;
 
-    if (dbus_message_is_signal(msg, "org.freedesktop.DBus.ObjectManager",
-                               "InterfacesAdded")) {
-      char *path;
-      dbus_message_iter_get_basic(&rootIter, &path);
+        if (path.compare(0, 10, "/org/bluez") == 0) {
+          btManager.handleInterfacesRemovedDbus(msg);
+        }
+      });
 
-      if (HelperFunc::saferStrNCmp(path, "/org/bluez", 10)) {
-        ctx.logger.LogDebug(TAG, "Received InterfacesAdded Signal for Bluez");
-        btManager.handleInterfacesAddedDbus(rootIter);
-      }
+  ctx.dbus.sysConn->addMatch(
+      "type='signal', interface='org.freedesktop.DBus.Properties', "
+      "member='PropertiesChanged'",
+      [this](sdbus::Message msg) {
+        std::string path = msg.getPath();
 
-      dbus_message_unref(msg);
-    } else if (dbus_message_is_signal(msg, "org.freedesktop.DBus.ObjectManager",
-                                      "InterfacesRemoved")) {
-      char *path;
-      dbus_message_iter_get_basic(&rootIter, &path);
+        if (path.compare(0, 10, "/org/bluez") == 0) {
+          btManager.handlePropertiesChangedDbus(msg);
+        } else if (path.compare(0, 16, "/net/connman/iwd") == 0) {
+          wifiManager.handlePropertiesChangedDbus(msg);
+        }
+      });
 
-      if (HelperFunc::saferStrNCmp(path, "/org/bluez", 10)) {
-        btManager.handleInterfacesRemovedDbus(rootIter);
-      } else {
-        wifiManager.handleInterfacesRemovedDbus(rootIter);
-      }
-
-      dbus_message_unref(msg);
-    } else if (dbus_message_is_signal(msg, "org.freedesktop.DBus.Properties",
-                                      "PropertiesChanged")) {
-      const char *path = dbus_message_get_path(msg);
-
-      if (HelperFunc::saferStrNCmp(path, "/org/bluez", 10)) {
-
-        btManager.handlePropertiesChangedDbus(msg, rootIter);
-      } else if (HelperFunc::saferStrNCmp(path, "/net/connman/iwd", 16)) {
-
-        wifiManager.handlePropertiesChangedDbus(msg, rootIter);
-      }
-
-      dbus_message_unref(msg);
-    } else if (dbus_message_is_method_call(msg, "net.connman.iwd.Agent",
-                                           "RequestPassphrase")) {
-      wifiManager.handleRequestPassphraseDbus(msg, rootIter);
-    } else if (dbus_message_is_method_call(msg, "net.connman.iwd.Agent",
-                                           "Cancel")) {
-      wifiManager.handleRequestCancelDbus();
-    } else {
-      ctx.logger.LogInfo(TAG, "Received Unknown Signal on System Bus");
-    }
-  }
+  ctx.dbus.sysConn->enterEventLoopAsync();
 }

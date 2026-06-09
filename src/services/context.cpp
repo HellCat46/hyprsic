@@ -1,7 +1,6 @@
 #include "services/header/context.hpp"
 #include "../utils/helper_func.hpp"
 #include "cstring"
-#include "dbus/dbus.h"
 #include "gdk-pixbuf/gdk-pixbuf.h"
 #include "gio/gio.h"
 #include "glib-object.h"
@@ -10,6 +9,8 @@
 #include "gtk/gtk.h"
 #include "iostream"
 #include "services/header/database.hpp"
+#include <sdbus-c++/Error.h>
+#include <sdbus-c++/IConnection.h>
 
 #define TAG "AppContext"
 
@@ -17,62 +18,15 @@ AppContext::AppContext()
     : updateTimeoutId(0), dbus(), dbManager(&logger), logger(true) {}
 
 DbusSystem::DbusSystem() : sysConn(nullptr), ssnConn(nullptr) {
-  dbus_error_init(&sysErr);
-  dbus_error_init(&ssnErr);
-  sysConn = dbus_bus_get(DBUS_BUS_SYSTEM, &sysErr);
-  if (!sysConn) {
-    std::cerr << "[Error] Failed to Connect With the DBUS System: "
-              << sysErr.name
-              << "\n[DBUS Error Message - Context] : " << sysErr.message
-              << std::endl;
-    return;
-  }
-
-  ssnConn = dbus_bus_get(DBUS_BUS_SESSION, &ssnErr);
-  if (!ssnConn) {
-    std::cerr << "[Error] Failed to Connect With the DBUS Session: "
-              << ssnErr.name
-              << "\n[DBUS Error Message - Context] : " << ssnErr.message
-              << std::endl;
-  }
-
-  dbus_threads_init_default();
-}
-
-DbusSystem::~DbusSystem() {
-  dbus_error_free(&ssnErr);
-  dbus_error_free(&sysErr);
-
-  if (sysConn != nullptr) {
-    dbus_connection_flush(sysConn);
-    dbus_connection_close(sysConn);
-  }
-
-  if (ssnConn != nullptr) {
-    dbus_connection_flush(ssnConn);
-    dbus_connection_close(ssnConn);
-  }
-}
-
-void DbusSystem::DictToInt64(DBusMessageIter *iter, uint64_t &outValue) {
-  DBusMessageIter variantIter;
-  dbus_message_iter_recurse(iter, &variantIter);
-
-  if (dbus_message_iter_get_arg_type(&variantIter) == DBUS_TYPE_INT64) {
-    dbus_message_iter_get_basic(&variantIter, &outValue);
-  }
-}
-
-void DbusSystem::DictToString(DBusMessageIter *iter, std::string &outValue) {
-  DBusMessageIter variantIter;
-  dbus_message_iter_recurse(iter, &variantIter);
-
-  if (dbus_message_iter_get_arg_type(&variantIter) == DBUS_TYPE_STRING ||
-      dbus_message_iter_get_arg_type(&variantIter) == DBUS_TYPE_OBJECT_PATH) {
-    char *strValue;
-    dbus_message_iter_get_basic(&variantIter, &strValue);
-    outValue = strValue;
-  }
+    try {
+      sysConn = sdbus::createSystemBusConnection();
+      ssnConn = sdbus::createSessionBusConnection();
+    } catch (const sdbus::Error& e) {
+      std::cerr << "[Error] Failed to Connect With the DBUS System or Session: "
+                << e.what()
+                << std::endl;
+      return;
+    }
 }
 
 void AppContext::initWindows() {
@@ -376,12 +330,13 @@ void AppContext::showNotifWindow(Notification *notif, bool dnd) {
   gtk_label_set_markup(GTK_LABEL(notifBody),
                        HelperFunc::ValidString(notif->body));
 
-  if (notif->icon_pixbuf) {
-    gtk_image_set_from_pixbuf(GTK_IMAGE(notifLogo), notif->icon_pixbuf);
-    g_object_unref(notif->icon_pixbuf);
-  } else {
-    gtk_image_clear(GTK_IMAGE(notifLogo));
-  }
+  // TODO
+  // if (notif->icon) {
+  //   gtk_image_set_from_pixbuf(GTK_IMAGE(notifLogo), notif->icon_pixbuf);
+  //   g_object_unref(notif->icon_pixbuf);
+  // } else {
+  //   gtk_image_clear(GTK_IMAGE(notifLogo));
+  // }
 
   gtk_widget_show_all(notifWin);
 }

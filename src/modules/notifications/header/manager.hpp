@@ -1,30 +1,36 @@
 #pragma once
 #include "services/header/context.hpp"
-#include "dbus/dbus.h"
-#include "gdk-pixbuf/gdk-pixbuf.h"
-#include "gtk/gtk.h"
+#include <cstdint>
+#include <memory>
+#include <sdbus-c++/IObject.h>
+#include <sdbus-c++/Message.h>
 #include <string>
 #include <unordered_map>
 
-
+struct ImageData {
+    int32_t width;
+    int32_t height;
+    int32_t rowstride;
+    bool    hasAlpha;
+    int32_t bitsPerSample;
+    int32_t channels;
+    std::vector<uint8_t> pixels;
+};
 
 class NotificationManager {
   AppContext *ctx;
+  std::unique_ptr<sdbus::IObject> dbusObject;
+  uint32_t notifId;
+  
   std::unordered_map<std::string, GtkWidget *> notifications;
 
   // Notification Daemon Responses to Messages
-  Notification handleNotifyCallDbus(DBusMessage *msg);
-  void handleGetCapabilitiesCallDbus(DBusMessage *msg);
-  void handleGetServerInformationCallDbus(DBusMessage *msg);
-  void handleCloseNotificationCallDbus(DBusMessage *msg);
-
-  // Helper Functions
-  GdkPixbuf *parseImageData(DBusMessageIter *hintsIter);
+  bool handleNotifyCallDbus(sdbus::MethodCall& msg, Notification& notif);
+  void handleGetCapabilitiesCallDbus(sdbus::MethodCall& msg);
+  void handleGetServerInformationCallDbus(sdbus::MethodCall& msg);
+  void handleCloseNotificationCallDbus(sdbus::MethodCall& msg);
 
 public:
   bool dnd;
   NotificationManager(AppContext *ctx);
-
-  void setupDBus();
-  void handleDbusMessageDbus(DBusMessage *msg);
 };

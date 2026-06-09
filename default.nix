@@ -11,6 +11,7 @@ pkgs.stdenv.mkDerivation {
     meson
     ninja
     gcc
+    python3
     wayland-scanner
   ];
 

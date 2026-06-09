@@ -4,25 +4,37 @@
 #include <string>
 
 enum class Priority : uint8_t {
-    LOW  = 0,
-    NORMAL = 1,
-    HIGH = 2,
-    IMMEDIATE = 255
+  LOW = 0,
+  NORMAL = 1,
+  HIGH = 2,
+  IMMEDIATE = 255
+};
+
+enum class ModuleType : uint8_t {
+  BLUETOOTH,
+  BRIGHTNESS,
+  MPRIS,
+  PULSEAUDIO,
+  SCREENSAVER,
+  WIFI,
+  HYPR,
+  STATUSNOTIFIER
 };
 
 struct ResponseMessage {
-    bool success;
-    std::string errMsg;
-    uint64_t correlationId;
+  bool success;
+  std::string errMsg;
+
+  uint64_t correlationId;
 };
 
 struct ResponseWrapper {
-    ResponseMessage msg;
-    Priority priority;
+  ResponseMessage msg;
+  Priority priority;
 };
 
 struct ResponseWrapperCmp {
-    bool operator()(const ResponseWrapper& a, const ResponseWrapper& b) const {
-        return a.priority < b.priority;
-    }  
+  bool operator()(const ResponseWrapper &a, const ResponseWrapper &b) const {
+    return a.priority < b.priority;
+  }
 };

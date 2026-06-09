@@ -13,9 +13,10 @@ pkg = import('pkgconfig')
 deps = [
   dependency('wayland-client'),
   dependency('gtk+-3.0'),
+  dependency('gtkmm-4.0'),
   dependency('gtk-layer-shell-0'),
   dependency('jsoncpp'),
-  dependency('dbus-1'),
+  dependency('sdbus-c++'),
   dependency('libpulse'),
   dependency('sqlite3'), # Required by SQLiteCpp
 ]
@@ -71,7 +72,6 @@ module_sources = files(
 )
 
 util_sources = files(
-  'src/utils/dbus_utils.cpp',
   'src/utils/helper_func.cpp'
 )
 

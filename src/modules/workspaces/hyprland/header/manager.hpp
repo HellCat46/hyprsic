@@ -31,6 +31,7 @@ struct WSListenerData {
 struct HyprSwitchWSRequest {
   unsigned int wsId;
 
+  ModuleType moduleType;
   uint64_t correlationId;
 };
 
@@ -38,6 +39,7 @@ struct HyprMoveWSRequest {
   unsigned char monitorId;
   bool forw;
 
+  ModuleType moduleType;
   uint64_t correlationId;
 };
 
@@ -45,6 +47,7 @@ struct HyprSwitchSPWSRequest {
   unsigned int wsId;
   std::string name;
 
+  ModuleType moduleType;
   uint64_t correlationId;
 };
 

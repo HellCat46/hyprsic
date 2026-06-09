@@ -2,6 +2,7 @@
 
 #include "manager.hpp"
 #include "services/header/comm_bus.hpp"
+#include "services/header/comm_types.hpp"
 #include "services/header/context.hpp"
 
 struct FuncArgs {
@@ -35,6 +36,9 @@ class BluetoothWindow {
   static void handleDeviceConnect(GtkWidget *widget, gpointer user_data);
   static void handleDeviceTrust(GtkWidget *widget, gpointer user_data);
   static void handleDeviceRemove(GtkWidget *widget, gpointer user_data);
+  
+  // Communication Bus Response
+  void handleResponse(ResponseMessage);
 
 public:
   BluetoothWindow(AppContext *ctx, CommunicationBus *commBus,

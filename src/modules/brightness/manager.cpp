@@ -1,16 +1,17 @@
 #include "header/manager.hpp"
-#include "dbus/dbus-protocol.h"
-#include "dbus/dbus.h"
 #include "services/header/comm_types.hpp"
 #include <filesystem>
+#include <sdbus-c++/IConnection.h>
+#include <sdbus-c++/IProxy.h>
+#include <sdbus-c++/Types.h>
+#include <string>
 #include <type_traits>
 #include <variant>
 
 #define TAG "BrightnessManager"
 
-BrightnessManager::BrightnessManager(AppContext *ctx) : ctx(ctx) {
-  currentLvl = -1;
-
+BrightnessManager::BrightnessManager(AppContext *ctx)
+    : ctx(ctx), currentLvl(-1), err(true) {
   for (const auto &entry :
        std::filesystem::directory_iterator("/sys/class/backlight")) {
     if (entry.is_directory()) {
@@ -26,7 +27,18 @@ BrightnessManager::BrightnessManager(AppContext *ctx) : ctx(ctx) {
       }
     }
   }
-  err = true;
+
+  if (!err) {
+    try {
+      dbusProxy = sdbus::createProxy(
+          *ctx->dbus.sysConn, sdbus::ServiceName{"org.freedesktop.login1"},
+          sdbus::ObjectPath{"/org/freedesktop/login1/session/auto"});
+    } catch (const sdbus::Error &e) {
+      ctx->logger.LogError(TAG, "Failed to create DBus proxy: " +
+                                    std::string(e.what()));
+      err = true;
+    }
+  }
 }
 
 void BrightnessManager::update() {
@@ -62,42 +74,21 @@ ResponseMessage BrightnessManager::setLvl(const BrtSetLevelRequest &req) {
     return resp;
   }
 
-  DBusMessage *msg = dbus_message_new_method_call(
-      "org.freedesktop.login1", "/org/freedesktop/login1/session/auto",
-      "org.freedesktop.login1.Session", "SetBrightness");
-  if (!msg) {
-    resp.errMsg = "Failed to create DBus message.";
-    ctx->logger.LogError(TAG, resp.errMsg);
-    return resp;
-  }
-
-  DBusMessageIter args;
-  dbus_message_iter_init_append(msg, &args);
-
-  const char *backlight = "backlight";
-  dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &backlight);
-
-  const char *subsystemStr = subsystem.c_str();
-  dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &subsystemStr);
-  dbus_message_iter_append_basic(&args, DBUS_TYPE_UINT32, &req.brightness);
-
-  DBusMessage *reply = dbus_connection_send_with_reply_and_block(
-      ctx->dbus.sysConn, msg, 1000, nullptr);
-  if (!reply) {
-      resp.errMsg = "Failed to send DBus message";
-    ctx->logger.LogError(TAG, resp.errMsg);
-    dbus_message_unref(msg);
-    return resp;
-  }
+  try{
+      
+  dbusProxy->callMethod(sdbus::MethodName{"SetBrightness"})
+      .onInterface("org.freedesktop.login1.Session")
+      .withArguments(std::string{"backlight"}, subsystem, req.brightness);
 
   currentLvl = req.brightness;
-  ctx->logger.LogInfo(TAG,
-                      "Brightness set to " + std::to_string(req.brightness) + "%");
+  ctx->logger.LogInfo(TAG, "Brightness set to " +
+                               std::to_string(req.brightness) + "%");
 
-  dbus_message_unref(msg);
-  dbus_message_unref(reply);
-  
-  resp.success = true;
+    resp.success = true;
+  } catch (const std::exception &e) {
+    resp.errMsg = e.what();
+    ctx->logger.LogError(TAG, resp.errMsg);
+  }
   return resp;
 }
 
@@ -105,17 +96,19 @@ short BrightnessManager::getLvl() const { return currentLvl; }
 
 // Kinda Pointless rn but surely i will add more functions later on
 ResponseMessage BrightnessManager::handle(const BrtRequest &req) {
-    ResponseMessage resp;
-    
-    std::visit([&](auto& reqMsg){
+  ResponseMessage resp;
+
+  std::visit(
+      [&](auto &reqMsg) {
         using T = std::decay_t<decltype(reqMsg)>;
-        
+
         if constexpr (std::is_same_v<T, BrtSetLevelRequest>) {
-            resp = setLvl(reqMsg);
+          resp = setLvl(reqMsg);
         }
-    }, req);
-    
-    return resp;
+      },
+      req);
+
+  return resp;
 }
 
 BrightnessManager::~BrightnessManager() {

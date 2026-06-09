@@ -49,7 +49,7 @@ void SysInfoModule::update() {
   txt = "⬇" + stat->GetNetRx() + "⬆" + stat->GetNetTx();
   gtk_label_set_label(GTK_LABEL(netWid), txt.c_str());
   gtk_widget_set_tooltip_markup(netWid, stat->GetIfaces().c_str());
-  
+
   // Update Temperature
   txt = std::to_string(tempManager->getSensorTemp(SensorType::CPU)) + "°C";
   gtk_label_set_label(GTK_LABEL(tempWid), txt.c_str());

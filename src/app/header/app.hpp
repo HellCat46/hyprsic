@@ -3,7 +3,6 @@
 #include "services/header/comm_bus.hpp"
 #include "services/header/context.hpp"
 #include "window.hpp"
-#include "gtk/gtk.h"
 #include <memory>
 #include <vector>
 class Application {
@@ -44,7 +43,7 @@ class Application {
   CommunicationBus commBus;
   
   // Threads for DBus and IPC
-  std::thread ssnDBusThread, sysDBusThread, dataUpdateThread, cliIPCThread;
+  std::thread dataUpdateThread, cliIPCThread;
   void captureSessionDBus();
   void captureSystemDBus();
   void UpdateData();

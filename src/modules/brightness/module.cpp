@@ -24,7 +24,7 @@ GtkWidget *BrightnessModule::setup() {
                          "Icon 'brightness_base' not found in ResourceStore");
     return box;
   }
-  
+
   GInputStream *stream = g_memory_input_stream_new_from_data(
       it->second.data(), it->second.size(), nullptr);
   if (!stream) {
@@ -42,8 +42,8 @@ GtkWidget *BrightnessModule::setup() {
 
   mainWid = gtk_label_new(nullptr);
   gtk_box_pack_start(GTK_BOX(box), mainWid, false, false, 0);
-  
-  
+
+
 
   update();
   return evtBox;
@@ -65,4 +65,3 @@ void BrightnessModule::handleWinOpen([[maybe_unused]] GtkWidget *wid,[[maybe_unu
 
   self->ctx->showCtrlWindow("brightness", 340, 70);
 }
-

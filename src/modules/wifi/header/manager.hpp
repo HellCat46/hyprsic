@@ -1,35 +1,41 @@
 #pragma once
 
-#include "dbus/dbus.h"
 #include "services/header/comm_types.hpp"
 #include "services/header/context.hpp"
+#include <memory>
+#include <sdbus-c++/Message.h>
 #include <string>
 #include <unordered_map>
 #include <variant>
 
 struct WifiScanRequest {
+  ModuleType moduleType;
   uint64_t correlationId;
 };
 
 struct WifiConnectRequest {
   std::string netPath;
 
+  ModuleType moduleType;
   uint64_t correlationId;
 };
 
 struct WifiDisconnectRequest {
+  ModuleType moduleType;
   uint64_t correlationId;
 };
 
 struct WifiForgetRequest {
   std::string netPath;
-  
+
+  ModuleType moduleType;
   uint64_t correlationId;
 };
 
 struct WifiSubmitPassphraseRequest {
   std::string password;
-  
+
+  ModuleType moduleType;
   uint64_t correlationId;
 };
 
@@ -39,14 +45,19 @@ struct WifiStation {
   short rssi;
 };
 
+using WifiRequest =
+    std::variant<WifiConnectRequest, WifiDisconnectRequest, WifiForgetRequest,
+                 WifiScanRequest, WifiSubmitPassphraseRequest>;
 
-using WifiRequest = std::variant<WifiConnectRequest, WifiDisconnectRequest, WifiForgetRequest, WifiScanRequest, WifiSubmitPassphraseRequest>;
 class WifiManager {
   AppContext *ctx;
-  std::string devPath, devAddr, devName, devAdapter, agentPath;
+  Glib::RefPtr<sdbus::IObject> dbusObj;
+  std::unique_ptr<sdbus::IProxy> dbusProxy;
+
+  std::string devAddr, devName, devAdapter, agentPath;
   bool powered = false, scanning = false;
   std::string connDev, authDev;
-  DBusMessage *authMsg;
+  std::unique_ptr<sdbus::MethodCall> authMsg;
 
   void RegisterAgent(bool reg);
   void GetManagedObjects();
@@ -56,11 +67,11 @@ class WifiManager {
   int GetDeviceInfo(std::string devPath, WifiStation &station);
 
   // Action methods
-  ResponseMessage Scan(const WifiScanRequest& req);
-  ResponseMessage Connect(const WifiConnectRequest& req);
-  ResponseMessage Disconnect(const WifiDisconnectRequest& req);
-  ResponseMessage Forget(const WifiForgetRequest& req);
-  ResponseMessage SubmitPassphrase(const WifiSubmitPassphraseRequest& req);
+  ResponseMessage Scan(const WifiScanRequest &req);
+  ResponseMessage Connect(const WifiConnectRequest &req);
+  ResponseMessage Disconnect(const WifiDisconnectRequest &req);
+  ResponseMessage Forget(const WifiForgetRequest &req);
+  ResponseMessage SubmitPassphrase(const WifiSubmitPassphraseRequest &req);
 
 public:
   std::unordered_map<std::string, WifiStation> devices;
@@ -71,16 +82,16 @@ public:
 
   bool IsPowered() const;
   bool IsScanning() const;
-  
+
   std::string getConnDev() const;
   std::string getAuthDev() const;
 
   // Monitor Changes Functions
   void addMatchRulesDbus();
-  void handleRequestPassphraseDbus(DBusMessage *msg, DBusMessageIter &rootIter);
+  void handleRequestPassphraseDbus(sdbus::MethodCall msg);
   void handleRequestCancelDbus();
-  void handleInterfacesRemovedDbus(DBusMessageIter &rootIter);
-  void handlePropertiesChangedDbus(DBusMessage *msg, DBusMessageIter &rootIter);
-  
-  ResponseMessage handle(const WifiRequest& msg);
+  void handleInterfacesRemovedDbus(sdbus::Message &msg);
+  void handlePropertiesChangedDbus(sdbus::Message &msg);
+
+  ResponseMessage handle(const WifiRequest &msg);
 };

@@ -3,6 +3,9 @@
 #include "gtk-layer-shell.h"
 #include "modules/mpris/header/manager.hpp"
 #include "services/header/comm_bus.hpp"
+#include <string>
+
+#define TAG "MprisWindow"
 
 MprisWindow::MprisWindow(AppContext *ctx, CommunicationBus *commBus,
                          MprisManager *mprisMgr)
@@ -86,7 +89,9 @@ void MprisWindow::update() {
   title += "</b></span>";
 
   gtk_label_set_markup(GTK_LABEL(progTtl), title.c_str());
-  // TODO: Maybe run it periodically in the manager main thread.
+  
+  // TODO(hyprsic): Send message to request position update when response is ready
+  // commBus->SendMessage(MprisGetPositionRequest{.moduleType = ModuleType::MPRIS }, Priority::HIGH);
   // manager->GetPosition();
 
   // If Length is 64 Bit Int Max Value, The Track is Probably a Stream

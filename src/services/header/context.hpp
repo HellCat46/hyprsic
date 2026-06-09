@@ -1,26 +1,23 @@
 #pragma once
 #include "database.hpp"
-#include "dbus/dbus.h"
 #include "gdk-pixbuf/gdk-pixbuf.h"
 #include "gdk/gdk.h"
+#include "gdkmm/pixbuf.h"
 #include "glib.h"
 #include "gtk/gtk.h"
 #include "resources/store.hpp"
 #include "services/header/logging.hpp"
+#include "sdbus-c++/sdbus-c++.h"
+#include <sdbus-c++/IConnection.h>
+#include <string>
+#include <vector>
 
 class DbusSystem {
 public:
-  DBusConnection *sysConn;
-  DBusError sysErr;
-
-  DBusConnection *ssnConn;
-  DBusError ssnErr;
+  std::unique_ptr<sdbus::IConnection> sysConn;
+  std::unique_ptr<sdbus::IConnection> ssnConn;
 
   DbusSystem();
-  ~DbusSystem();
-
-  void DictToInt64(DBusMessageIter *iter, uint64_t &outValue);
-  void DictToString(DBusMessageIter *iter, std::string &outValue);
 };
 
 enum class UpdateModule {
@@ -35,14 +32,14 @@ enum class UpdateModule {
 };
 
 struct Notification {
-  std::string id;
-  std::string app_name;
+  std::string id, app_name;
   uint32_t replaces_id;
-  std::string app_icon;
-  std::string summary;
-  std::string body;
-  GdkPixbuf *icon_pixbuf;
+  std::string app_icon,summary, body;
   int32_t expire_timeout;
+  
+  std::vector<std::string> actions;
+  std::map<std::string, sdbus::Variant> hints;
+  Glib::RefPtr<Gdk::Pixbuf> icon;
 };
 
 struct NotifListItem {

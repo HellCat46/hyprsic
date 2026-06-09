@@ -17,16 +17,16 @@ class SysInfoModule {
     GtkWidget *memWid;
     GtkWidget *batteryWid;
     GtkWidget *timeWid;
-    
+
     Stats* stat;
     Memory* mem;
     SysLoad* load;
     BatteryInfo* battery;
     TemperatureManager* tempManager;
-    
+
     public:
     SysInfoModule(AppContext*ctx, Stats* stats, Memory* memory, SysLoad* sysLoad, BatteryInfo* batteryInfo, TemperatureManager* tempMgr);
-    
+
     std::vector<GtkWidget *> setup();
     void update();
 };
