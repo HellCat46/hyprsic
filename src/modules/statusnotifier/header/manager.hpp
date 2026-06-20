@@ -1,6 +1,8 @@
 #pragma once
 
 #include "gdkmm/pixbuf.h"
+#include "gtkmm/image.h"
+#include "gtkmm/popover.h"
 #include "services/header/comm_types.hpp"
 #include "services/header/context.hpp"
 #include <functional>
@@ -40,9 +42,9 @@ struct StatusApp {
 };
 
 struct SNIApp {
-  GtkWidget *icon;
-  GtkWidget *popOver;
-  GtkWidget *parentBox;
+  Gtk::Image icon;
+  Gtk::Popover popOver{};
+  Gtk::Box parentBox{};
 };
 
 struct RemoveCallback {

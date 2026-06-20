@@ -208,13 +208,12 @@ void BluetoothManager::handlePropertiesChangedDbus(sdbus::Message &msg) {
 
     if (prevConnected != dev->second.connected) {
       if (dev->second.connected) {
-        ctx->showUpdateWindow(UpdateModule::BLUETOOTH,
-                              dev->second.deviceType == "audio-headset"
+        ctx->showUpdateWindow(dev->second.deviceType == "audio-headset"
                                   ? "headset_mic"
                                   : "connected",
                               "Connected to Device: " + dev->second.name);
       } else {
-        ctx->showUpdateWindow(UpdateModule::BLUETOOTH, "base",
+        ctx->showUpdateWindow("base",
                               "Disconnected from Device: " + dev->second.name);
       }
     }
@@ -268,7 +267,7 @@ int BluetoothManager::updateDevList() {
           continue;
         }
 
-        ctx->logger.LogInfo(TAG, "Adding device: " + dev.name + " (" + dev.addr + ")");
+        // ctx->logger.LogInfo(TAG, "Adding device: " + dev.name + " (" + dev.addr + ")");
         devices.insert({dev.addr, dev});
       }
     }
@@ -361,7 +360,7 @@ ResponseMessage BluetoothManager::trustDevice(const BtTrustRequest &req) {
   std::string path = std::string(req.devPath.substr(pos + 1));
   std::replace(path.begin(), path.end(), '_', ':');
 
-  const auto &devIt = devices.find(path.c_str());
+  const auto &devIt = devices.find(path);
   if (devIt == devices.end()) {
     resp.errMsg = "Device not found in Device List: ";
     resp.errMsg += req.devPath;

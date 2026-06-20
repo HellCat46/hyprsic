@@ -1,13 +1,16 @@
 #pragma once
 #include "database.hpp"
-#include "gdk-pixbuf/gdk-pixbuf.h"
-#include "gdk/gdk.h"
 #include "gdkmm/pixbuf.h"
 #include "glib.h"
-#include "gtk/gtk.h"
+#include "gtkmm/box.h"
+#include "gtkmm/grid.h"
+#include "gtkmm/image.h"
+#include "gtkmm/label.h"
+#include "gtkmm/stack.h"
+#include "gtkmm/window.h"
 #include "resources/store.hpp"
-#include "services/header/logging.hpp"
 #include "sdbus-c++/sdbus-c++.h"
+#include "services/header/logging.hpp"
 #include <sdbus-c++/IConnection.h>
 #include <string>
 #include <vector>
@@ -20,23 +23,12 @@ public:
   DbusSystem();
 };
 
-enum class UpdateModule {
-  MPRIS,
-  NOTIFICATIONS,
-  BLUETOOTH,
-  SCREENSAVER,
-  PULSEAUDIO,
-  WIFI,
-  BATTERY,
-  SYSINFO
-};
-
 struct Notification {
   std::string id, app_name;
   uint32_t replaces_id;
-  std::string app_icon,summary, body;
+  std::string app_icon, summary, body;
   int32_t expire_timeout;
-  
+
   std::vector<std::string> actions;
   std::map<std::string, sdbus::Variant> hints;
   Glib::RefPtr<Gdk::Pixbuf> icon;
@@ -44,44 +36,29 @@ struct Notification {
 
 struct NotifListItem {
   std::list<NotificationRecord>::iterator it;
-  GtkWidget *widget;
-};
-
-struct NotifFuncArgs {
-  char *notifId;
-  Notification *notif;
-  std::unordered_map<std::string, GtkWidget *> *notifications;
-  std::unordered_map<std::string, NotifListItem> *notifLookup;
-  LoggingManager *logger;
-  DBManager *dbManager;
-  bool dnd;
+  Gtk::Box widget{Gtk::Orientation::HORIZONTAL, 5};
 };
 
 class AppContext {
-  GtkWidget *updateWin;
-  GtkWidget *ctrlWin;
-  GtkWidget *notifWin;
+  Gtk::Window updateWin;
+  Gtk::Window ctrlWin;
+  Gtk::Window notifWin;
 
   // Notification Window Manager
-  GtkWidget *notifEvtBox;
-  GtkWidget *notifLogo;
-  GtkWidget *notifTitle;
-  GtkWidget *notifBody;
+  Gtk::Image notifLogo;
+  Gtk::Label notifTitle;
+  Gtk::Label notifBody;
   gulong closeNotifId;
 
-  GtkGrid *updateWinGrid;
-  GtkWidget *updateIcon;
-  GtkWidget *updateMsg;
-  guint updateTimeoutId;
+  Gtk::Grid updateWinGrid;
+  Gtk::Image updateIcon;
+  Gtk::Label updateMsg;
+  sigc::connection updateTimeoutConn;
 
-  static void hideUpdateWindow(gpointer user_data);
-  static gboolean handleKeyPress(GtkWidget *wid, guint keyval, guint keycode,
-                                 GdkModifierType state, gpointer data);
+  bool handleKeyPress(unsigned int keyval);
 
   // Notification Window Functions
-  static void showNotification(NotifFuncArgs *args);
-  static void autoCloseNotificationCb(gpointer user_data);
-  static void closeNotificationCb(GtkWidget *widget, GdkEvent *e, gpointer user_data);
+  void autoCloseNotificationCb(const bool dnd, const NotificationRecord& record);
 
   // Setup Windows
   void setupUpdateWindow();
@@ -93,32 +70,13 @@ public:
   DBManager dbManager;
   LoggingManager logger;
   ResourceStore resStore;
-  GtkWidget *moduleStk;
+  Gtk::Stack moduleStk;
 
   AppContext();
   void initWindows();
-  bool showUpdateWindow(UpdateModule module, std::string type, std::string msg);
+  bool showUpdateWindow(std::string type, std::string msg);
   void showCtrlWindow(const std::string &moduleName, gint width = -1,
                       gint height = -1);
-  void showNotifWindow(Notification *notif, bool dnd);
-  void addModule(GtkWidget *moduleBox, const std::string &moduleName);
-};
-
-struct CtrlWindowData {
-  std::string moduleName;
-  gint width, height;
-  AppContext *ctx;
-};
-
-struct UpdateWindowData {
-  UpdateModule module;
-  std::string type, msg;
-  AppContext *ctx;
-  GdkPixbuf *pixBuf;
-};
-
-struct NotifWindowData {
-  NotificationRecord notif;
-  AppContext *ctx;
-  bool dnd;
+  void showNotifWindow(Notification& notif, bool dnd);
+  void addModule(Gtk::Box &moduleBox, const std::string &moduleName);
 };

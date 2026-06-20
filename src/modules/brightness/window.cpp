@@ -1,29 +1,37 @@
 #include "header/window.hpp"
+#include "gtkmm/adjustment.h"
+#include "gtkmm/enums.h"
+#include "gtkmm/label.h"
+#include "gtkmm/scale.h"
 #include "modules/brightness/header/manager.hpp"
+#include "services/header/comm_types.hpp"
 
 
 BrightnessWindow::BrightnessWindow(AppContext *ctx, CommunicationBus* commbus, BrightnessManager* manager) : ctx(ctx), manager(manager), commBus(commbus){}
 
 void BrightnessWindow::init() {
-    winBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+    winBox.set_orientation(Gtk::Orientation::VERTICAL);
+    winBox.set_spacing(5);
   
-    GtkWidget *titleLbl = gtk_label_new(nullptr);
-    gtk_label_set_markup(GTK_LABEL(titleLbl), "<b>Brightness</b>");
-    gtk_box_pack_start(GTK_BOX(winBox), titleLbl, false, false, 0);
+    Gtk::Label titleLbl;
+    titleLbl.set_markup("<b>Brightness</b>");
+    winBox.append(titleLbl);
+
+    adjWid = Gtk::Adjustment::create(0, 0, 100, 5, 10, 0);
   
-    adjWid = gtk_adjustment_new(0, 0, 100, 5, 10, 0);
-    GtkWidget *scale = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, adjWid);
-    gtk_scale_set_value_pos(GTK_SCALE(scale), GTK_POS_TOP);
-    gtk_box_pack_start(GTK_BOX(winBox), scale, true, true, 0);
-    g_signal_connect(scale, "change-value",
-                     G_CALLBACK(BrightnessWindow::handleScaleChange), this);
-  
-    gtk_widget_show_all(winBox);
     
-    gtk_widget_set_margin_top(winBox, 20);
-    gtk_widget_set_margin_bottom(winBox, 20);
-    gtk_widget_set_margin_start(winBox, 10);
-    gtk_widget_set_margin_end(winBox, 10);
+    Gtk::Scale scale{Gtk::Orientation::HORIZONTAL};
+    scale.set_value_pos(Gtk::PositionType::TOP);
+    scale.set_adjustment(adjWid);
+    scale.signal_change_value().connect(
+        [this](Gtk::ScrollType, double value) -> bool {
+            this->handleScaleChange(value);
+            return false;
+        },
+        false);
+    
+    winBox.append(scale);
+    winBox.set_margin(20);
     
     ctx->addModule(winBox, "brightness");
 }
@@ -31,15 +39,12 @@ void BrightnessWindow::init() {
 void BrightnessWindow::update() {
     short brightness = manager->getLvl();
     
-    if (brightness >= 0) {
-        gtk_adjustment_set_value(adjWid, brightness);
+    if (brightness >= 0 && brightness != adjWid->get_value()) {
+        adjWid->set_value(brightness);
     }
 }
 
-void BrightnessWindow::handleScaleChange([[maybe_unused]] GtkRange *range,[[maybe_unused]] GtkScrollType *scroll,
-                                         gdouble value, gpointer data) {
-  BrightnessWindow *self = static_cast<BrightnessWindow *>(data);
-
-  self->commBus->SendMessage(BrtSetLevelRequest{.brightness = short(value), .correlationId = self->commBus->GetNewCorId()}, Priority::LOW);
-    // self->update();
+void BrightnessWindow::handleScaleChange(double value) {
+    commBus->SendMessage(BrtSetLevelRequest{short(value), ModuleType::BRIGHTNESS, commBus->GetNewCorId()}, Priority::LOW);
+    // update();
 }

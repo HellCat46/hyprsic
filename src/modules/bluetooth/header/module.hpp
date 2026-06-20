@@ -1,19 +1,15 @@
 #pragma once
+#include "gtkmm/label.h"
 #include "manager.hpp"
-#include "window.hpp"
-
-
 
 class BluetoothModule {
   AppContext *ctx;
   BluetoothManager *manager;
-  BluetoothWindow *window;
 
-  static void switchVisibilityBTMenu(GtkWidget *widget, GdkEvent *e,
-                                     gpointer user_data);
+  Gtk::Label mainLbl;
+
 public:
-  BluetoothModule(AppContext *ctx, BluetoothManager *manager,
-                  BluetoothWindow *window);
+  BluetoothModule(AppContext *ctx, BluetoothManager *manager);
   // UI Prep Functions
-  GtkWidget *setup();
+  Gtk::Label &setup();
 };

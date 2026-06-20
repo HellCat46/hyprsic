@@ -180,8 +180,7 @@ BatteryStats BatteryInfo::getBatteryStats() {
     lowBattery = false;
   } else if (!lowBattery) {
     lowBattery = true;
-    ctx->showUpdateWindow(
-        UpdateModule::BATTERY, "battery_low",
+    ctx->showUpdateWindow("battery_low",
         "Battery Low. " + HelperFunc::convertToTime(avgStats.timeTillEmpty) +
             " Remaining");
   }
@@ -199,10 +198,10 @@ bool BatteryInfo::isCharging() {
   }
 
   if (charging) {
-    ctx->showUpdateWindow(UpdateModule::BATTERY, "charging_on",
+    ctx->showUpdateWindow("charging_on",
                           "Charger Connected");
   } else {
-    ctx->showUpdateWindow(UpdateModule::BATTERY, "charging_off",
+    ctx->showUpdateWindow( "charging_off",
                           "Charger Disconnected");
   }
 

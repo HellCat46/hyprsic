@@ -9,7 +9,6 @@
 #include <mutex>
 #include <string>
 #include <thread>
-#include <typeindex>
 #include <variant>
 #define TAG "Communication Bus"
 

@@ -43,7 +43,7 @@ NotificationManager::NotificationManager(AppContext *app_ctx)
                 [this](sdbus::MethodCall msg) {
                   Notification notif;
                   if (handleNotifyCallDbus(msg, notif)) {
-                    ctx->showNotifWindow(&notif, dnd);
+                    ctx->showNotifWindow(notif, dnd);
                   }
                 },
                 {},

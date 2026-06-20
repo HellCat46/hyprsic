@@ -1,7 +1,7 @@
 #pragma once
 
-#include "glib.h"
-#include "gtk/gtk.h"
+#include "gtkmm/box.h"
+#include "gtkmm/label.h"
 #include "manager.hpp"
 #include "window.hpp"
 
@@ -10,13 +10,11 @@ class BrightnessModule {
   BrightnessManager *manager;
   BrightnessWindow *window;
 
-  GtkWidget *mainWid;
+  Gtk::Label mainLbl;
+  Gtk::Box mainBox;
 
 public:
-  BrightnessModule(AppContext *ctx, BrightnessManager *manager,
-                   BrightnessWindow *window);
-  GtkWidget *setup();
+  BrightnessModule(AppContext *ctx, BrightnessManager *manager);
+  Gtk::Box& setup();
   void update();
-
-  static void handleWinOpen(GtkWidget *wid, GdkEventButton *evt, gpointer data);
 };

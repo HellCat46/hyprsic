@@ -1,8 +1,8 @@
 #pragma once
 
-#include "glib-object.h"
-#include "glib.h"
-#include "gtk/gtk.h"
+#include "gtkmm/button.h"
+#include "gtkmm/entry.h"
+#include "gtkmm/label.h"
 #include "manager.hpp"
 #include "services/header/comm_bus.hpp"
 #include "services/header/context.hpp"
@@ -17,37 +17,36 @@ class WifiWindow {
   AppContext *ctx;
   WifiManager *manager;
   CommunicationBus *commBus;
-  GtkWidget *mainBox;
+  Gtk::Box mainBox;
 
-  GtkWidget *scanBtn;
-  GtkWidget *powerBtn;
+  Gtk::Button scanBtn;
+  Gtk::Button powerBtn;
 
-  GtkWidget *connDevBox;
-  GtkWidget *connDevIBox;
-  GtkWidget *connDeviceName;
-  GtkWidget *frgtBtn;
-  glong connDevFrgtId;
+  Gtk::Box connDevBox;
+  Gtk::Box connDevIBox;
+  Gtk::Label connDeviceName;
+  Gtk::Button frgtBtn;
+  Gtk::Button disCBtn;
+  
+  Gtk::Box devBox;
+  Gtk::Box devListBox;
 
-  GtkWidget *devBox;
-  GtkWidget *devListBox;
+  Gtk::Box passEntBox;
+  Gtk::Entry passEntry;
 
-  GtkWidget *passEntBox;
-  GtkWidget *passEntry;
-
-  static void handleScan(GtkWidget *widget, gpointer user_data);
-  static void handleConnect(GtkWidget *widget, gpointer user_data);
-  static void handleDisconnect(GtkWidget *widget, gpointer user_data);
-  static void handleForget(GtkWidget *widget, gpointer user_data);
-  static void handlePassSubmit(GtkWidget *widget, gpointer user_data);
-
-  static void FreeActionArgs(gpointer data, GClosure *closure);
+  void handleScan();
+  void handleConnect(std::string devPath);
+  void handleDisconnect();
+  void handleForget(std::string devPath);
+  void handlePassSubmit();
 
   void updateConnDev();
-  GtkWidget *addDevList(const std::string &devPath, const WifiStation &station);
-  void addTooltip(GtkWidget *widget, const WifiStation &station);
+  void addDevList(Gtk::Box &devListBox, const std::string &devPath, const WifiStation &station);
+  void addTooltip(Gtk::Label &widget, const WifiStation &station);
 
 public:
-  WifiWindow(AppContext *context, CommunicationBus *commBus, WifiManager *manager);
+  WifiWindow(AppContext *context, CommunicationBus *commBus,
+             WifiManager *manager);
   void init();
   void update();
 };

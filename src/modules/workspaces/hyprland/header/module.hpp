@@ -1,7 +1,6 @@
 #pragma once
 
-#include "glib.h"
-#include "gtk/gtk.h"
+#include "gtkmm/box.h"
 #include "manager.hpp"
 #include "services/header/comm_bus.hpp"
 #include "services/header/context.hpp"
@@ -16,8 +15,8 @@ struct ChgWSArgs {
 struct UpdateWSData {
   CommunicationBus *commBus;
   HyprWSManager *wsInstance;
-  GtkWidget *wsWid;
-  GtkWidget *spWSWid;
+  Gtk::Box &wsBox;
+  Gtk::Box &spWSBox;
   unsigned char monitorId;
 };
 
@@ -25,27 +24,24 @@ class HyprWSModule {
   HyprWSManager *hyprInstance;
   LoggingManager *logger;
   CommunicationBus *commBus;
-
-  GtkWidget *wsWid;
-  GtkWidget *spWSWid;
+  
+  Gtk::Box mainBox;
+  Gtk::Box wsBox;
+  Gtk::Box spWSBox;
 
   unsigned char monitorId;
-
 
 public:
   HyprWSModule(AppContext *ctx, CommunicationBus *commBus,
                HyprWSManager *hyprInstance);
 
-  GtkWidget *setup(unsigned char monitorId);
-  static void updateWorkspaces(CommunicationBus *commBus,
-                               HyprWSManager *hyprInstance, GtkWidget *wsBox,
-                               GtkWidget *spWSBox, unsigned char monitorId);
+  Gtk::Box &setup(unsigned char monitorId);
+  void updateWorkspaces();
 
-  static void chgWS(GtkWidget *widget, GdkEvent *e, gpointer user_data);
-  static void chgSPWS(GtkWidget *widget, GdkEvent *e, gpointer user_data);
-  static void handleWSScroll(GtkWidget *widget, GdkEventScroll *e,
-                             gpointer user_data);
+  void chgWS(unsigned int wsId);
+  void chgSPWS(unsigned int id, std::string name);
+  void handleWSScroll(double dy);
 
   // Update Workspace UI Function
-  static gboolean updateWorkspaceUI(gpointer data);
+  void updateWorkspaceUI();
 };

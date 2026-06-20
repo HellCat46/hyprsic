@@ -1,24 +1,18 @@
 #pragma once
 
+#include "gtkmm/label.h"
 #include "services/header/context.hpp"
-#include "gdk/gdk.h"
-#include "glib.h"
-#include "gtk/gtk.h"
 #include "manager.hpp"
-#include "window.hpp"
 
 class WifiModule {
   AppContext *ctx;
   WifiManager *manager;
-  WifiWindow *window;
 
-  GtkWidget* mainLbl;
-
-  static void openWindow(GtkWidget* widget, GdkEvent *e, gpointer user_data);
+  Gtk::Label mainLbl;
 
 public:
-  WifiModule(AppContext *context, WifiManager *manager, WifiWindow *window);
-  GtkWidget* setup();
+  WifiModule(AppContext *context, WifiManager *manager);
+  Gtk::Label& setup();
   void update();
 
 };

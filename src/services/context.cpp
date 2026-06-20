@@ -1,32 +1,35 @@
 #include "services/header/context.hpp"
-#include "../utils/helper_func.hpp"
-#include "cstring"
-#include "gdk-pixbuf/gdk-pixbuf.h"
-#include "gio/gio.h"
-#include "glib-object.h"
+#include "gdkmm/display.h"
 #include "glib.h"
-#include "gtk-layer-shell.h"
+#include "glibmm/main.h"
 #include "gtk/gtk.h"
+#include "gtk4-layer-shell.h"
+#include "gtkmm/cssprovider.h"
+#include "gtkmm/enums.h"
+#include "gtkmm/eventcontrollerkey.h"
+#include "gtkmm/gestureclick.h"
+#include "gtkmm/stylecontext.h"
+#include "gtkmm/window.h"
 #include "iostream"
 #include "services/header/database.hpp"
+#include "utils/helper_func.hpp"
 #include <sdbus-c++/Error.h>
 #include <sdbus-c++/IConnection.h>
 
 #define TAG "AppContext"
 
 AppContext::AppContext()
-    : updateTimeoutId(0), dbus(), dbManager(&logger), logger(true) {}
+    : dbus(), dbManager(&logger), logger(true) {}
 
 DbusSystem::DbusSystem() : sysConn(nullptr), ssnConn(nullptr) {
-    try {
-      sysConn = sdbus::createSystemBusConnection();
-      ssnConn = sdbus::createSessionBusConnection();
-    } catch (const sdbus::Error& e) {
-      std::cerr << "[Error] Failed to Connect With the DBUS System or Session: "
-                << e.what()
-                << std::endl;
-      return;
-    }
+  try {
+    sysConn = sdbus::createSystemBusConnection();
+    ssnConn = sdbus::createSessionBusConnection();
+  } catch (const sdbus::Error &e) {
+    std::cerr << "[Error] Failed to Connect With the DBUS System or Session: "
+              << e.what() << std::endl;
+    return;
+  }
 }
 
 void AppContext::initWindows() {
@@ -36,144 +39,124 @@ void AppContext::initWindows() {
 }
 
 void AppContext::setupUpdateWindow() {
-  updateTimeoutId = 0;
-  updateWin = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 
-  gtk_layer_init_for_window(GTK_WINDOW(updateWin));
-  gtk_layer_set_layer(GTK_WINDOW(updateWin), GTK_LAYER_SHELL_LAYER_OVERLAY);
+  auto upWinObj = updateWin.gobj();
+  gtk_layer_init_for_window(GTK_WINDOW(upWinObj));
+  gtk_layer_set_layer(GTK_WINDOW(upWinObj), GTK_LAYER_SHELL_LAYER_OVERLAY);
 
-  gtk_layer_set_anchor(GTK_WINDOW(updateWin), GTK_LAYER_SHELL_EDGE_TOP, false);
-  gtk_layer_set_anchor(GTK_WINDOW(updateWin), GTK_LAYER_SHELL_EDGE_BOTTOM,
+  gtk_layer_set_anchor(GTK_WINDOW(upWinObj), GTK_LAYER_SHELL_EDGE_TOP, false);
+  gtk_layer_set_anchor(GTK_WINDOW(upWinObj), GTK_LAYER_SHELL_EDGE_BOTTOM,
                        false);
-  gtk_layer_set_anchor(GTK_WINDOW(updateWin), GTK_LAYER_SHELL_EDGE_LEFT, false);
-  gtk_layer_set_anchor(GTK_WINDOW(updateWin), GTK_LAYER_SHELL_EDGE_RIGHT,
-                       false);
+  gtk_layer_set_anchor(GTK_WINDOW(upWinObj), GTK_LAYER_SHELL_EDGE_LEFT, false);
+  gtk_layer_set_anchor(GTK_WINDOW(upWinObj), GTK_LAYER_SHELL_EDGE_RIGHT, false);
 
-  gtk_layer_set_exclusive_zone(GTK_WINDOW(updateWin), 0);
-  gtk_widget_set_opacity(updateWin, 0.95);
+  gtk_layer_set_exclusive_zone(GTK_WINDOW(upWinObj), 0);
+  gtk_widget_set_opacity(GTK_WIDGET(upWinObj), 0.95);
 
-  updateWinGrid = GTK_GRID(gtk_grid_new());
-  gtk_widget_set_margin_top(GTK_WIDGET(updateWinGrid), 20);
-  gtk_widget_set_margin_bottom(GTK_WIDGET(updateWinGrid), 20);
-  gtk_widget_set_margin_start(GTK_WIDGET(updateWinGrid), 20);
-  gtk_widget_set_margin_end(GTK_WIDGET(updateWinGrid), 20);
-  gtk_container_add(GTK_CONTAINER(updateWin), GTK_WIDGET(updateWinGrid));
+  updateWinGrid.set_margin(20);
+  updateWin.set_child(updateWinGrid);
 
-  updateIcon = gtk_image_new();
-  gtk_grid_attach(updateWinGrid, updateIcon, 0, 0, 1, 4);
+  updateWinGrid.attach(updateIcon, 0, 0, 1, 4);
 
-  updateMsg = gtk_label_new("");
-  gtk_widget_set_margin_top(updateMsg, 10);
-  gtk_label_set_line_wrap(GTK_LABEL(updateMsg), true);
-  gtk_widget_set_size_request(updateMsg, 200, -1);
+  updateMsg.set_margin_top(10);
+  updateMsg.set_wrap(true);
+  updateMsg.set_size_request(200, -1);
 
-  gtk_grid_attach(updateWinGrid, updateMsg, 0, 4, 1, 1);
+  updateWinGrid.attach(updateMsg, 0, 4, 1, 1);
 }
 
 void AppContext::setupNotifWindow() {
   closeNotifId = 0;
-  notifWin = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 
-  gtk_layer_init_for_window(GTK_WINDOW(notifWin));
-  gtk_layer_set_layer(GTK_WINDOW(notifWin), GTK_LAYER_SHELL_LAYER_OVERLAY);
+  auto notifWinObj = notifWin.gobj();
+  gtk_layer_init_for_window(GTK_WINDOW(notifWinObj));
+  gtk_layer_set_layer(GTK_WINDOW(notifWinObj), GTK_LAYER_SHELL_LAYER_OVERLAY);
 
-  gtk_layer_set_anchor(GTK_WINDOW(notifWin), GTK_LAYER_SHELL_EDGE_TOP, true);
-  gtk_layer_set_anchor(GTK_WINDOW(notifWin), GTK_LAYER_SHELL_EDGE_RIGHT, true);
+  gtk_layer_set_anchor(GTK_WINDOW(notifWinObj), GTK_LAYER_SHELL_EDGE_TOP, true);
+  gtk_layer_set_anchor(GTK_WINDOW(notifWinObj), GTK_LAYER_SHELL_EDGE_RIGHT,
+                       true);
 
-  gtk_layer_set_margin(GTK_WINDOW(notifWin), GTK_LAYER_SHELL_EDGE_TOP, 10);
-  gtk_layer_set_margin(GTK_WINDOW(notifWin), GTK_LAYER_SHELL_EDGE_RIGHT, 10);
+  gtk_layer_set_margin(GTK_WINDOW(notifWinObj), GTK_LAYER_SHELL_EDGE_TOP, 10);
+  gtk_layer_set_margin(GTK_WINDOW(notifWinObj), GTK_LAYER_SHELL_EDGE_RIGHT, 10);
 
-  gtk_layer_set_exclusive_zone(GTK_WINDOW(notifWin), 0);
+  gtk_layer_set_exclusive_zone(GTK_WINDOW(notifWinObj), 0);
 
-  gtk_window_set_decorated(GTK_WINDOW(notifWin), false);
-  gtk_widget_set_size_request(notifWin, 400, -1);
+  gtk_window_set_decorated(GTK_WINDOW(notifWinObj), false);
+  notifWin.set_size_request(400, -1);
 
-  notifEvtBox = gtk_event_box_new();
-  GtkWidget *notifBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-  gtk_widget_set_margin_top(notifBox, 5);
-  gtk_widget_set_margin_bottom(notifBox, 5);
-  gtk_widget_set_margin_start(notifBox, 5);
-  gtk_widget_set_margin_end(notifBox, 5);
-  gtk_container_add(GTK_CONTAINER(notifEvtBox), notifBox);
-  gtk_container_add(GTK_CONTAINER(notifWin), notifEvtBox);
+  auto notifEvtBox = Gtk::GestureClick::create();
+  Gtk::Box notifBox{Gtk::Orientation::HORIZONTAL, 5};
+  notifBox.set_margin(5);
 
-  notifLogo = gtk_image_new();
-  gtk_widget_set_size_request(notifLogo, 64, 64);
-  gtk_box_pack_start(GTK_BOX(notifBox), notifLogo, false, false, 5);
+  notifBox.add_controller(notifEvtBox);
+  notifWin.set_child(notifBox);
 
-  GtkWidget *notifTextBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-  gtk_box_pack_start(GTK_BOX(notifBox), notifTextBox, true, true, 5);
+  notifLogo.set_size_request(64, 64);
+  notifBox.append(notifLogo);
 
-  notifTitle = gtk_label_new(nullptr);
-  gtk_label_set_line_wrap(GTK_LABEL(notifTitle), true);
-  gtk_widget_set_halign(notifTitle, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(notifTextBox), notifTitle, false, false, 0);
+  Gtk::Box notifTextBox{Gtk::Orientation::VERTICAL, 5};
+  notifBox.append(notifTextBox);
 
-  notifBody = gtk_label_new(nullptr);
-  gtk_label_set_line_wrap(GTK_LABEL(notifBody), true);
-  gtk_widget_set_halign(notifBody, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(notifTextBox), notifBody, false, false, 0);
+  notifTitle.set_wrap(true);
+  notifTitle.set_halign(Gtk::Align::START);
+  notifTextBox.append(notifTitle);
+
+  notifBody.set_wrap(true);
+  notifBody.set_halign(Gtk::Align::START);
+  notifTextBox.append(notifBody);
 }
 
 void AppContext::setupCtrlWindow() {
-  ctrlWin = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-
-  gtk_layer_init_for_window(GTK_WINDOW(ctrlWin));
-  gtk_layer_set_keyboard_mode(GTK_WINDOW(ctrlWin),
+  auto ctrlWinObj = ctrlWin.gobj();
+  gtk_layer_init_for_window(GTK_WINDOW(ctrlWinObj));
+  gtk_layer_set_keyboard_mode(GTK_WINDOW(ctrlWinObj),
                               GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 
-  GtkEventController *evtCtrl = gtk_event_controller_key_new(ctrlWin);
-  g_signal_connect(evtCtrl, "key-released",
-                   G_CALLBACK(AppContext::handleKeyPress), ctrlWin);
+  auto evtCtrl = Gtk::EventControllerKey::create();
+  evtCtrl->signal_key_pressed().connect(
+      [this](unsigned int keyval, unsigned int, Gdk::ModifierType) {
+        return this->handleKeyPress(keyval);
+      },
+      false);
+  ctrlWin.add_controller(evtCtrl);
 
-  GdkScreen *screen = gtk_widget_get_screen(ctrlWin);
-  GdkVisual *visual = gdk_screen_get_rgba_visual(screen);
-  if (visual != nullptr && gdk_screen_is_composited(screen)) {
-    gtk_widget_set_visual(ctrlWin, visual);
-  }
+  gtk_layer_set_anchor(GTK_WINDOW(ctrlWinObj), GTK_LAYER_SHELL_EDGE_TOP, false);
+  gtk_layer_set_anchor(GTK_WINDOW(ctrlWinObj), GTK_LAYER_SHELL_EDGE_BOTTOM,
+                       false);
+  gtk_layer_set_anchor(GTK_WINDOW(ctrlWinObj), GTK_LAYER_SHELL_EDGE_LEFT,
+                       false);
+  gtk_layer_set_anchor(GTK_WINDOW(ctrlWinObj), GTK_LAYER_SHELL_EDGE_RIGHT,
+                       false);
 
-  gtk_layer_set_anchor(GTK_WINDOW(ctrlWin), GTK_LAYER_SHELL_EDGE_TOP, false);
-  gtk_layer_set_anchor(GTK_WINDOW(ctrlWin), GTK_LAYER_SHELL_EDGE_BOTTOM, false);
-  gtk_layer_set_anchor(GTK_WINDOW(ctrlWin), GTK_LAYER_SHELL_EDGE_LEFT, false);
-  gtk_layer_set_anchor(GTK_WINDOW(ctrlWin), GTK_LAYER_SHELL_EDGE_RIGHT, false);
+  ctrlWin.set_margin_start(50);
+  ctrlWin.set_margin_end(50);
+  ctrlWin.set_margin_top(30);
+  ctrlWin.set_margin_bottom(30);
 
-  gtk_widget_set_margin_start(ctrlWin, 50);
-  gtk_widget_set_margin_end(ctrlWin, 50);
-  gtk_widget_set_margin_top(ctrlWin, 30);
-  gtk_widget_set_margin_bottom(ctrlWin, 30);
+  Gtk::Box mainBox{Gtk::Orientation::VERTICAL, 10};
 
-  GtkWidget *mainBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+  moduleStk.set_transition_type(Gtk::StackTransitionType::CROSSFADE);
+  moduleStk.set_hhomogeneous(false);
 
-  moduleStk = gtk_stack_new();
-  gtk_stack_set_transition_type(GTK_STACK(moduleStk),
-                                GTK_STACK_TRANSITION_TYPE_CROSSFADE);
-  gtk_stack_set_homogeneous(GTK_STACK(moduleStk), false);
+  mainBox.append(moduleStk);
+  ctrlWin.set_child(mainBox);
 
-  gtk_box_pack_start(GTK_BOX(mainBox), moduleStk, true, true, 0);
-  gtk_container_add(GTK_CONTAINER(ctrlWin), mainBox);
+  auto provider = Gtk::CssProvider::create();
+  provider->load_from_data(".win { "
+                           "  background-color: transparent; "
+                           "}"
+                           ".mainBox { "
+                           "  background-color: @theme_bg_color; "
+                           "  border: 2px solid @borders; "
+                           "  border-radius: 12px; "
+                           "  margin: 5px; "
+                           "}");
 
-  gtk_widget_set_app_paintable(ctrlWin, true);
-  const char *css = ".win { "
-                    "  background-color: transparent; "
-                    "}"
-                    ".mainBox { "
-                    "  background-color: @theme_bg_color; "
-                    "  border: 2px solid @borders; "
-                    "  border-radius: 12px; "
-                    "  margin: 5px; "
-                    "}";
+  Gtk::StyleContext::add_provider_for_display(
+      Gdk::Display::get_default(), provider, GTK_STYLE_PROVIDER_PRIORITY_USER);
 
-  GtkCssProvider *provider = gtk_css_provider_new();
-  gtk_css_provider_load_from_data(provider, css, -1, NULL);
-  gtk_style_context_add_provider_for_screen(gdk_screen_get_default(),
-                                            GTK_STYLE_PROVIDER(provider),
-                                            GTK_STYLE_PROVIDER_PRIORITY_USER);
-
-  GtkStyleContext *boxCtx = gtk_widget_get_style_context(mainBox);
-  gtk_style_context_add_class(boxCtx, "mainBox");
-
-  GtkStyleContext *winCtx = gtk_widget_get_style_context(ctrlWin);
-  gtk_style_context_add_class(winCtx, "win");
+  mainBox.add_css_class("mainBox");
+  ctrlWin.add_css_class("win");
 }
 
 void AppContext::showCtrlWindow(const std::string &moduleName, gint width,
@@ -181,154 +164,73 @@ void AppContext::showCtrlWindow(const std::string &moduleName, gint width,
 
   logger.LogInfo(TAG, "Showing Control Window for Module: " + moduleName);
 
-  auto data = new CtrlWindowData{moduleName, width, height, this};
-  g_idle_add_once(
-      [](gpointer data) {
-        CtrlWindowData *cwData = static_cast<CtrlWindowData *>(data);
+  Glib::signal_idle().connect_once([this, moduleName, width, height]() {
+    moduleStk.set_visible_child(moduleName);
+    logger.LogDebug(TAG, "Set Visible Child in Stack: " + moduleName +
+                             " with Size: " + std::to_string(width) + "x" +
+                             std::to_string(height));
 
-        gtk_stack_set_visible_child_name(GTK_STACK(cwData->ctx->moduleStk),
-                                         cwData->moduleName.c_str());
-
-        cwData->ctx->logger.LogDebug(
-            TAG, "Set Visible Child in Stack: " + cwData->moduleName +
-                     " with Size: " + std::to_string(cwData->width) + "x" +
-                     std::to_string(cwData->height));
-
-        gtk_widget_set_size_request(cwData->ctx->ctrlWin, cwData->width,
-                                    cwData->height);
-        gtk_widget_show_all(cwData->ctx->ctrlWin);
-
-        delete cwData;
-      },
-      data);
+    ctrlWin.set_size_request(width, height);
+    ctrlWin.show();
+  });
 }
 
-void AppContext::addModule(GtkWidget *moduleBox,
-                           const std::string &moduleName) {
-  gint width, height;
-  gtk_widget_get_size_request(moduleBox, &width, &height);
+void AppContext::addModule(Gtk::Box &moduleBox, const std::string &moduleName) {
+  int width, height;
+  moduleBox.set_size_request(width, height);
   logger.LogDebug(TAG, "Adding Module to Stack: " + moduleName +
                            " with Size: " + std::to_string(width) + "x" +
                            std::to_string(height));
 
-  gtk_stack_add_named(GTK_STACK(moduleStk), moduleBox, moduleName.c_str());
+  moduleStk.add(moduleBox, moduleName, moduleName);
 }
 
-bool AppContext::showUpdateWindow(UpdateModule module, std::string type,
-                                  std::string msg) {
-  if (updateTimeoutId != 0) {
-    g_source_remove(updateTimeoutId);
+bool AppContext::showUpdateWindow(std::string iconName, std::string msg) {
+  if (updateTimeoutConn.connected()) {
+    updateTimeoutConn.disconnect();
   }
 
-  std::string iconPath;
-  switch (module) {
-  case UpdateModule::MPRIS:
-    iconPath += "mpris_" + type;
-    break;
-  case UpdateModule::NOTIFICATIONS:
-    iconPath += "notifications_" + type;
-    break;
-  case UpdateModule::BLUETOOTH:
-    iconPath += "bluetooth_" + type;
-    break;
-  case UpdateModule::SCREENSAVER:
-    iconPath += "screensaver_" + type;
-    break;
-  case UpdateModule::PULSEAUDIO:
-    iconPath += "audio_" + type;
-    break;
-  case UpdateModule::WIFI:
-    iconPath += "wifi_" + type;
-    break;
-  case UpdateModule::BATTERY:
-    iconPath += "battery_" + type;
-    break;
-  case UpdateModule::SYSINFO:
-    iconPath += "sysinfo_" + type;
-    break;
-  }
+  Glib::signal_idle().connect_once([this, iconName, msg]() {
+    updateIcon.set_from_icon_name(iconName);
+    updateMsg.set_markup("<b>" + msg + "</b>");
+    updateMsg.show();
+  });
 
-  auto icon = resStore.icons.find(iconPath);
-  if (icon == resStore.icons.end()) {
-    logger.LogError(TAG, "Icon Not Found for Update Window: " + iconPath);
-    return 1;
-  }
-
-  GInputStream *stream = g_memory_input_stream_new_from_data(
-      icon->second.data(), icon->second.size(), nullptr);
-  if (stream == nullptr) {
-    logger.LogError(TAG,
-                    "Failed to Create GInputStream for Update Window Icon: " +
-                        iconPath);
-    return 1;
-  }
-
-  GError *error = nullptr;
-  GdkPixbuf *pixBuf = gdk_pixbuf_new_from_stream(stream, nullptr, &error);
-  if (!pixBuf) {
-    logger.LogError(TAG, error->message);
-    return 1;
-  }
-
-  g_object_unref(stream);
-
-  // Update the UI in the Main Thread
-  auto data = new UpdateWindowData{module, type, msg, this, pixBuf};
-  g_idle_add_once(
-      [](gpointer data) {
-        UpdateWindowData *updateData = static_cast<UpdateWindowData *>(data);
-        AppContext *ctx = updateData->ctx;
-
-        gtk_image_set_from_pixbuf(GTK_IMAGE(ctx->updateIcon),
-                                  updateData->pixBuf);
-        g_object_unref(updateData->pixBuf);
-
-        gtk_label_set_markup(GTK_LABEL(ctx->updateMsg),
-                             ("<b>" + updateData->msg + "</b>").c_str());
-        gtk_widget_show_all(ctx->updateWin);
-
-        delete updateData;
+  updateTimeoutConn = Glib::signal_timeout().connect(
+      [this]() -> bool {
+        updateWin.hide();
+        return false;
       },
-      data);
+      2000);
 
-  updateTimeoutId = g_timeout_add_once(2000, hideUpdateWindow, this);
-  return 0;
+  return false;
 }
 
-void AppContext::showNotifWindow(Notification *notif, bool dnd) {
-  auto winData =
-      new NotifWindowData{NotificationRecord{
-                              .id = notif->id,
-                              .app_name = notif->app_name,
-                              .summary = notif->summary,
-                              .body = notif->body,
-                              .timestamp = dbManager.getCurrentTimestamp(),
-                          },
-                          this, dnd};
+void AppContext::showNotifWindow(Notification &notif, bool dnd) {
+
+  NotificationRecord record{
+      .id = notif.id,
+      .app_name = notif.app_name,
+      .summary = notif.summary,
+      .body = notif.body,
+      .timestamp = dbManager.getCurrentTimestamp(),
+  };
+
   if (dnd) {
-    autoCloseNotificationCb(winData);
+    autoCloseNotificationCb(dnd, record);
     return;
   }
 
-  g_timeout_add_once(5000, autoCloseNotificationCb, winData);
-
-  // Signal Connection Handling
-  if (closeNotifId > 0)
-    g_signal_handler_disconnect(notifEvtBox, closeNotifId);
-
-  closeNotifId = g_signal_connect_data(notifEvtBox, "button-press-event",
-                                       G_CALLBACK(closeNotificationCb), this,
-                                       nullptr, (GConnectFlags)0);
+  Glib::signal_idle().connect_once(
+      [this, dnd, record]() { autoCloseNotificationCb(dnd, record); }, 5000);
 
   // Adding Data to UI Elements
-  gtk_label_set_markup(GTK_LABEL(notifTitle),
-                       ("<b>" + notif->summary + "</b>").c_str());
-
-  if (notif->body.size() > 500) {
-    notif->body = notif->body.substr(0, 497) + "...";
+  notifTitle.set_markup("<b>" + record.summary + "</b>");
+  
+  if (record.body.size() > 500) {
+    record.body = record.body.substr(0, 497) + "...";
   }
-  gtk_label_set_markup(GTK_LABEL(notifBody),
-                       HelperFunc::ValidString(notif->body));
+  notifBody.set_markup(HelperFunc::ValidString(record.body));
 
   // TODO
   // if (notif->icon) {
@@ -338,58 +240,33 @@ void AppContext::showNotifWindow(Notification *notif, bool dnd) {
   //   gtk_image_clear(GTK_IMAGE(notifLogo));
   // }
 
-  gtk_widget_show_all(notifWin);
+  notifWin.show();
 }
 
-void AppContext::closeNotificationCb([[maybe_unused]] GtkWidget *widget,
-                                     [[maybe_unused]] GdkEvent *e,
-                                     gpointer user_data) {
-  AppContext *self = static_cast<AppContext *>(user_data);
-  gtk_widget_hide(self->notifWin);
-}
-
-void AppContext::autoCloseNotificationCb(gpointer user_data) {
-  NotifWindowData *args = static_cast<NotifWindowData *>(user_data);
-
+void AppContext::autoCloseNotificationCb(const bool dnd,
+                                         const NotificationRecord &record) {
   // Handles the case where notification is already closed by user interaction
   // before timeout
-  if (!gtk_widget_is_visible(args->ctx->notifWin) && !args->dnd) {
-    delete args;
+  if (!notifWin.is_visible() && !dnd) {
     return;
   }
 
-  closeNotificationCb(nullptr, nullptr, args->ctx);
+  notifWin.hide();
 
   // Save to DB that notification was closed due to timeout
-  if (!args->ctx->dbManager.insertNotification(&args->notif)) {
-    args->ctx->logger.LogInfo(TAG, "Saved notification ID: " + args->notif.id +
-                                       " to database before auto-closing.");
+  if (!dbManager.insertNotification(record)) {
+    logger.LogInfo(TAG, "Saved notification ID: " + record.id +
+                            " to database before auto-closing.");
   } else {
-    args->ctx->logger.LogError(
-        TAG, "Failed to save notification ID: " + args->notif.id +
-                 " to database before auto-closing.");
+    logger.LogError(TAG, "Failed to save notification ID: " + record.id +
+                             " to database before auto-closing.");
   }
-
-  delete args;
 }
 
-void AppContext::hideUpdateWindow(gpointer user_data) {
-  AppContext *self = static_cast<AppContext *>(user_data);
-  gtk_widget_hide(self->updateWin);
-
-  self->updateTimeoutId = 0;
-}
-
-gboolean AppContext::handleKeyPress([[maybe_unused]] GtkWidget *wid,
-                                    guint keyval,
-                                    [[maybe_unused]] guint keycode,
-                                    [[maybe_unused]] GdkModifierType state,
-                                    gpointer data) {
-
-  GtkWidget *window = static_cast<GtkWidget *>(data);
+bool AppContext::handleKeyPress(unsigned int keyval) {
 
   if (keyval == GDK_KEY_Escape) {
-    gtk_widget_hide(window);
+    ctrlWin.hide();
     return true;
   }
   return false;

@@ -1,28 +1,27 @@
 #pragma once
 
-#include "gtk/gtk.h"
+#include "gtkmm/box.h"
 #include "manager.hpp"
 #include "services/header/comm_bus.hpp"
 #include "services/header/context.hpp"
 
-class NotificationWindow {
+class NotificationWindow : public sigc::trackable {
   AppContext *ctx;
   NotificationManager *manager;
   CommunicationBus *commBus;
 
-  GtkWidget *menuBox;
-  GtkWidget *scrollWinBox;
+  Gtk::Box menuBox;
+  Gtk::Box scrollWinBox;
 
   std::unordered_map<std::string, NotifListItem> notifLookup;
 
 public:
-  NotificationWindow(AppContext *ctx,
-                     CommunicationBus *commBus, NotificationManager *manager);
+  NotificationWindow(AppContext *ctx, CommunicationBus *commBus,
+                     NotificationManager *manager);
   void init();
   void update(bool force = false);
 
-  static void deleteNotificationCb(GtkWidget *widget, gpointer user_data);
-  static void handleDndToggle(GtkSwitch *widget, gboolean state,
-                              gpointer user_data);
-  static void handleClearAll(GtkWidget *widget, gpointer user_data);
+  void deleteNotificationCb(std::string notifId);
+  void handleDndToggle(bool state);
+  void handleClearAll();
 };

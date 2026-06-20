@@ -1,35 +1,23 @@
 #pragma once
 
-#include "gtk/gtk.h"
-#include "services/header/context.hpp"
+#include "gtkmm/box.h"
+#include "gtkmm/image.h"
 #include "manager.hpp"
-#include "window.hpp"
-#include <vector>
+#include "services/header/context.hpp"
 
 class PulseAudioModule {
   PulseAudioManager *manager;
-  PulseAudioWindow *window;
   AppContext *ctx;
-  GtkWidget *menuBox;
-
-  GtkWidget *inEvtBox;
-  GtkWidget *barInIcon;
-
-  GtkWidget *outEvtBox;
-  GtkWidget *barOutIcon;
+  
+  Gtk::Box menuBox;
+  Gtk::Image barInIcon;
+  Gtk::Image barOutIcon;
 
   bool setupComp;
 
-  // Used for Both Volume and Mic controls along with the Opening Window
-  static void handleIconClick(GtkWidget *widget, GdkEventButton *evtBtn,
-                              gpointer data);
-
-
 public:
-  PulseAudioModule(PulseAudioManager *paManager, AppContext *ctx, PulseAudioWindow *window);
-  std::vector<GtkWidget*> setup();
+  PulseAudioModule(PulseAudioManager *paManager, AppContext *ctx);
+  Gtk::Box &setup();
 
   void update();
-  void updateControls(bool mute,
-                      GtkWidget *icon);
 };

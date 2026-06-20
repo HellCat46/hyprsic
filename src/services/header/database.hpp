@@ -23,7 +23,7 @@ class DBManager {
 public:
   std::list<NotificationRecord> notifList;
   DBManager(LoggingManager *logMgr);
-  bool insertNotification(const NotificationRecord *notif);
+  bool insertNotification(const NotificationRecord& notif);
   bool removeNotification(const std::string &id, std::list<NotificationRecord>::iterator& it);
   bool clearAllNotifications();
   

@@ -1,7 +1,6 @@
 #pragma once
 
-#include "glib.h"
-#include "gtk/gtk.h"
+#include "gtkmm/label.h"
 #include "manager.hpp"
 #include "window.hpp"
 
@@ -11,14 +10,12 @@ class NotificationModule {
   AppContext *ctx;
   CommunicationBus *commBus;
 
+  Gtk::Label mainLbl;
+
 public:
   NotificationModule(AppContext *ctx, CommunicationBus *commBus,
-                     NotificationManager *notifInstance,
-                     NotificationWindow *window);
+                     NotificationManager *notifInstance);
 
   // Notification List Functions
-  GtkWidget *setup();
-
-  static void chgVisibiltyWin(GtkWidget *widget, GdkEvent *e,
-                              gpointer user_data);
+  Gtk::Label& setup();
 };

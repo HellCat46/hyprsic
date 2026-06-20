@@ -1,6 +1,6 @@
 #pragma once
 
-#include "gdk/gdk.h"
+#include "gdkmm/monitor.h"
 #include "modules/bluetooth/header/module.hpp"
 #include "modules/brightness/header/module.hpp"
 #include "modules/mpris/header/module.hpp"
@@ -12,11 +12,10 @@
 #include "modules/sysinfo/header/module.hpp"
 #include "modules/wifi/header/module.hpp"
 #include "modules/workspaces/hyprland/header/module.hpp"
-#include <gtk-layer-shell.h>
-#include <gtk/gtk.h>
+#include <gtkmm-4.0/gtkmm.h>
+#include <memory>
 
-struct Window {
-  GtkWidget *window = nullptr;
+struct AppWindow : public Gtk::Window {
 
   SysInfoModule sysinfoModule;
   MprisModule mprisModule;
@@ -29,18 +28,15 @@ struct Window {
   BrightnessModule brtModule;
   WifiModule wifiModule;
 
-  Window(AppContext *ctx, CommunicationBus *commBus, HyprWSManager *hyprMgr,
-         StatusNotifierManager *snManager, Stats *stat, Memory *mem,
-         SysLoad *load, BatteryInfo *battery, TemperatureManager *tempMgr,
-         ScreenSaverManager *scrnsavrMgr, MprisManager *mprisMgr,
-         MprisWindow *mprisWindow, NotificationManager *notifInstance,
-         NotificationWindow *notifWindow, BluetoothManager *btMgr,
-         BluetoothWindow *btWindow, BrightnessManager *brightnessMgr,
-         BrightnessWindow *brtWindow, PulseAudioManager *paMgr,
-         PulseAudioWindow *paWindow, WifiManager *wifiMgr,
-         WifiWindow *wifiWindow);
+  AppWindow(AppContext *ctx, CommunicationBus *commBus, HyprWSManager *hyprMgr,
+            StatusNotifierManager *snManager, Stats *stat, Memory *mem,
+            SysLoad *load, BatteryInfo *battery, TemperatureManager *tempMgr,
+            ScreenSaverManager *scrnsavrMgr, MprisManager *mprisMgr,
+            NotificationManager *notifInstance, BluetoothManager *btMgr,
+            BrightnessManager *brightnessMgr, PulseAudioManager *paMgr,
+            WifiManager *wifiMgr);
 
 public:
-  void create(GtkApplication *app, GdkDisplay *dp, int i);
+  void create(std::shared_ptr<Gdk::Monitor> monitor, int monIdx);
   void update();
 };

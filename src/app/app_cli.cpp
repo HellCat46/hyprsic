@@ -112,8 +112,8 @@ void Application::IPCCtrlAudioDev(std::string_view args) {
   if (args == "play-pause") {
     commBus.SendMessage(MprisPlayPauseRequest{.correlationId = commBus.GetNewCorId()}, Priority::IMMEDIATE);
   } else if (args == "toggle-mic") {
-    paWindow.toggleMute(nullptr, nullptr, false);
+    paWindow.toggleMute(false);
   } else if (args == "toggle-output") {
-    paWindow.toggleMute(nullptr, nullptr, true);
+    paWindow.toggleMute(true);
   }
 }

@@ -1,5 +1,9 @@
 #pragma once
 
+#include "glibmm/refptr.h"
+#include "gtkmm/box.h"
+#include "gtkmm/label.h"
+#include "gtkmm/scale.h"
 #include "manager.hpp"
 #include "services/header/comm_bus.hpp"
 #include "services/header/context.hpp"
@@ -9,37 +13,29 @@ class MprisWindow {
   MprisManager *manager;
   CommunicationBus *commBus;
 
-  GtkWidget *menuWin;
-  GtkWidget *progTtl;
-  GtkWidget *progLen;
+  Gtk::Box progBox;
+  Gtk::Label progTtl;
 
-  GtkWidget *progBarBox;
-  GtkWidget *scaleMin;
-  GtkWidget *scale;
-  GtkWidget *scaleMax;
+  Gtk::Box progBarBox;
+  Gtk::Label scaleMin;
+  Gtk::Scale scale;
+  Gtk::Label scaleMax;
 
-  GtkAdjustment *scaleAdj;
+  Glib::RefPtr<Gtk::Adjustment> scaleAdj;
 
   // Gtk Scale Signal Callbacks
-  static gchar *handleFormatValue(GtkScale *scale, gdouble value,
-                                  gpointer user_data);
-  static gboolean handleScaleChange(GtkRange *range, GtkScrollType *scroll,
-                                    gdouble value, gpointer user_data);
+  void handleScaleChange(double value);
 
   // Track Control Buttons
-  static void handlePlayPause(GtkWidget *widget, GdkEvent *e,
-                              gpointer user_data);
-  static void handleNextTrack(GtkWidget *widget, gpointer user_data);
-  static void handlePrevTrack(GtkWidget *widget, gpointer user_data);
+  void handlePlayPause(int, int, double);
+  void handleNextTrack();
+  void handlePrevTrack();
 
 public:
   MprisWindow(AppContext *ctx, CommunicationBus *commBus,
               MprisManager *mprisMgr);
   void init();
   void update();
-
-  bool isVisible() const;
-  void chgVisibility(bool visible);
 
   static std::string timeToStr(uint64_t totalSeconds);
 };

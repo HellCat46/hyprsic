@@ -15,6 +15,7 @@
 #include <string>
 #include <string_view>
 #include <sys/types.h>
+#include <variant>
 #include <vector>
 
 #define TAG "StatusNotifierManager"
@@ -34,7 +35,7 @@ StatusNotifierManager::StatusNotifierManager(AppContext *appCtx) : ctx(appCtx) {
         sdbus::ServiceName{"org.kde.StatusNotifierWatcher"});
   } catch (const sdbus::Error &e) {
     ctx->logger.LogError(TAG,
-                         "Another Notification Service is already running.");
+                         "Another Notification Service is already running." + std::string{e.what()});
     return;
   }
 
@@ -136,11 +137,11 @@ void StatusNotifierManager::handleGetPropertyCallDbus(sdbus::Message &msg) {
       auto keys_view = std::ranges::views::keys(registeredItems);
       std::vector<std::string> items(keys_view.begin(), keys_view.end());
 
-      reply << items;
+      reply << sdbus::Variant{items};
     } else if (propName == "IsStatusNotifierHostRegistered") {
-      reply << true;
+      reply << sdbus::Variant{true};
     } else if (propName == "ProtocolVersion") {
-      reply << uint32_t{0};
+      reply << sdbus::Variant{int32_t{0}};
     }
 
     reply.send();
@@ -290,74 +291,40 @@ void StatusNotifierManager::getMenuActions(StatusApp &outApp) {
 
   sdbus::MethodReply reply = outApp.dbusProxy->callMethod(msg);
 
-  // TODO:
-  // DBusMessageIter structIter;
-  // dbus_message_iter_recurse(&replyArgs, &structIter);
-  // dbus_message_iter_next(&structIter); // Skip first element
-  // dbus_message_iter_next(
-  //     &structIter); // Skip second element (children-display)
+  uint32_t count;
+  reply >> count;
 
-  // DBusMessageIter arrayIter;
-  // dbus_message_iter_recurse(&structIter, &arrayIter);
+  using MenuNode = sdbus::Struct<int32_t, std::map<std::string, sdbus::Variant>,
+                                 std::vector<sdbus::Variant>>;
+  MenuNode layoutData;
 
-  // while (dbus_message_iter_get_arg_type(&arrayIter) != DBUS_TYPE_INVALID) {
-  //   DBusMessageIter menuIter, itemIter;
-  //   dbus_message_iter_recurse(&arrayIter, &menuIter);
-  //   dbus_message_iter_recurse(&menuIter, &itemIter);
+  reply >> layoutData;
 
-  //   int index;
-  //   dbus_message_iter_get_basic(&itemIter, &index);
-  //   dbus_message_iter_next(&itemIter);
+  for (const auto &item : layoutData.get<2>()) {
+    auto menuItem = item.get<MenuNode>();
+    MenuActionItem itemObj{menuItem.get<0>(), "", true, true, false};
 
-  //   DBusMessageIter dictIter;
-  //   dbus_message_iter_recurse(&itemIter, &dictIter);
+    auto menuItemProps = menuItem.get<1>();
 
-  //   MenuActionItem menuItem{0, "", true, true, false};
-  //   while (dbus_message_iter_get_arg_type(&dictIter) != DBUS_TYPE_INVALID) {
-  //     DBusMessageIter propIter;
-  //     dbus_message_iter_recurse(&dictIter, &propIter);
+    if (menuItemProps.find("label") != menuItemProps.end()) {
+      itemObj.label = menuItemProps.at("label").get<std::string>();
+    }
 
-  //     char *propName;
-  //     dbus_message_iter_get_basic(&propIter, &propName);
-  //     dbus_message_iter_next(&propIter);
+    if (menuItemProps.find("visible") != menuItemProps.end()) {
+      itemObj.visible = menuItemProps.at("visible").get<bool>();
+    }
 
-  //     DBusMessageIter propValueIter;
-  //     dbus_message_iter_recurse(&propIter, &propValueIter);
+    if (menuItemProps.find("enabled") != menuItemProps.end()) {
+      itemObj.enabled = menuItemProps.at("enabled").get<bool>();
+    }
 
-  //     if (HelperFunc::saferStrCmp(propName, "label")) {
+    if (menuItemProps.find("type") != menuItemProps.end()) {
+      itemObj.isSeparator = menuItemProps.at("type").get<std::string>() == "separator";
+    }
 
-  //       char *label;
-  //       dbus_message_iter_get_basic(&propValueIter, &label);
-  //       menuItem.label = label;
-  //     } else if (HelperFunc::saferStrCmp(propName, "visible")) {
-
-  //       dbus_bool_t vis;
-  //       dbus_message_iter_get_basic(&propValueIter, &vis);
-  //       menuItem.visible = vis;
-  //     } else if (HelperFunc::saferStrCmp(propName, "enabled")) {
-
-  //       dbus_bool_t en;
-  //       dbus_message_iter_get_basic(&propValueIter, &en);
-  //       menuItem.enabled = en;
-  //     } else if (HelperFunc::saferStrCmp(propName, "type")) {
-
-  //       char *type;
-  //       dbus_message_iter_get_basic(&propValueIter, &type);
-
-  //       if (HelperFunc::saferStrCmp(type, "separator")) {
-  //         menuItem.isSeparator = true;
-  //         break;
-  //       }
-  //     }
-
-  //     dbus_message_iter_next(&dictIter);
-  //   }
-
-  //   outApp.menuActions.insert({index, menuItem});
-  //   dbus_message_iter_next(&arrayIter);
-  // }
-
-  // dbus_message_unref(msg);
+    outApp.menuActions.insert({itemObj.index, itemObj});
+  }
+  
 }
 
 void StatusNotifierManager::handleNameOwnerChangedSignalDbus(

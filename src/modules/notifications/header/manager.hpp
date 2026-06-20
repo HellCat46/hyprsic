@@ -1,4 +1,5 @@
 #pragma once
+#include "gtkmm/box.h"
 #include "services/header/context.hpp"
 #include <cstdint>
 #include <memory>
@@ -22,7 +23,7 @@ class NotificationManager {
   std::unique_ptr<sdbus::IObject> dbusObject;
   uint32_t notifId;
   
-  std::unordered_map<std::string, GtkWidget *> notifications;
+  std::unordered_map<std::string, Gtk::Box&> notifications;
 
   // Notification Daemon Responses to Messages
   bool handleNotifyCallDbus(sdbus::MethodCall& msg, Notification& notif);

@@ -1,13 +1,17 @@
 #pragma once
 
+#include "glibmm/refptr.h"
+#include "modules/bluetooth/header/window.hpp"
+#include "modules/mpris/header/window.hpp"
+#include "modules/pulseaudio/header/window.hpp"
+#include "modules/wifi/header/window.hpp"
 #include "services/header/comm_bus.hpp"
 #include "services/header/context.hpp"
 #include "window.hpp"
 #include <memory>
 #include <vector>
-class Application {
-  GtkApplication *app = nullptr;
-  std::vector<std::unique_ptr<Window>> mainWindows;
+class Application : public Gtk::Application {
+  std::vector<std::unique_ptr<AppWindow>> mainWindows;
   AppContext ctx;
 
   short delay = 5000;
@@ -39,14 +43,15 @@ class Application {
 
   BrightnessManager brtManager;
   BrightnessWindow brtWindow;
-  
+
   CommunicationBus commBus;
-  
+
   // Threads for DBus and IPC
   std::thread dataUpdateThread, cliIPCThread;
   void captureSessionDBus();
   void captureSystemDBus();
   void UpdateData();
+  bool UpdateUI();
 
   // IPC Handling
   void captureCLIIPC();
@@ -55,14 +60,13 @@ class Application {
   void IPCToggleView(std::string_view module);
   void IPCCtrlAudioDev(std::string_view action);
 
-  
-  static gboolean UpdateUI(gpointer data);
-  static void activate(GtkApplication *app, gpointer user_data);
+protected:
+  void on_activate() override;
 
 public:
   Application();
-  int Run(int argc, char **argv);
-  
+  static Glib::RefPtr<Application> create();
+  ~Application();
 };
 
 struct IPCUIData {

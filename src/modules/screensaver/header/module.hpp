@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gtk/gtk.h"
+#include "gtkmm/label.h"
 #include "manager.hpp"
 #include "services/header/comm_bus.hpp"
 
@@ -9,12 +10,12 @@ class ScreenSaverModule {
   CommunicationBus *commBus;
   LoggingManager *logger;
 
-  GtkWidget *btnWid;
+  Gtk::Label mainLbl;
 
 public:
   ScreenSaverModule(AppContext *ctx, CommunicationBus *commBus,
                     ScreenSaverManager *scrnsavrInstance);
-  GtkWidget *setup();
+  Gtk::Label& setup();
 
   static void switchScreenSaverCb(GtkWidget *widget, GdkEvent *e,
                                   gpointer user_data);

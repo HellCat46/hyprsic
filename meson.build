@@ -11,10 +11,10 @@ project('hyprsic', ['c', 'cpp'],
 pkg = import('pkgconfig')
 
 deps = [
-  dependency('wayland-client'),
-  dependency('gtk+-3.0'),
+  dependency('gtk4-layer-shell-0'),
+  dependency('gtk4'),
   dependency('gtkmm-4.0'),
-  dependency('gtk-layer-shell-0'),
+  dependency('wayland-client'),
   dependency('jsoncpp'),
   dependency('sdbus-c++'),
   dependency('libpulse'),
@@ -65,7 +65,6 @@ module_sources = files(
   'src/modules/wifi/manager.cpp',
   'src/modules/wifi/module.cpp',
   'src/modules/wifi/window.cpp',
-  'src/modules/clipboard/manager.cpp',
   'src/modules/brightness/manager.cpp',
   'src/modules/brightness/module.cpp',
   'src/modules/brightness/window.cpp'

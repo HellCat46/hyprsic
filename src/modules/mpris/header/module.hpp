@@ -1,26 +1,25 @@
 #pragma once
 
-#include "gdk/gdk.h"
-#include "glib.h"
-#include "gtk/gtk.h"
+#include "glibmm/refptr.h"
+#include "gtkmm/gestureclick.h"
+#include "gtkmm/label.h"
 #include "manager.hpp"
-#include "window.hpp"
+#include "services/header/comm_bus.hpp"
 
 class MprisModule {
   AppContext *ctx;
   MprisManager *manager;
-  MprisWindow *window;
   CommunicationBus *commBus;
 
-  GtkWidget *mainLbl;
+  Gtk::Label mainLbl;
+  Glib::RefPtr<Gtk::GestureClick> lblAction;
 
 public:
   MprisModule(AppContext *ctx, MprisManager *mprisMgr,
-              CommunicationBus *commBus, MprisWindow *mprisWindow);
+              CommunicationBus *commBus);
 
-  GtkWidget *setup();
+  Gtk::Label &setup();
   void update();
 
-  static void chgVisibilityMenu(GtkWidget *widget, GdkEvent *e,
-                                gpointer user_data);
+  void chgVisibilityMenu(int, int, double);
 };
