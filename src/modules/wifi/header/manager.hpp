@@ -66,6 +66,8 @@ class WifiManager {
   void GetDevices();
   int GetDeviceInfo(std::string devPath, WifiStation &station);
 
+  void clearDevicePath(std::string &devPath);
+
   // Action methods
   ResponseMessage Scan(const WifiScanRequest &req);
   ResponseMessage Connect(const WifiConnectRequest &req);

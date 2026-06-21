@@ -176,6 +176,9 @@ bool NotificationManager::handleNotifyCallDbus(sdbus::MethodCall &msg,
           img.pixels.data(), Gdk::Colorspace::RGB, false, 8, img.width,
           img.height, img.rowstride);
       notif.icon = pixbuf->copy();
+    } else if (notif.hints.contains("image-path") || notif.hints.contains("image_path")) {
+      auto &imgPath = notif.hints.contains("image-path") ? notif.hints["image-path"] : notif.hints["image_path"];
+      notif.icon = Gdk::Pixbuf::create_from_file(imgPath.get<std::string>());
     } else {
       for (const auto &[key, value] : notif.hints) {
         ctx->logger.LogDebug(TAG,

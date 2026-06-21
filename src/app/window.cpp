@@ -2,6 +2,7 @@
 #include "gtk4-layer-shell.h"
 #include "gtkmm-4.0/gdkmm/monitor.h"
 #include "gtkmm/label.h"
+#include "gtkmm/widget.h"
 #include "services/header/comm_bus.hpp"
 #include <functional>
 #include <memory>
@@ -58,7 +59,7 @@ void AppWindow::create(std::shared_ptr<Gdk::Monitor> monitor, int monIdx) {
   mainBox.append(rightBox);
 
   // System Info Widgets
-  std::vector<std::reference_wrapper<Gtk::Label>> wids;
+  std::vector<std::reference_wrapper<Gtk::Widget>> wids;
   sysinfoModule.setup(wids);
   for (auto& w : wids)
       rightBox.append(w.get());
@@ -81,4 +82,5 @@ void AppWindow::update() {
   paModule.update();
   brtModule.update();
   wifiModule.update();
+  notifModule.update();
 }

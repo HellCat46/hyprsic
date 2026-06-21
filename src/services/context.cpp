@@ -1,5 +1,6 @@
 #include "services/header/context.hpp"
 #include "gdkmm/display.h"
+#include "gdkmm/pixbuf.h"
 #include "glib.h"
 #include "glibmm/main.h"
 #include "gtk/gtk.h"
@@ -18,8 +19,7 @@
 
 #define TAG "AppContext"
 
-AppContext::AppContext()
-    : dbus(), dbManager(&logger), logger(true) {}
+AppContext::AppContext() : dbus(), dbManager(&logger), logger(true) {}
 
 DbusSystem::DbusSystem() : sysConn(nullptr), ssnConn(nullptr) {
   try {
@@ -221,24 +221,23 @@ void AppContext::showNotifWindow(Notification &notif, bool dnd) {
     return;
   }
 
-  Glib::signal_idle().connect_once(
+  Glib::signal_timeout().connect_once(
       [this, dnd, record]() { autoCloseNotificationCb(dnd, record); }, 5000);
 
   // Adding Data to UI Elements
   notifTitle.set_markup("<b>" + record.summary + "</b>");
-  
+
   if (record.body.size() > 500) {
     record.body = record.body.substr(0, 497) + "...";
   }
   notifBody.set_markup(HelperFunc::ValidString(record.body));
 
-  // TODO
-  // if (notif->icon) {
-  //   gtk_image_set_from_pixbuf(GTK_IMAGE(notifLogo), notif->icon_pixbuf);
-  //   g_object_unref(notif->icon_pixbuf);
-  // } else {
-  //   gtk_image_clear(GTK_IMAGE(notifLogo));
-  // }
+  if (notif.icon) {
+    notifLogo.set(notif.icon->scale_simple(64, 64, Gdk::InterpType::BILINEAR));
+    notifLogo.set_pixel_size(64);
+  } else {
+    notifLogo.clear();
+  }
 
   notifWin.show();
 }

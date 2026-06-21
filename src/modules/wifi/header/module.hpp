@@ -8,11 +8,13 @@ class WifiModule {
   AppContext *ctx;
   WifiManager *manager;
 
-  Gtk::Label mainLbl;
+  Gtk::Box mainBox;
+  Gtk::Image icon;
+  Gtk::Label lbl;
 
 public:
   WifiModule(AppContext *context, WifiManager *manager);
-  Gtk::Label& setup();
+  Gtk::Box& setup();
   void update();
 
 };

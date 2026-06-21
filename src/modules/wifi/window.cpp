@@ -196,16 +196,16 @@ void WifiWindow::addDevList(Gtk::Box &devRow, const std::string &devPath,
   }
 }
 
-void WifiWindow::addTooltip(Gtk::Label &widget, const WifiStation &station) {
+void WifiWindow::addTooltip(Gtk::Widget &widget, const WifiStation &station) {
   std::string tooltip =
       "<b>Security:</b> " + station.type + "\n<b>Signal Strength:</b> ";
-  if (station.rssi > -50)
+  if (station.rssi >= -50)
     tooltip += "Excellent";
-  else if (station.rssi > -60)
+  else if (station.rssi >= -60)
     tooltip += "Good";
-  else if (station.rssi > -70)
-    tooltip += "Fair";
-  else if (station.rssi > -80)
+  else if (station.rssi >= -70)
+    tooltip += "Ok";
+  else if (station.rssi >= -80)
     tooltip += "Weak";
   else
     tooltip += "Very Weak";

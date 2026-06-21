@@ -3,6 +3,7 @@
 #include "gtkmm/button.h"
 #include "gtkmm/entry.h"
 #include "gtkmm/label.h"
+#include "gtkmm/widget.h"
 #include "manager.hpp"
 #include "services/header/comm_bus.hpp"
 #include "services/header/context.hpp"
@@ -42,11 +43,12 @@ class WifiWindow {
 
   void updateConnDev();
   void addDevList(Gtk::Box &devListBox, const std::string &devPath, const WifiStation &station);
-  void addTooltip(Gtk::Label &widget, const WifiStation &station);
 
 public:
   WifiWindow(AppContext *context, CommunicationBus *commBus,
              WifiManager *manager);
   void init();
   void update();
+
+  static void addTooltip(Gtk::Widget &widget, const WifiStation &station);
 };

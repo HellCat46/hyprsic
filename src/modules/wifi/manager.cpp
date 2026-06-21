@@ -118,7 +118,6 @@ void WifiManager::GetManagedObjects() {
 
         size_t pos = path.rfind("/");
         if (pos != std::string_view::npos) {
-
           devices.insert({path.substr(pos + 1), dev});
         }
       }
@@ -166,6 +165,7 @@ int WifiManager::GetConnectedDevice() {
         .storeResultsTo(deviceVar);
 
     connDev = deviceVar.get<sdbus::ObjectPath>();
+    clearDevicePath(connDev);
   } catch (const std::exception &e) {
     ctx->logger.LogError(TAG,
                          "GetConnectedDevice failed: " + std::string{e.what()});
@@ -186,10 +186,7 @@ void WifiManager::GetDevices() {
     for (const auto &network : netList) {
       WifiStation station;
       std::string netPath = network.get<0>();
-      size_t pos = netPath.rfind("/");
-      if (pos != std::string_view::npos) {
-        netPath = netPath.substr(pos + 1);
-      }
+      clearDevicePath(netPath);
       
       station.rssi = network.get<1>() / 100;
 
@@ -399,11 +396,8 @@ void WifiManager::handleInterfacesRemovedDbus(sdbus::Message &msg) {
 
   try {
     msg >> objPath;
-    size_t pos = objPath.rfind("/");
-    if (pos != std::string_view::npos) {
-      objPath = objPath.substr(pos + 1);
-    }
-
+    clearDevicePath(objPath);
+    
     devices.erase(objPath);
     if (connDev == objPath) {
       connDev = "";
@@ -428,13 +422,8 @@ void WifiManager::handlePropertiesChangedDbus(sdbus::Message &msg) {
         this->scanning = props["Scanning"].get<bool>();
       }
       if (props.contains("ConnectedNetwork")) {
-        std::string objPath = props["ConnectedNetwork"].get<std::string>();
-        size_t pos = objPath.rfind("/");
-        if (pos != std::string_view::npos) {
-          objPath = objPath.substr(pos + 1);
-        }
-
-        connDev = objPath;
+        connDev = props["ConnectedNetwork"].get<std::string>();
+        clearDevicePath(connDev);
       }
     } else if (iface == "net.connman.iwd.Network") {
       std::map<std::string, sdbus::Variant> props;
@@ -444,12 +433,8 @@ void WifiManager::handlePropertiesChangedDbus(sdbus::Message &msg) {
         bool connected = props["Connected"].get<bool>();
 
         if (connected) {
-          std::string path = msg.getPath();
-          size_t pos = path.rfind("/");
-          if (pos != std::string_view::npos) {
-            path = path.substr(pos + 1);
-          }
-          connDev = path;
+          connDev = msg.getPath();
+          clearDevicePath(connDev);
         }
       }
     }
@@ -489,4 +474,11 @@ ResponseMessage WifiManager::handle(const WifiRequest &req) {
       req);
 
   return resp;
+}
+
+void WifiManager::clearDevicePath(std::string &devPath) {
+    size_t pos = devPath.rfind("/");
+    if (pos != std::string::npos) {
+        devPath = devPath.substr(pos + 1);
+    }
 }

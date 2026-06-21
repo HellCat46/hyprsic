@@ -6,6 +6,7 @@ PulseAudioModule::PulseAudioModule(PulseAudioManager *paMgr, AppContext *ctx)
     : manager(paMgr), ctx(ctx), setupComp(false) {}
 
 Gtk::Box& PulseAudioModule::setup() {
+    menuBox.set_spacing(10);
   barInIcon.set_from_icon_name("microphone-sensitivity-high-symbolic");
   menuBox.append(barInIcon);
 
@@ -30,4 +31,3 @@ void PulseAudioModule::update() {
     barInIcon.set_from_icon_name(it->second.mute ? "microphone-sensitivity-muted-symbolic" : "microphone-sensitivity-high-symbolic");
   }
 }
-

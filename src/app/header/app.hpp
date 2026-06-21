@@ -3,6 +3,7 @@
 #include "glibmm/refptr.h"
 #include "modules/bluetooth/header/window.hpp"
 #include "modules/mpris/header/window.hpp"
+#include "modules/notifications/header/window.hpp"
 #include "modules/pulseaudio/header/window.hpp"
 #include "modules/wifi/header/window.hpp"
 #include "services/header/comm_bus.hpp"

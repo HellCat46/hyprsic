@@ -8,7 +8,6 @@
 #include "gtkmm/label.h"
 #include "gtkmm/stack.h"
 #include "gtkmm/window.h"
-#include "resources/store.hpp"
 #include "sdbus-c++/sdbus-c++.h"
 #include "services/header/logging.hpp"
 #include <sdbus-c++/IConnection.h>
@@ -69,7 +68,6 @@ public:
   DbusSystem dbus;
   DBManager dbManager;
   LoggingManager logger;
-  ResourceStore resStore;
   Gtk::Stack moduleStk;
 
   AppContext();

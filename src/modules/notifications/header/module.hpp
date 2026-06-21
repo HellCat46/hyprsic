@@ -1,15 +1,17 @@
 #pragma once
 
+#include "gtkmm/image.h"
 #include "gtkmm/label.h"
 #include "manager.hpp"
-#include "window.hpp"
+#include "services/header/comm_bus.hpp"
 
 class NotificationModule {
   NotificationManager *manager;
-  NotificationWindow *window;
   AppContext *ctx;
   CommunicationBus *commBus;
 
+  Gtk::Box mainBox;
+  Gtk::Image mainIcon;
   Gtk::Label mainLbl;
 
 public:
@@ -17,5 +19,6 @@ public:
                      NotificationManager *notifInstance);
 
   // Notification List Functions
-  Gtk::Label& setup();
+  Gtk::Box& setup();
+  void update();
 };
