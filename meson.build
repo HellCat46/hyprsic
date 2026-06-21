@@ -93,7 +93,6 @@ app_sources = files(
 
 all_sources = [
   'src/app/main.cpp',
-  'src/resources/store.cpp',
   wayland_proto_sources,
   module_sources,
   util_sources,
