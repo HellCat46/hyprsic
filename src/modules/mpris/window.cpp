@@ -71,6 +71,8 @@ void MprisWindow::init() {
         return false;
       },
       false);
+
+  ctx->addModule(progBox, "mpris");
 }
 
 void MprisWindow::update() {

@@ -1,7 +1,6 @@
 #include "header/window.hpp"
 #include "gtk4-layer-shell.h"
 #include "gtkmm-4.0/gdkmm/monitor.h"
-#include "gtkmm/grid.h"
 #include "gtkmm/label.h"
 #include "services/header/comm_bus.hpp"
 #include <functional>
@@ -43,46 +42,34 @@ void AppWindow::create(std::shared_ptr<Gdk::Monitor> monitor, int monIdx) {
 
   set_size_request(-1, 25);
 
-  Gtk::Grid mainGrid;
-  mainGrid.set_column_homogeneous(true);
-  set_child(mainGrid);
+  Gtk::Box mainBox;
+  set_child(mainBox);
 
-  mainGrid.attach(hyprModule.setup(monIdx), 0, 0, 2, 1);
-  mainGrid.attach(mprisModule.setup(), 2, 0, 1, 1);
+  mainBox.append(hyprModule.setup(monIdx));
+
+  auto& mpris = mprisModule.setup();
+  mpris.set_hexpand(true);
+  mpris.set_halign(Gtk::Align::CENTER);
+  mainBox.append(mpris);
 
   Gtk::Box rightBox;
-  rightBox.set_spacing(0);
-  rightBox.set_hexpand(true);
-  mainGrid.attach(rightBox, 3, 0, 3, 1);
-
-  Gtk::Grid rightGrid;
-  rightBox.insert_at_end(rightGrid);
-  rightGrid.set_hexpand(true);
-  rightGrid.set_halign(Gtk::Align::FILL);
-  rightBox.set_halign(Gtk::Align::FILL);
-  rightGrid.set_column_spacing(10);
-  rightBox.set_margin_end(5);
+  rightBox.set_spacing(10);
+  rightBox.set_halign(Gtk::Align::END);
+  mainBox.append(rightBox);
 
   // System Info Widgets
   std::vector<std::reference_wrapper<Gtk::Label>> wids;
   sysinfoModule.setup(wids);
-  for (unsigned long i = 0; i < wids.size(); i++) {
-    rightGrid.attach(wids[i], i, 0, 1, 1);
-  }
-
-  int loc = wids.size();
-
-  rightGrid.attach(wifiModule.setup(), loc++, 0, 1, 1);
-  rightGrid.attach(brtModule.setup(), loc++, 0, 1, 1);
-  rightGrid.attach(notifModule.setup(), loc++, 0, 1, 1);
-  rightGrid.attach(btModule.setup(), loc++, 0, 1, 1);
-  rightGrid.attach(scrnsavrModule.setup(), loc++, 0, 1, 1);
-
-  rightGrid.attach(paModule.setup(), loc, 0, 2, 1);
-  loc += 2;
-
-  rightGrid.attach(snModule.setup(), loc, 0, 1, 1);
-  loc++;
+  for (auto& w : wids)
+      rightBox.append(w.get());
+  
+  rightBox.append(wifiModule.setup());
+  rightBox.append(brtModule.setup());
+  rightBox.append(notifModule.setup());
+  rightBox.append(btModule.setup());
+  rightBox.append(scrnsavrModule.setup());
+  rightBox.append(paModule.setup());
+  rightBox.append(snModule.setup());
 
   this->show();
 }

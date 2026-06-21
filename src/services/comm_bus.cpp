@@ -112,7 +112,7 @@ CommunicationBus::CommunicationBus(AppContext *ctx, BluetoothManager *btMgr,
 }
 
 CommunicationBus::~CommunicationBus() {
-  // NOTE: Clean shutdown is TBD. For now, process detach threads.
+    
   busThread.detach();
   resThread.detach();
 }

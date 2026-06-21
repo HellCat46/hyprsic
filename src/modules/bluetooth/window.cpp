@@ -48,9 +48,8 @@ void BluetoothWindow::init() {
 
   Gtk::Switch powerBtn;
   powerBtn.set_state(manager->power);
-  powerBtn.property_active().signal_changed().connect([this, &powerBtn]() {
-      this->handlePower(powerBtn.get_state());
-  });
+  powerBtn.property_active().signal_changed().connect(
+      [this, &powerBtn]() { this->handlePower(powerBtn.get_state()); });
 
   powerBox.append(powerBtn);
   topBox.append(powerBox);
@@ -138,7 +137,6 @@ void BluetoothWindow::update(bool force) {
 }
 
 void BluetoothWindow::addDeviceEntry(const Device &dev, Gtk::ListBox &listBox) {
-
   Gtk::Box devItem{Gtk::Orientation::HORIZONTAL, 5};
   devItem.set_margin_bottom(5);
   devItem.set_margin_top(5);
@@ -167,7 +165,7 @@ void BluetoothWindow::addDeviceEntry(const Device &dev, Gtk::ListBox &listBox) {
     // Device Unpair Button
     Gtk::Button devRmvBtn{"✖"};
     devRmvBtn.set_tooltip_text("Remove Device");
-    devItem.insert_at_end(devRmvBtn);
+    devItem.append(devRmvBtn);
     devRmvBtn.signal_clicked().connect(sigc::bind(
         sigc::mem_fun(*this, &BluetoothWindow::handleDeviceRemove), dev.path));
 
@@ -175,7 +173,7 @@ void BluetoothWindow::addDeviceEntry(const Device &dev, Gtk::ListBox &listBox) {
     Gtk::Button devTrustBtn{""};
     devTrustBtn.set_tooltip_text(dev.trusted ? "Untrust Device"
                                              : "Trust Device");
-    devItem.insert_at_end(devTrustBtn);
+    devItem.append(devTrustBtn);
     devTrustBtn.signal_clicked().connect(
         sigc::bind(sigc::mem_fun(*this, &BluetoothWindow::handleDeviceTrust),
                    !dev.trusted, dev.path));
@@ -185,7 +183,7 @@ void BluetoothWindow::addDeviceEntry(const Device &dev, Gtk::ListBox &listBox) {
   Gtk::Button devConnBtn{""};
   devConnBtn.set_tooltip_text(dev.connected ? "Disconnect Device"
                                             : "Connect Device");
-  devItem.insert_at_end(devConnBtn);
+  devItem.append(devConnBtn);
   devConnBtn.signal_clicked().connect(
       sigc::bind(sigc::mem_fun(*this, &BluetoothWindow::handleDeviceConnect),
                  !dev.connected, dev.path));
@@ -201,15 +199,15 @@ void BluetoothWindow::handleDiscovery() {
   if (manager->discovering) {
     ctx->logger.LogInfo(TAG, "Stopping Bluetooth Discovery.");
 
-    commBus->SendMessage(
-        BtSwitchDiscoveryRequest{false,ModuleType::BLUETOOTH, commBus->GetNewCorId()},
-        Priority::LOW);
+    commBus->SendMessage(BtSwitchDiscoveryRequest{false, ModuleType::BLUETOOTH,
+                                                  commBus->GetNewCorId()},
+                         Priority::LOW);
   } else {
     ctx->logger.LogInfo(TAG, "Starting Bluetooth Discovery.");
 
-    commBus->SendMessage(
-        BtSwitchDiscoveryRequest{true, ModuleType::BLUETOOTH, commBus->GetNewCorId()},
-        Priority::NORMAL);
+    commBus->SendMessage(BtSwitchDiscoveryRequest{true, ModuleType::BLUETOOTH,
+                                                  commBus->GetNewCorId()},
+                         Priority::NORMAL);
     // self->update();
   }
 
@@ -218,9 +216,9 @@ void BluetoothWindow::handleDiscovery() {
 
 bool BluetoothWindow::handlePower(bool state) {
 
-  commBus->SendMessage(
-      BtSwitchPowerRequest{state, ModuleType::BLUETOOTH, commBus->GetNewCorId()},
-      Priority::NORMAL);
+  commBus->SendMessage(BtSwitchPowerRequest{state, ModuleType::BLUETOOTH,
+                                            commBus->GetNewCorId()},
+                       Priority::NORMAL);
 
   // std::string msg = "Bluetooth Power Switched ";
   // msg += (state ? "ON" : "OFF");
@@ -231,19 +229,23 @@ bool BluetoothWindow::handlePower(bool state) {
 
 void BluetoothWindow::handleDeviceTrust(bool state, std::string devIfacePath) {
 
-  commBus->SendMessage(BtTrustRequest{state, devIfacePath, ModuleType::BLUETOOTH, commBus->GetNewCorId()},
+  commBus->SendMessage(BtTrustRequest{state, devIfacePath,
+                                      ModuleType::BLUETOOTH,
+                                      commBus->GetNewCorId()},
                        Priority::LOW);
 }
 
 void BluetoothWindow::handleDeviceRemove(std::string devIfacePath) {
 
-  commBus->SendMessage(BtRemoveRequest{devIfacePath, ModuleType::BLUETOOTH, commBus->GetNewCorId()},
+  commBus->SendMessage(BtRemoveRequest{devIfacePath, ModuleType::BLUETOOTH,
+                                       commBus->GetNewCorId()},
                        Priority::LOW);
 }
 
 void BluetoothWindow::handleDeviceConnect(bool state,
                                           std::string devIfacePath) {
-  commBus->SendMessage(
-      BtConnectRequest{state, devIfacePath, ModuleType::BLUETOOTH, commBus->GetNewCorId()},
-      Priority::LOW);
+  commBus->SendMessage(BtConnectRequest{state, devIfacePath,
+                                        ModuleType::BLUETOOTH,
+                                        commBus->GetNewCorId()},
+                       Priority::LOW);
 }

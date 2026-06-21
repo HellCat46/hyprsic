@@ -32,7 +32,7 @@ void NotificationWindow::init() {
   Gtk::Button clearBtn{"Clear All"};
   clearBtn.signal_clicked().connect(
       sigc::mem_fun(*this, &NotificationWindow::handleClearAll));
-  topBar.insert_at_end(clearBtn);
+  topBar.append(clearBtn);
 
   // Do Not Disturb Toggle
   Gtk::Box dndBox{Gtk::Orientation::HORIZONTAL, 5};
@@ -84,13 +84,15 @@ void NotificationWindow::update(bool force) {
     Gtk::Box topContent{Gtk::Orientation::HORIZONTAL, 5};
     contentBox.append(topContent);
 
+    // ctx->logger.LogInfo(TAG, notif->app_name + " - " + notif->summary + " - " + notif->body + " - " + notif->timestamp + " - " + notif->id);
+
     Gtk::Label appName;
-    appName.set_markup("<b>" + notif->app_name + "</b> - ");
+    appName.set_markup("<b>" + HelperFunc::ValidString(notif->app_name) + "</b> - ");
     appName.set_halign(Gtk::Align::START);
     topContent.append(appName);
 
     Gtk::Label timestampLbl;
-    timestampLbl.set_markup("<i>" + notif->timestamp + "</i>");
+    timestampLbl.set_markup("<i>" + HelperFunc::ValidString(notif->timestamp) + "</i>");
     timestampLbl.set_halign(Gtk::Align::END);
     topContent.append(timestampLbl);
 
@@ -106,7 +108,7 @@ void NotificationWindow::update(bool force) {
     contentBox.append(titleLbl);
 
     Gtk::Label bodyLbl;
-    bodyLbl.set_markup(notif->body);
+    bodyLbl.set_markup(HelperFunc::ValidString(notif->body));
     bodyLbl.set_wrap(true);
     bodyLbl.set_halign(Gtk::Align::START);
     contentBox.append(bodyLbl);

@@ -59,8 +59,7 @@ void WifiWindow::init() {
   connDevTitle.set_markup("<u>Connected Network:</u>");
   connDevTitle.set_halign(Gtk::Align::START);
   connDevBox.append(connDevTitle);
-
-  connDevIBox.append(connDevBox);
+  connDevBox.append(connDevIBox);
 
   connDeviceName.set_halign(Gtk::Align::START);
   connDevIBox.append(connDeviceName);
