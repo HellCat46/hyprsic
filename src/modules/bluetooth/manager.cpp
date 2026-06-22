@@ -209,11 +209,11 @@ void BluetoothManager::handlePropertiesChangedDbus(sdbus::Message &msg) {
     if (prevConnected != dev->second.connected) {
       if (dev->second.connected) {
         ctx->showUpdateWindow(dev->second.deviceType == "audio-headset"
-                                  ? "headset_mic"
-                                  : "connected",
+                                  ? "audio-headset-symbolic"
+                                  : "bluetooth-active-symbolic",
                               "Connected to Device: " + dev->second.name);
       } else {
-        ctx->showUpdateWindow("base",
+        ctx->showUpdateWindow("bluetooth-disconnected-symbolic",
                               "Disconnected from Device: " + dev->second.name);
       }
     }

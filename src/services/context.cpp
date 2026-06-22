@@ -56,6 +56,7 @@ void AppContext::setupUpdateWindow() {
   updateWinGrid.set_margin(20);
   updateWin.set_child(updateWinGrid);
 
+  updateIcon.set_pixel_size(64);
   updateWinGrid.attach(updateIcon, 0, 0, 1, 4);
 
   updateMsg.set_margin_top(10);
@@ -166,13 +167,14 @@ void AppContext::showCtrlWindow(const std::string &moduleName, gint width,
 
   Glib::signal_idle().connect_once([this, moduleName, width, height]() {
     moduleStk.set_visible_child(moduleName);
+    ctrlWin.set_size_request(width, height);
+    ctrlWin.show();
+
+    
     logger.LogDebug(TAG, "Set Visible Child in Stack: " + moduleName +
                              " with Size: " + std::to_string(width) + "x" +
                              std::to_string(height));
-
-    ctrlWin.set_size_request(width, height);
-    ctrlWin.show();
-  });
+  }, Glib::PRIORITY_HIGH);
 }
 
 void AppContext::addModule(Gtk::Box &moduleBox, const std::string &moduleName) {
@@ -186,6 +188,7 @@ void AppContext::addModule(Gtk::Box &moduleBox, const std::string &moduleName) {
 }
 
 bool AppContext::showUpdateWindow(std::string iconName, std::string msg) {
+    logger.LogDebug(TAG, "Showing Update Window: " + iconName + " - " + msg);
   if (updateTimeoutConn.connected()) {
     updateTimeoutConn.disconnect();
   }
@@ -193,7 +196,7 @@ bool AppContext::showUpdateWindow(std::string iconName, std::string msg) {
   Glib::signal_idle().connect_once([this, iconName, msg]() {
     updateIcon.set_from_icon_name(iconName);
     updateMsg.set_markup("<b>" + msg + "</b>");
-    updateMsg.show();
+    updateWin.show();
   });
 
   updateTimeoutConn = Glib::signal_timeout().connect(

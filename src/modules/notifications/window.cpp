@@ -146,7 +146,7 @@ void NotificationWindow::handleDndToggle(bool state) {
   std::string msg =
       "Do Not Disturb Mode " + std::string(state ? "Enabled" : "Disabled");
   ctx->logger.LogInfo(TAG, msg);
-  ctx->showUpdateWindow(state ? "dnd_on" : "dnd_off", msg);
+  ctx->showUpdateWindow(state ? "notifications-disabled-symbolic" : "notifications-disabled-symbolic", msg);
 }
 
 void NotificationWindow::handleClearAll() {

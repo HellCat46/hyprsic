@@ -105,6 +105,12 @@ void Application::IPCToggleView(std::string_view module) {
   } else if (module == "brightness") {
 
     ctx.showCtrlWindow("brightness", 340, 70);
+  } else if (module == "mpris") {
+      
+    ctx.showCtrlWindow("mpris", 400, 300);
+  } else if (module == "wifi") {
+
+    ctx.showCtrlWindow("wifi", 400, 300);
   }
 }
 

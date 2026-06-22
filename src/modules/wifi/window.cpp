@@ -29,7 +29,10 @@ void WifiWindow::init() {
   Gtk::Box topbar{Gtk::Orientation::HORIZONTAL, 5};
   mainBox.append(topbar);
 
-  Gtk::Label title("<b><i>Wi-Fi Networks</i></b>");
+  Gtk::Label title;
+  title.set_markup("<big><b><i>Wi-Fi Networks</i></b></big>");
+  title.set_halign(Gtk::Align::START);
+  title.set_hexpand(true);
   topbar.append(title);
 
   scanBtn.set_label("Scan");
@@ -41,8 +44,10 @@ void WifiWindow::init() {
   Gtk::Box powerBox{Gtk::Orientation::HORIZONTAL, 5};
   mainBox.append(powerBox);
 
-  Gtk::Label powerLbl("<b>Power</b>");
+  Gtk::Label powerLbl;
+  powerLbl.set_markup("<b>Power</b>");
   powerLbl.set_halign(Gtk::Align::START);
+  powerLbl.set_hexpand(true);
   powerBox.append(powerLbl);
 
   Gtk::Switch powerBtn;
@@ -130,6 +135,7 @@ void WifiWindow::update() {
     passEntBox.hide();
   }
 
+  
   while (auto child = devListBox.get_first_child()) {
     devListBox.remove(*child);
   }
@@ -164,11 +170,16 @@ void WifiWindow::updateConnDev() {
 
   auto it = manager->devices.find(manager->getConnDev());
   if (it != manager->devices.end()) {
+      
     WifiStation station = it->second;
     connDeviceName.set_markup("<b>" + station.ssid + "</b>");
     addTooltip(connDeviceName, station);
 
     connDevBox.show();
+    connDevIBox.show();
+    connDeviceName.show();
+
+    // ctx->logger.LogInfo(TAG, std::to_string(connDevBox.is_visible()) + " " + std::to_string(connDevIBox.is_visible()) + " " + std::to_string(connDeviceName.is_visible()));
   } else {
     connDevBox.hide();
   }
@@ -239,10 +250,9 @@ void WifiWindow::handleScan() {
   commBus->SendMessage(WifiScanRequest{.correlationId = commBus->GetNewCorId()},
                        Priority::HIGH);
 
-  // TODO
-  // if (self->manager->IsScanning()) {
-  //   gtk_widget_set_sensitive(self->scanBtn, false);
-  // }
+  if (manager->IsScanning()) {
+    scanBtn.set_sensitive(false);
+  }
 }
 
 void WifiWindow::handlePassSubmit() {
