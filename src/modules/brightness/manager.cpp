@@ -1,5 +1,6 @@
 #include "header/manager.hpp"
 #include "services/header/comm_types.hpp"
+#include <cstdint>
 #include <filesystem>
 #include <sdbus-c++/IConnection.h>
 #include <sdbus-c++/IProxy.h>
@@ -21,18 +22,19 @@ BrightnessManager::BrightnessManager(AppContext *ctx)
       if (blFile.is_open()) {
         err = false;
         subsystem = path.substr(path.rfind("/") + 1);
-        ctx->logger.LogInfo(TAG, "Backlight file found at: " + path);
-        update();
-        return;
+        ctx->logger.LogInfo(TAG, "Backlight file found at: " + path + " ");
       }
     }
   }
 
   if (!err) {
+
+    update();
     try {
       dbusProxy = sdbus::createProxy(
           *ctx->dbus.sysConn, sdbus::ServiceName{"org.freedesktop.login1"},
           sdbus::ObjectPath{"/org/freedesktop/login1/session/auto"});
+      ctx->logger.LogInfo(TAG, "DBus proxy created successfully");
     } catch (const sdbus::Error &e) {
       ctx->logger.LogError(TAG, "Failed to create DBus proxy: " +
                                     std::string(e.what()));
@@ -74,18 +76,17 @@ ResponseMessage BrightnessManager::setLvl(const BrtSetLevelRequest &req) {
     return resp;
   }
 
-  try{
-      
-  dbusProxy->callMethod(sdbus::MethodName{"SetBrightness"})
-      .onInterface("org.freedesktop.login1.Session")
-      .withArguments(std::string{"backlight"}, subsystem, req.brightness);
+  try {
+    dbusProxy->callMethod(sdbus::MethodName{"SetBrightness"})
+        .onInterface(sdbus::InterfaceName{"org.freedesktop.login1.Session"})
+        .withArguments(std::string{"backlight"}, subsystem, uint32_t(req.brightness));
 
-  currentLvl = req.brightness;
-  ctx->logger.LogInfo(TAG, "Brightness set to " +
-                               std::to_string(req.brightness) + "%");
+    currentLvl = req.brightness;
+    ctx->logger.LogInfo(TAG, "Brightness set to " +
+                                 std::to_string(req.brightness) + "%");
 
     resp.success = true;
-  } catch (const std::exception &e) {
+  } catch (const sdbus::Error &e) {
     resp.errMsg = e.what();
     ctx->logger.LogError(TAG, resp.errMsg);
   }

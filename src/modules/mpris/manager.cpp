@@ -71,8 +71,7 @@ ResponseMessage MprisManager::PlayPause(const MprisPlayPauseRequest &req) {
   return resp;
 }
 
-int MprisManager::GetPlayerInfoDbusCall(const std::string &player,
-                                        PlayerTrack *track) {
+int MprisManager::GetPlayerInfoDbusCall(const std::string &player) {
 
   auto it = players.find(player);
   if (it == players.end()) {
@@ -95,16 +94,16 @@ int MprisManager::GetPlayerInfoDbusCall(const std::string &player,
     auto metadata = variant.get<std::map<std::string, sdbus::Variant>>();
 
     if (metadata.contains("xesam:title")) {
-      track->title = metadata.at("xesam:title").get<std::string>();
-      track->playerName = std::string(player);
+      playingTrack.title = metadata.at("xesam:title").get<std::string>();
+      playingTrack.playerName = std::string(player);
     }
 
     if (metadata.contains("mpris:length")) {
-      track->length = metadata.at("mpris:length").get<int64_t>() / 1000000;
+      playingTrack.length = metadata.at("mpris:length").get<int64_t>() / 1000000;
     }
 
     if (metadata.contains("mpris:trackid")) {
-      track->trackId = metadata.at("mpris:trackid").get<sdbus::ObjectPath>();
+      playingTrack.trackId = metadata.at("mpris:trackid").get<sdbus::ObjectPath>();
     }
 
   } catch (const sdbus::Error &e) {
@@ -139,7 +138,7 @@ int MprisManager::GetCurrentPositionDbusCall() {
     sdbus::Variant variant;
     reply >> variant;
 
-    playingTrack.currPos = variant.get<int64_t>();
+    playingTrack.currPos = variant.get<int64_t>()/1000000;
 
   } catch (const sdbus::Error &e) {
     ctx->logger.LogError(TAG, "Failed to get current position: " +
@@ -154,11 +153,9 @@ void MprisManager::GetPlayerInfo() {
 
   for (const auto &[playerName, playerProxy] : players) {
 
-    PlayerTrack track;
-    int res = GetPlayerInfoDbusCall(playerName, &track);
+    int res = GetPlayerInfoDbusCall(playerName);
 
-    if (res == 0 && !track.title.empty()) {
-      playingTrack = track;
+    if (res == 0 && !playingTrack.title.empty()) {
       return;
     }
   }
@@ -174,9 +171,6 @@ ResponseMessage MprisManager::GetPosition(const MprisGetPositionRequest &req) {
     resp.errMsg = "Failed to get Current Position from Dbus Interface";
     return resp;
   }
-
-  playingTrack.currPos /= 1000000;
-  playingTrack.length /= 1000000;
 
   resp.success = true;
   return resp;

@@ -33,7 +33,7 @@ void MprisWindow::init() {
   progBox.append(titleBox);
 
   // Prev Button
-  Gtk::Button titlePrev{"<"};
+  titlePrev.set_label("<");
   titlePrev.signal_clicked().connect(
       sigc::mem_fun(*this, &MprisWindow::handlePrevTrack));
   titleBox.append(titlePrev);
@@ -49,7 +49,7 @@ void MprisWindow::init() {
   titleBox.append(progTtl);
 
   // Next Button
-  Gtk::Button titleNext{">"};
+  titleNext.set_label(">");
   titleNext.signal_clicked().connect(
       sigc::mem_fun(*this, &MprisWindow::handleNextTrack));
   titleBox.append(titleNext);
@@ -60,10 +60,10 @@ void MprisWindow::init() {
 
   scaleMin.set_text("0:00");
   progBarBox.append(scaleMin);
-  progBarBox.append(scaleMax);
 
   scaleAdj = Gtk::Adjustment::create(0, 0, 0, 5, 5, 10);
   scale.set_adjustment(scaleAdj);
+  scale.set_hexpand(true);
   progBarBox.append(scale);
   scale.signal_change_value().connect(
       [this](Gtk::ScrollType, double value) {
@@ -72,7 +72,10 @@ void MprisWindow::init() {
       },
       false);
 
+  progBarBox.append(scaleMax);
+
   ctx->addModule(progBox, "mpris");
+  update();
 }
 
 void MprisWindow::update() {
@@ -81,12 +84,13 @@ void MprisWindow::update() {
     return;
 
   auto track = manager->getPlayingTrack();
-  progTtl.set_markup("<span foreground='green'><b>" + HelperFunc::ValidString(track.title) +
-                     "</b></span>");
+  progTtl.set_markup("<span foreground='green'><b>" +
+                     HelperFunc::ValidString(track.title) + "</b></span>");
 
   // TODO(hyprsic): Send message to request position update when response is
-  // ready commBus->SendMessage(MprisGetPositionRequest{.moduleType =
-  // ModuleType::MPRIS }, Priority::HIGH); manager->GetPosition();
+  // ready
+  commBus->SendMessage(MprisGetPositionRequest{.correlationId = commBus->GetNewCorId()},
+                       Priority::HIGH);
 
   // If Length is 64 Bit Int Max Value, The Track is Probably a Stream
   if (track.length != ULONG_MAX) {
@@ -94,6 +98,8 @@ void MprisWindow::update() {
 
     scaleAdj->set_upper(track.length);
     scaleAdj->set_value(track.currPos);
+    ctx->logger.LogInfo(TAG, "Track length: " + std::to_string(track.length) +
+                                 " currPos: " + std::to_string(track.currPos));
 
     progBarBox.show();
   } else {

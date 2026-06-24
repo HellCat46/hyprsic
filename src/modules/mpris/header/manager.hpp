@@ -65,7 +65,7 @@ class MprisManager {
   void removePlayer(const std::string &playerName);
   
   void GetPlayerInfo();
-  int GetPlayerInfoDbusCall(const std::string& player, PlayerTrack *track);
+  int GetPlayerInfoDbusCall(const std::string& player);
 
   ResponseMessage PlayPause(const MprisPlayPauseRequest &req);
 

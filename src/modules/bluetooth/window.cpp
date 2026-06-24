@@ -28,6 +28,7 @@ void BluetoothWindow::init() {
   Gtk::Label title;
   title.set_markup("<big><b>Bluetooth Manager</b></big>");
   title.set_xalign(0);
+  title.set_hexpand(true);
   navBox.append(title);
 
   scanBtn.set_label(manager->discovering ? "Stop" : "Scan");
@@ -44,6 +45,7 @@ void BluetoothWindow::init() {
   Gtk::Label powerLbl;
   powerLbl.set_markup("<b>Power</b>");
   powerLbl.set_halign(Gtk::Align::START);
+  powerLbl.set_hexpand(true);
   powerBox.append(powerLbl);
 
   Gtk::Switch powerBtn;
@@ -62,7 +64,6 @@ void BluetoothWindow::init() {
   pairedDevTitle.set_markup("<b><u>Paired Devices:</u></b>");
   pairedDevTitle.set_halign(Gtk::Align::START);
   devBox.append(pairedDevTitle);
-
   devBox.append(pairedDevList);
 
   availDevTitle.set_markup("<b><u>Available Devices:</u></b>");
@@ -87,8 +88,8 @@ void BluetoothWindow::init() {
   menuBox.set_margin_start(10);
   menuBox.set_margin_end(10);
 
-  ctx->addModule(menuBox, "bluetooth");
   update(true);
+  ctx->addModule(menuBox, "bluetooth");
 }
 
 void BluetoothWindow::update(bool force) {
@@ -156,8 +157,9 @@ void BluetoothWindow::addDeviceEntry(const Device &dev, Gtk::ListBox &listBox) {
 
   // Adding Label and Tooltip
   Gtk::Label devLbl{devLblStr};
+  devLbl.set_xalign(0);
   devLbl.set_tooltip_text(devTooltip);
-
+  devLbl.set_hexpand(true);
   devItem.append(devLbl);
 
   // Only Shown for Paired Devices

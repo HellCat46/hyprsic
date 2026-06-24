@@ -19,10 +19,12 @@ PulseAudioWindow::PulseAudioWindow(AppContext *ctx, CommunicationBus *commBus,
 
   outStore = Gio::ListStore<PulseAudioDeviceObject>::create();
   inStore = Gio::ListStore<PulseAudioDeviceObject>::create();
-  
+
   devFactory = Gtk::SignalListItemFactory::create();
-  devFactory->signal_setup().connect(sigc::mem_fun(*this, &PulseAudioWindow::onFactorySetup));
-  devFactory->signal_bind().connect(sigc::mem_fun(*this, &PulseAudioWindow::onFactoryBind));
+  devFactory->signal_setup().connect(
+      sigc::mem_fun(*this, &PulseAudioWindow::onFactorySetup));
+  devFactory->signal_bind().connect(
+      sigc::mem_fun(*this, &PulseAudioWindow::onFactoryBind));
 }
 
 void PulseAudioWindow::init() {
@@ -53,7 +55,7 @@ void PulseAudioWindow::init() {
       },
       false);
 
-  outDropdown.property_selected().signal_changed().connect(
+  outPropChgConn = outDropdown.property_selected().signal_changed().connect(
       [this]() { chgDevice(true); });
   outDropdown.set_model(outStore);
   outDropdown.set_factory(devFactory);
@@ -83,7 +85,7 @@ void PulseAudioWindow::init() {
       false);
   inBox.append(inScale);
 
-  inDropdown.property_selected().signal_changed().connect(
+  inPropChgConn = inDropdown.property_selected().signal_changed().connect(
       [this]() { chgDevice(false); });
   inDropdown.set_model(inStore);
   inDropdown.set_factory(devFactory);
@@ -94,8 +96,8 @@ void PulseAudioWindow::init() {
 }
 
 void PulseAudioWindow::update() {
-  ctx->logger.LogInfo(TAG, "PulseAudioWindow::update() called");
-  // Adding Items to Output Selector
+  
+  outPropChgConn.block();
   int idx = 0;
   outStore->remove_all();
   for (const auto &[devName, devInfo] : manager->outDevs) {
@@ -110,8 +112,10 @@ void PulseAudioWindow::update() {
 
     idx++;
   }
+  outPropChgConn.unblock();
 
   // Adding Items to Input Selector
+  inPropChgConn.block();
   idx = 0;
   inStore->remove_all();
   for (const auto &[devName, devInfo] : manager->inDevs) {
@@ -123,9 +127,9 @@ void PulseAudioWindow::update() {
       // Using Default Input Device for Control Widgets
       updateControls(devInfo.mute, false, devInfo.volume, inMuteBtn, inScale);
     }
-
     idx++;
   }
+  inPropChgConn.unblock();
 }
 
 void PulseAudioWindow::updateControls(bool mute, bool isOutput,
@@ -146,7 +150,7 @@ void PulseAudioWindow::updateControls(bool mute, bool isOutput,
   }
 
   avgVol /= volumes.size();
-  
+
   scale.set_value(((float)avgVol / 65535) * 100);
 }
 
@@ -259,15 +263,18 @@ PulseAudioDeviceObject::create(const std::string &devName,
       new PulseAudioDeviceObject(devName, data));
 }
 
-void PulseAudioWindow::onFactorySetup(const Glib::RefPtr<Gtk::ListItem>& list_item) {
-    auto lbl = Gtk::make_managed<Gtk::Label>("");
-    lbl->set_halign(Gtk::Align::START);
-    list_item->set_child(*lbl);
+void PulseAudioWindow::onFactorySetup(
+    const Glib::RefPtr<Gtk::ListItem> &list_item) {
+  auto lbl = Gtk::make_managed<Gtk::Label>("");
+  lbl->set_halign(Gtk::Align::START);
+  list_item->set_child(*lbl);
 }
 
-void PulseAudioWindow::onFactoryBind(const Glib::RefPtr<Gtk::ListItem>& list_item) {
+void PulseAudioWindow::onFactoryBind(
+    const Glib::RefPtr<Gtk::ListItem> &list_item) {
   auto lbl = dynamic_cast<Gtk::Label *>(list_item->get_child());
-  auto dev = std::dynamic_pointer_cast<PulseAudioDeviceObject>(list_item->get_item());
+  auto dev =
+      std::dynamic_pointer_cast<PulseAudioDeviceObject>(list_item->get_item());
   if (lbl && dev) {
     lbl->set_label(dev->data.description);
   }

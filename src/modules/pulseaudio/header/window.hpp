@@ -10,6 +10,7 @@
 #include "manager.hpp"
 #include "services/header/comm_bus.hpp"
 #include "services/header/context.hpp"
+#include "sigc++/connection.h"
 #include <cstdint>
 #include <vector>
 
@@ -37,11 +38,13 @@ class PulseAudioWindow {
   Gtk::Button outMuteBtn;
   Gtk::Scale outScale;
   Gtk::DropDown outDropdown;
+  sigc::connection outPropChgConn;
   Glib::RefPtr<Gio::ListStore<PulseAudioDeviceObject>> outStore;
 
   Gtk::Button inMuteBtn;
   Gtk::Scale inScale;
   Gtk::DropDown inDropdown;
+  sigc::connection inPropChgConn;
   Glib::RefPtr<Gio::ListStore<PulseAudioDeviceObject>> inStore;
 
   void updateControls(bool mute, bool isOutput,

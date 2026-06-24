@@ -21,7 +21,7 @@ CommunicationBus::CommunicationBus(AppContext *ctx, BluetoothManager *btMgr,
                                    StatusNotifierManager *sniMgr)
     : ctx(ctx), btMgr(btMgr), mprisMgr(mprisMgr), paMgr(paMgr),
       scrnsvrMgr(scrnsvrMgr), wifiMgr(wifiMgr), hyprMgr(hyprMgr),
-      sniMgr(sniMgr), idCounter(0) {
+      brtMgr(brtMgr), sniMgr(sniMgr), idCounter(0) {
 
   // clang-format off
   // ── Manager Router: type_index → handler ────────────────────────────
@@ -112,7 +112,7 @@ CommunicationBus::CommunicationBus(AppContext *ctx, BluetoothManager *btMgr,
 }
 
 CommunicationBus::~CommunicationBus() {
-    
+
   busThread.detach();
   resThread.detach();
 }
@@ -127,10 +127,9 @@ void CommunicationBus::handleMessages() {
     auto evlope = reqBus.top();
     reqBus.pop();
 
-    auto dispatcher =
-        dispatchTable.find(std::visit(
-            [](const auto &msg) { return std::type_index(typeid(msg)); },
-            evlope.msg));
+    auto dispatcher = dispatchTable.find(
+        std::visit([](const auto &msg) { return std::type_index(typeid(msg)); },
+                   evlope.msg));
 
     if (dispatcher != dispatchTable.end()) {
       dispatcher->second(evlope);
@@ -161,7 +160,7 @@ void CommunicationBus::handleResponses() {
       if (it == corIdToModuleType.end()) {
         // No callback registered for this correlationId
         this->ctx->logger.LogWarning(
-            TAG, "No callback registered for correlationId: " +
+            TAG, "No response callback registered for correlationId: " +
                      std::to_string(envelope.msg.correlationId));
         continue;
       }
@@ -186,12 +185,12 @@ void CommunicationBus::SendMessage(RequestMessage msg, Priority priority) {
   reqBus.push({.msg = msg, .priority = priority});
 
   ctx->logger.LogDebug(TAG, "Request Received... Total Message:" +
-                               std::to_string(reqBus.size()));
+                                std::to_string(reqBus.size()));
   reqBusCV.notify_one();
 }
 
 void CommunicationBus::SendMessage(RequestMessage msg, Priority priority,
-                                    ModuleType modType) {
+                                   ModuleType modType) {
   uint64_t corId = GetNewCorId();
 
   // Store the mapping so handleResponses knows which module to route to
@@ -203,7 +202,7 @@ void CommunicationBus::SendMessage(RequestMessage msg, Priority priority,
   // Inject correlationId into the request. Since it's a variant, we use visit.
   // But std::visit on a temporary doesn't work well. We apply to the local msg.
   std::visit(
-      [corId](auto &req) { 
+      [corId](auto &req) {
         using T = std::decay_t<decltype(req)>;
         if constexpr (requires(T t) { t.correlationId; }) {
           req.correlationId = corId;
@@ -217,8 +216,9 @@ void CommunicationBus::SendMessage(RequestMessage msg, Priority priority,
     reqBus.push({.msg = std::move(msg), .priority = priority});
   }
 
-  ctx->logger.LogDebug(TAG, "Request Received (with ModuleType)... Total Message: " +
-                               std::to_string(reqBus.size()));
+  ctx->logger.LogDebug(TAG,
+                       "Request Received (with ModuleType)... Total Message: " +
+                           std::to_string(reqBus.size()));
   reqBusCV.notify_one();
 }
 

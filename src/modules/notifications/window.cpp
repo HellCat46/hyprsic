@@ -3,6 +3,7 @@
 #include "gtkmm/button.h"
 #include "gtkmm/enums.h"
 #include "gtkmm/label.h"
+#include "gtkmm/object.h"
 #include "gtkmm/switch.h"
 #include "gtkmm/scrolledwindow.h"
 #include "sigc++/functors/mem_fun.h"
@@ -27,9 +28,11 @@ void NotificationWindow::init() {
 
   Gtk::Label notifTitle;
   notifTitle.set_markup("<big><b>Notifications</b></big>");
+  notifTitle.set_halign(Gtk::Align::START);
+  notifTitle.set_hexpand(true);
   topBar.append(notifTitle);
 
-  Gtk::Button clearBtn{"Clear All"};
+  clearBtn.set_label("Clear All");
   clearBtn.signal_clicked().connect(
       sigc::mem_fun(*this, &NotificationWindow::handleClearAll));
   topBar.append(clearBtn);
@@ -43,9 +46,9 @@ void NotificationWindow::init() {
   Gtk::Label dndLbl;
   dndLbl.set_markup("<b>Do Not Disturb</b>");
   dndLbl.set_halign(Gtk::Align::START);
+  dndLbl.set_hexpand(true);
   dndBox.append(dndLbl);
 
-  Gtk::Switch dndSwitch;
   dndSwitch.signal_state_set().connect(
       [this](bool state) -> bool {
         handleDndToggle(state);
@@ -61,6 +64,7 @@ void NotificationWindow::init() {
   scrollWin.set_size_request(400, 300);
   menuBox.append(scrollWin);
 
+  scrollWinBox.set_orientation(Gtk::Orientation::VERTICAL);
   scrollWin.set_child(scrollWinBox);
 
   ctx->addModule(menuBox, "notifications");
@@ -113,8 +117,8 @@ void NotificationWindow::update(bool force) {
     bodyLbl.set_halign(Gtk::Align::START);
     contentBox.append(bodyLbl);
 
-    Gtk::Button removeBtn{"✖"};
-    removeBtn.signal_clicked().connect([this, notifId = notif->id]() {
+    auto removeBtn = Gtk::make_managed<Gtk::Button>("✖");
+    removeBtn->signal_clicked().connect([this, notifId = notif->id]() {
         deleteNotificationCb(notifId);
         
     });
@@ -122,10 +126,8 @@ void NotificationWindow::update(bool force) {
     auto& notifBox = notifLookup.emplace(notif->id, NotifListItem{notif}).first->second.widget;
     notifBox.set_margin(5);
     notifBox.append(contentBox);
-    notifBox.append(removeBtn);
+    notifBox.append(*removeBtn);
     scrollWinBox.append(notifBox);
-
-    ;
   }
 }
 
@@ -133,6 +135,7 @@ void NotificationWindow::deleteNotificationCb(std::string notifId) {
 
   auto it = notifLookup.find(notifId);
   if (it != notifLookup.end()) {
+      ctx->logger.LogInfo(TAG, "Deleting notification: " + notifId);
 
     ctx->dbManager.removeNotification(notifId, it->second.it);
     it->second.widget.unparent();
@@ -146,7 +149,7 @@ void NotificationWindow::handleDndToggle(bool state) {
   std::string msg =
       "Do Not Disturb Mode " + std::string(state ? "Enabled" : "Disabled");
   ctx->logger.LogInfo(TAG, msg);
-  ctx->showUpdateWindow(state ? "notifications-disabled-symbolic" : "notifications-disabled-symbolic", msg);
+  ctx->showUpdateWindow(state ? "notifications-disabled-symbolic" : "preferences-system-notifications-symbolic", msg);
 }
 
 void NotificationWindow::handleClearAll() {

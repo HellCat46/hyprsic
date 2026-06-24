@@ -2,6 +2,7 @@
 
 #include "glibmm/refptr.h"
 #include "gtkmm/box.h"
+#include "gtkmm/button.h"
 #include "gtkmm/label.h"
 #include "gtkmm/scale.h"
 #include "manager.hpp"
@@ -14,7 +15,9 @@ class MprisWindow {
   CommunicationBus *commBus;
 
   Gtk::Box progBox;
+  Gtk::Button titlePrev;
   Gtk::Label progTtl;
+  Gtk::Button titleNext;
 
   Gtk::Box progBarBox;
   Gtk::Label scaleMin;

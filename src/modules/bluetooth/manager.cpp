@@ -43,7 +43,7 @@ int BluetoothManager::setup() {
     std::string msg = "Initial Bluetooth Power State: ";
     msg += (state ? "ON" : "OFF");
     ctx->logger.LogInfo(TAG, msg);
-    power = res;
+    power = state;
   } else {
     ctx->logger.LogWarning(TAG, "Unable to get initial Bluetooth Power State. "
                                 "Setting to ON by default.");
@@ -55,7 +55,7 @@ int BluetoothManager::setup() {
     std::string msg = "Initial Bluetooth Discovery State: ";
     msg += (state ? "ON" : "OFF");
     ctx->logger.LogInfo(TAG, msg);
-    discovering = res;
+    discovering = state;
   } else {
     ctx->logger.LogWarning(TAG,
                            "Unable to get initial Bluetooth Discovery State. "
