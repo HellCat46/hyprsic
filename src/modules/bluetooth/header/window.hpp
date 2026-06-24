@@ -4,6 +4,7 @@
 #include "gtkmm/button.h"
 #include "gtkmm/label.h"
 #include "gtkmm/listbox.h"
+#include "gtkmm/switch.h"
 #include "manager.hpp"
 #include "services/header/comm_bus.hpp"
 #include "services/header/comm_types.hpp"
@@ -21,7 +22,7 @@ class BluetoothWindow {
   BluetoothManager *manager;
   CommunicationBus *commBus;
 
-  Gtk::Button powerBtn;
+  Gtk::Switch powerBtn;
   Gtk::Button scanBtn;
   Gtk::Box menuBox;
   Gtk::Box devBox;
@@ -34,7 +35,7 @@ class BluetoothWindow {
   void addDeviceEntry(const Device &dev, Gtk::ListBox& listBox);
 
   void handleDiscovery();
-  bool handlePower(bool state);
+  void handlePower(bool state);
   void handleDeviceConnect(bool state, std::string devIfacePath);
   void handleDeviceTrust(bool state, std::string devIfacePath);
   void handleDeviceRemove(std::string devIfacePath);

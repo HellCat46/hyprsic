@@ -13,7 +13,11 @@ class SysInfoModule {
   AppContext *ctx;
   Gtk::Label netWid;
   Gtk::Label tempWid;
-  Gtk::Label diskWid;
+
+  Gtk::Box diskBox;
+  Gtk::Image diskIcon;
+  Gtk::Label diskLbl;
+  
   Gtk::Label loadWid;
 
   Gtk::Box memBox;

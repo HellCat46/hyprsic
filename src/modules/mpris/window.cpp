@@ -98,9 +98,6 @@ void MprisWindow::update() {
 
     scaleAdj->set_upper(track.length);
     scaleAdj->set_value(track.currPos);
-    ctx->logger.LogInfo(TAG, "Track length: " + std::to_string(track.length) +
-                                 " currPos: " + std::to_string(track.currPos));
-
     progBarBox.show();
   } else {
     progBarBox.hide();

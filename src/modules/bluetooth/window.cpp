@@ -48,11 +48,16 @@ void BluetoothWindow::init() {
   powerLbl.set_hexpand(true);
   powerBox.append(powerLbl);
 
-  Gtk::Switch powerBtn;
+  
+  
+  powerBtn.set_active(manager->power);
   powerBtn.set_state(manager->power);
-  powerBtn.property_active().signal_changed().connect(
-      [this, &powerBtn]() { this->handlePower(powerBtn.get_state()); });
-
+  powerBtn.signal_state_set().connect(
+      [this](bool state) -> bool {
+        this->handlePower(state);
+        return false;
+      },
+      false);
   powerBox.append(powerBtn);
   topBox.append(powerBox);
 
@@ -95,6 +100,9 @@ void BluetoothWindow::init() {
 void BluetoothWindow::update(bool force) {
   if (!menuBox.get_visible() && !force)
     return;
+
+  powerBtn.set_active(manager->power);
+  powerBtn.set_state(manager->power);
 
   availDevList.remove_all();
   pairedDevList.remove_all();
@@ -165,28 +173,28 @@ void BluetoothWindow::addDeviceEntry(const Device &dev, Gtk::ListBox &listBox) {
   // Only Shown for Paired Devices
   if (dev.paired) {
     // Device Unpair Button
-    Gtk::Button devRmvBtn{"✖"};
-    devRmvBtn.set_tooltip_text("Remove Device");
-    devItem.append(devRmvBtn);
-    devRmvBtn.signal_clicked().connect(sigc::bind(
+    auto devRmvBtn = Gtk::make_managed<Gtk::Button>("✖");
+    devRmvBtn->set_tooltip_text("Remove Device");
+    devItem.append(*devRmvBtn);
+    devRmvBtn->signal_clicked().connect(sigc::bind(
         sigc::mem_fun(*this, &BluetoothWindow::handleDeviceRemove), dev.path));
 
     // Device Trust Button
-    Gtk::Button devTrustBtn{""};
-    devTrustBtn.set_tooltip_text(dev.trusted ? "Untrust Device"
+    auto devTrustBtn = Gtk::make_managed<Gtk::Button>("");
+    devTrustBtn->set_tooltip_text(dev.trusted ? "Untrust Device"
                                              : "Trust Device");
-    devItem.append(devTrustBtn);
-    devTrustBtn.signal_clicked().connect(
+    devItem.append(*devTrustBtn);
+    devTrustBtn->signal_clicked().connect(
         sigc::bind(sigc::mem_fun(*this, &BluetoothWindow::handleDeviceTrust),
                    !dev.trusted, dev.path));
   }
 
   // Device Connect Button Connect Icon
-  Gtk::Button devConnBtn{""};
-  devConnBtn.set_tooltip_text(dev.connected ? "Disconnect Device"
+  auto devConnBtn = Gtk::make_managed<Gtk::Button>("");
+  devConnBtn->set_tooltip_text(dev.connected ? "Disconnect Device"
                                             : "Connect Device");
-  devItem.append(devConnBtn);
-  devConnBtn.signal_clicked().connect(
+  devItem.append(*devConnBtn);
+  devConnBtn->signal_clicked().connect(
       sigc::bind(sigc::mem_fun(*this, &BluetoothWindow::handleDeviceConnect),
                  !dev.connected, dev.path));
 
@@ -216,7 +224,7 @@ void BluetoothWindow::handleDiscovery() {
   scanBtn.set_label(manager->discovering ? "Stop" : "Scan");
 }
 
-bool BluetoothWindow::handlePower(bool state) {
+void BluetoothWindow::handlePower(bool state) {
 
   commBus->SendMessage(BtSwitchPowerRequest{state, ModuleType::BLUETOOTH,
                                             commBus->GetNewCorId()},
@@ -246,6 +254,8 @@ void BluetoothWindow::handleDeviceRemove(std::string devIfacePath) {
 
 void BluetoothWindow::handleDeviceConnect(bool state,
                                           std::string devIfacePath) {
+
+  ctx->logger.LogInfo(TAG, "Device Connect: " + devIfacePath + " state: " + std::to_string(state));
   commBus->SendMessage(BtConnectRequest{state, devIfacePath,
                                         ModuleType::BLUETOOTH,
                                         commBus->GetNewCorId()},

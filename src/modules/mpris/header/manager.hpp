@@ -16,14 +16,12 @@ struct PlayerTrack {
   uint64_t currPos, length;
 };
 
-enum class MprisResponseType { PlayPause, GetPosition };
-
 struct MprisPlayPauseRequest {
   uint64_t correlationId;
 };
 
 struct MprisPlayPauseResponse {
-    
+  uint64_t correlationId;
 };
 
 struct MprisGetPositionRequest {
@@ -31,8 +29,6 @@ struct MprisGetPositionRequest {
 };
 
 struct MprisGetPositionResponse {
-  MprisResponseType respType;
-
   uint64_t correlationId;
 };
 

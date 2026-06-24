@@ -33,7 +33,12 @@ void MprisModule::update() {
     return;
 
   auto track = manager->getPlayingTrack();
-  mainLbl.set_markup("<span foreground='green'><b>" + HelperFunc::ValidString(track.title) +
+  auto title = HelperFunc::ValidString(track.title);
+
+  if(title.length() > 50)
+    title = title.substr(0, 50) + "...";
+  
+  mainLbl.set_markup("<span foreground='green'><b>" + title +
                      "</b></span>");
 }
 

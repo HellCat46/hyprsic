@@ -19,7 +19,12 @@ void SysInfoModule::setup(
 
   widgets.push_back(netWid);
   widgets.push_back(tempWid);
-  widgets.push_back(diskWid);
+
+  diskIcon.set_from_icon_name("drive-harddisk-solidstate-symbolic");
+  diskBox.append(diskIcon);
+  diskBox.append(diskLbl);
+  widgets.push_back(diskBox);
+  
   widgets.push_back(loadWid);
 
   memIcon.set_from_icon_name("media-flash-symbolic");
@@ -50,9 +55,9 @@ void SysInfoModule::update() {
   tempWid.set_label(txt);
 
   // Update Disk Usage
-  txt = " " + stat->GetDiskAvail();
-  diskWid.set_label(txt);
-  diskWid.set_tooltip_markup("<b>Total:</b> " + stat->GetDiskTotal());
+  txt = stat->GetDiskAvail();
+  diskLbl.set_label(txt);
+  diskLbl.set_tooltip_markup("<b>Total:</b> " + stat->GetDiskTotal());
 
   // Update System Load
   txt = std::to_string(load->GetLoad(5));

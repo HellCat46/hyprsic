@@ -263,11 +263,12 @@ int BluetoothManager::updateDevList() {
           }
         }
 
-        if(dev.addr.empty()) {
+        if (dev.addr.empty()) {
           continue;
         }
 
-        // ctx->logger.LogInfo(TAG, "Adding device: " + dev.name + " (" + dev.addr + ")");
+        // ctx->logger.LogInfo(TAG, "Adding device: " + dev.name + " (" +
+        // dev.addr + ")");
         devices.insert({dev.addr, dev});
       }
     }

@@ -11,7 +11,6 @@
 #include <sdbus-c++/IProxy.h>
 #include <sdbus-c++/Message.h>
 #include <string>
-#include <string_view>
 #include <unordered_map>
 #include <variant>
 
@@ -34,7 +33,7 @@ enum DevicePropFlags {
 
 struct BtConnectRequest {
   bool state;
-  std::string_view devPath;
+  std::string devPath;
 
   ModuleType moduleType;
   uint64_t correlationId;
@@ -42,14 +41,14 @@ struct BtConnectRequest {
 
 struct BtTrustRequest {
   bool state;
-  std::string_view devPath;
+  std::string devPath;
 
   ModuleType moduleType;
   uint64_t correlationId;
 };
 
 struct BtRemoveRequest {
-  std::string_view devPath;
+  std::string devPath;
 
   ModuleType moduleType;
   uint64_t correlationId;

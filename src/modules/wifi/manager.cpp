@@ -275,6 +275,8 @@ ResponseMessage WifiManager::Disconnect(const WifiDisconnectRequest &req) {
   try {
     dbusProxy->callMethod(sdbus::MemberName{"Disconnect"})
         .onInterface(sdbus::InterfaceName{"net.connman.iwd.Station"});
+
+    connDev = "";
   } catch (const sdbus::Error &e) {
     resp.errMsg = "D-Bus Connect call failed: " + std::string{e.what()};
     ctx->logger.LogError(TAG, resp.errMsg);

@@ -57,7 +57,7 @@ void WifiWindow::init() {
   // Connected Device Box
   Gtk::Box connDevBox{Gtk::Orientation::VERTICAL, 5};
   mainBox.append(connDevBox);
-  connDevBox.set_margin_top(20);
+  connDevBox.set_margin_top(5);
 
 
   Gtk::Label connDevTitle;
@@ -67,6 +67,7 @@ void WifiWindow::init() {
   connDevBox.append(connDevIBox);
 
   connDeviceName.set_halign(Gtk::Align::START);
+  connDeviceName.set_hexpand(true);
   connDevIBox.append(connDeviceName);
 
   frgtBtn.set_label("Forget");
@@ -93,7 +94,7 @@ void WifiWindow::init() {
 
   Gtk::ScrolledWindow devListScrlBox;
   devListScrlBox.set_policy(Gtk::PolicyType::NEVER, Gtk::PolicyType::AUTOMATIC);
-  devListScrlBox.set_size_request(400, 200);
+  devListScrlBox.set_size_request(250, 200);
   devBox.append(devListScrlBox);
 
   Gtk::Box devListBox;
@@ -112,9 +113,9 @@ void WifiWindow::init() {
   passEntBox.append(passEntry);
 
 
-  connDevBox.hide();
-  devBox.hide();
-  passEntBox.hide();
+  // connDevBox.hide();
+  // devBox.hide();
+  // passEntBox.hide();
 
   
   ctx->addModule(mainBox, "wifi");
@@ -158,7 +159,6 @@ void WifiWindow::update() {
     addDevList(devRow, devPath, widget);
     devListBox.append(devRow);
   }
-
   if (devWids.size() > 0) {
     devListBox.show();
   } else {
