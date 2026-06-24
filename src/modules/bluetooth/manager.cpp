@@ -1,14 +1,18 @@
 #include "header/manager.hpp"
 #include "cstring"
-#include "dbus/dbus-protocol.h"
-#include "dbus/dbus.h"
 #include "services/header/comm_types.hpp"
 #include "unordered_map"
-#include "utils/dbus_utils.hpp"
-#include "utils/helper_func.hpp"
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
+#include <map>
 #include <mutex>
+#include <sdbus-c++/Error.h>
+#include <sdbus-c++/IConnection.h>
+#include <sdbus-c++/IObject.h>
+#include <sdbus-c++/IProxy.h>
+#include <sdbus-c++/Message.h>
+#include <sdbus-c++/Types.h>
 #include <string>
 #include <unordered_map>
 
@@ -18,34 +22,40 @@ BluetoothManager::BluetoothManager(AppContext *ctx) : ctx(ctx) {
   discovering = false;
   power = true;
 
-  devListMsg = dbus_message_new_method_call(
-      "org.bluez", "/", "org.freedesktop.DBus.ObjectManager",
-      "GetManagedObjects");
-  if (!devListMsg) {
-    ctx->logger.LogError(TAG, "Failed to create a message.");
-    return;
+  try {
+    dbusProxy =
+        sdbus::createProxy(*ctx->dbus.sysConn, sdbus::ServiceName{"org.bluez"},
+                           sdbus::ObjectPath{"/org/bluez/hci0"});
+
+    devListProxy =
+        sdbus::createProxy(*ctx->dbus.sysConn, sdbus::ServiceName{"org.bluez"},
+                           sdbus::ObjectPath{"/"});
+  } catch (const sdbus::Error &e) {
+    ctx->logger.LogError(TAG,
+                         "Failed to create proxy: " + std::string(e.what()));
   }
 }
 
 int BluetoothManager::setup() {
-  int res = getPropertyVal("Powered");
-  if (res >= 0) {
+  bool state;
+  int res = getPropertyBool("Powered", state);
+  if (res != -1) {
     std::string msg = "Initial Bluetooth Power State: ";
-    msg += (res ? "ON" : "OFF");
+    msg += (state ? "ON" : "OFF");
     ctx->logger.LogInfo(TAG, msg);
-    power = res;
+    power = state;
   } else {
     ctx->logger.LogWarning(TAG, "Unable to get initial Bluetooth Power State. "
                                 "Setting to ON by default.");
     power = true;
   }
 
-  res = getPropertyVal("Discovering");
-  if (res >= 0) {
+  res = getPropertyBool("Discovering", state);
+  if (res != -1) {
     std::string msg = "Initial Bluetooth Discovery State: ";
-    msg += (res ? "ON" : "OFF");
+    msg += (state ? "ON" : "OFF");
     ctx->logger.LogInfo(TAG, msg);
-    discovering = res;
+    discovering = state;
   } else {
     ctx->logger.LogWarning(TAG,
                            "Unable to get initial Bluetooth Discovery State. "
@@ -62,49 +72,23 @@ ResponseMessage BluetoothManager::switchPower(const BtSwitchPowerRequest &req) {
   ResponseMessage resp{
       .success = false, .errMsg = "", .correlationId = req.correlationId};
 
-  DBusMessage *msg = dbus_message_new_method_call(
-      "org.bluez", "/org/bluez/hci0", "org.freedesktop.DBus.Properties", "Set");
-  if (!msg) {
-    resp.errMsg = "Failed to create a message. ";
-    resp.errMsg += ctx->dbus.sysErr.message;
-    ctx->logger.LogError(TAG, resp.errMsg);
+  try {
+    dbusProxy->callMethod(sdbus::MethodName{"Set"})
+        .onInterface(sdbus::InterfaceName{"org.freedesktop.DBus.Properties"})
+        .withArguments(std::string{"org.bluez.Adapter1"},
+                       std::string{"Powered"}, sdbus::Variant{req.on});
 
+    std::string logMsg = "Turned ";
+    logMsg += (req.on ? "ON" : "OFF");
+    logMsg += " Bluetooth Power.";
+    ctx->logger.LogInfo(TAG, logMsg);
+
+    this->power = req.on;
+  } catch (const sdbus::Error &e) {
+    resp.errMsg = "Failed to set power state: " + std::string(e.what());
+    ctx->logger.LogError(TAG, resp.errMsg);
     return resp;
   }
-
-  const char *iface = "org.bluez.Adapter1";
-  const char *prop = "Powered";
-  dbus_bool_t value = req.on;
-  DBusMessageIter args, subargs;
-
-  dbus_message_iter_init_append(msg, &args);
-  dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &iface);
-  dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &prop);
-
-  dbus_message_iter_open_container(&args, DBUS_TYPE_VARIANT,
-                                   DBUS_TYPE_BOOLEAN_AS_STRING, &subargs);
-  dbus_message_iter_append_basic(&subargs, DBUS_TYPE_BOOLEAN, &value);
-  dbus_message_iter_close_container(&args, &subargs);
-
-  DBusMessage *reply = dbus_connection_send_with_reply_and_block(
-      ctx->dbus.sysConn, msg, -1, &(ctx->dbus.sysErr));
-  if (!reply && dbus_error_is_set(&(ctx->dbus.sysErr))) {
-    resp.errMsg = "Failed to get a reply. ";
-    resp.errMsg += ctx->dbus.sysErr.message;
-    ctx->logger.LogError(TAG, resp.errMsg);
-    dbus_error_free(&ctx->dbus.sysErr);
-
-    return resp;
-  }
-
-  std::string logMsg = "Turned ";
-  logMsg += (req.on ? "ON" : "OFF");
-  logMsg += " Bluetooth Power.";
-  ctx->logger.LogInfo(TAG, logMsg);
-
-  dbus_message_unref(msg);
-  dbus_message_ref(reply);
-  this->power = req.on;
 
   resp.success = true;
   return resp;
@@ -115,421 +99,212 @@ BluetoothManager::switchDiscovery(const BtSwitchDiscoveryRequest &req) {
   ResponseMessage resp{
       .success = false, .errMsg = "", .correlationId = req.correlationId};
 
-  DBusMessage *msg = dbus_message_new_method_call(
-      "org.bluez", "/org/bluez/hci0", "org.bluez.Adapter1",
-      req.on ? "StartDiscovery" : "StopDiscovery");
+  try {
+    dbusProxy
+        ->callMethod(
+            sdbus::MethodName{req.on ? "StartDiscovery" : "StopDiscovery"})
+        .onInterface(sdbus::InterfaceName{"org.bluez.Adapter1"});
 
-  if (!msg) {
-    resp.errMsg = "Failed to create a dbus message.";
-
+    std::string logMsg = "Turning ";
+    logMsg += (req.on ? "ON" : "OFF");
+    logMsg += " Bluetooth Discovery.";
+    ctx->logger.LogInfo(TAG, logMsg);
+    this->discovering = req.on;
+  } catch (const sdbus::Error &e) {
+    resp.errMsg = "Failed to switch discovery: " + std::string(e.what());
     ctx->logger.LogError(TAG, resp.errMsg);
     return resp;
   }
-
-  DBusMessage *reply = dbus_connection_send_with_reply_and_block(
-      ctx->dbus.sysConn, msg, -1, &(ctx->dbus.sysErr));
-  if (!reply && dbus_error_is_set(&(ctx->dbus.sysErr))) {
-    resp.errMsg = "Failed to get a reply. ";
-    resp.errMsg += ctx->dbus.sysErr.message;
-    ctx->logger.LogError(TAG, resp.errMsg);
-    dbus_error_free(&ctx->dbus.sysErr);
-    return resp;
-  }
-
-  dbus_message_unref(msg);
-  dbus_message_ref(reply);
-
-  std::string logMsg = "Turning ";
-  logMsg += (req.on ? "ON" : "OFF");
-  logMsg += " Bluetooth Discovery.";
-  ctx->logger.LogInfo(TAG, logMsg);
-  this->discovering = req.on;
 
   resp.success = true;
   return resp;
 }
 
-void BluetoothManager::addMatchRulesDbus() {
-  ctx->logger.LogInfo(TAG, "Adding filter to Bluez Signals");
+void BluetoothManager::handleInterfacesAddedDbus(sdbus::Message &msg) {
 
-  // Adding Filters to Signals before starting listening to them
-  dbus_bus_add_match(
-      ctx->dbus.sysConn,
-      "type='signal', interface='org.freedesktop.DBus.ObjectManager', "
-      "member='InterfacesAdded'",
-      &(ctx->dbus.sysErr));
-  if (dbus_error_is_set(&(ctx->dbus.sysErr))) {
-    std::string errMsg =
-        "Failed to add filter for Signal Member InterfaceAdded: ";
-    errMsg += ctx->dbus.sysErr.message;
-    ctx->logger.LogError(TAG, errMsg);
-    dbus_error_free(&ctx->dbus.sysErr);
-    return;
-  }
+  try {
+    // Getting Object Path
+    std::string path;
+    msg >> path;
 
-  dbus_bus_add_match(
-      ctx->dbus.sysConn,
-      "type='signal', interface='org.freedesktop.DBus.ObjectManager', "
-      "member='InterfacesRemoved'",
-      &(ctx->dbus.sysErr));
-  if (dbus_error_is_set(&(ctx->dbus.sysErr))) {
-    std::string errMsg =
-        "Failed to add filter for Signal Member InterfaceRemoved: ";
-    errMsg += ctx->dbus.sysErr.message;
-    ctx->logger.LogError(TAG, errMsg);
-    dbus_error_free(&ctx->dbus.sysErr);
-    return;
-  }
+    // a{sa{sv}}
+    std::map<std::string, std::map<std::string, sdbus::Variant>> props;
+    msg >> props;
 
-  dbus_bus_add_match(
-      ctx->dbus.sysConn,
-      "type='signal', interface='org.freedesktop.DBus.Properties', "
-      "member='PropertiesChanged'",
-      &(ctx->dbus.sysErr));
-  if (dbus_error_is_set(&(ctx->dbus.sysErr))) {
-    std::string errMsg =
-        "Failed to add filter for Signal Member PropertiesChanged: ";
-    errMsg += ctx->dbus.sysErr.message;
-    ctx->logger.LogError(TAG, errMsg);
-    dbus_error_free(&ctx->dbus.sysErr);
-    return;
-  }
-  ctx->logger.LogInfo(TAG, "Successfully Added Filters to Bluez Dbus Signals. "
-                           "Started listening to events now.");
+    if (props.contains("org.bluez.Device1")) {
+      auto devData = props.at("org.bluez.Device1");
+      Device dev{"", "", path, "", -110, false, false, false, false, -1};
 
-  return;
-}
+      setDeviceProps(dev, devData);
 
-void BluetoothManager::handleInterfacesAddedDbus(DBusMessageIter &rootIter) {
-
-  if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_OBJECT_PATH) {
-    ctx->logger.LogError(TAG, "Unable to parse InterfacesAdded Reply. Unknown "
-                              "Format (The First Entry is not Object Path.)");
-    return;
-  }
-
-  // Getting Object Path
-  char *path;
-  dbus_message_iter_get_basic(&rootIter, &path);
-
-  // Moving to next entry after objectPath entry
-  DBusMessageIter entIter, devIter, propsIter;
-  dbus_message_iter_next(&rootIter);
-  dbus_message_iter_recurse(&rootIter, &entIter);
-  if (dbus_message_iter_get_arg_type(&entIter) != DBUS_TYPE_DICT_ENTRY) {
-    ctx->logger.LogError(TAG,
-                         "Unable to parse InterfacesAdded Reply. Unknown "
-                         "Format (The Second Entry is not an Dict Entry.)");
-    return;
-  }
-
-  // Looking for Device1 Entry
-  while (dbus_message_iter_get_arg_type(&entIter) == DBUS_TYPE_DICT_ENTRY) {
-    char *objPath;
-
-    dbus_message_iter_recurse(&entIter, &devIter);
-    dbus_message_iter_get_basic(&devIter, &objPath);
-    if (HelperFunc::saferStrNCmp(objPath, "org.bluez.Device1", 17)) {
-      break;
+      devices.insert({path, dev});
+      std::string logMsg = "Added Device to Device List. Total Devices: ";
+      logMsg += std::to_string(devices.size());
+      ctx->logger.LogInfo(TAG, logMsg);
     }
-    dbus_message_iter_next(&entIter);
-  }
-
-  if (dbus_message_iter_get_arg_type(&entIter) != DBUS_TYPE_DICT_ENTRY) {
-    ctx->logger.LogError(
-        TAG, "Unable to find Device1 Entry in InterfacesAdded Reply.");
+  } catch (const sdbus::Error &e) {
+    ctx->logger.LogError(TAG, "Failed to handle InterfacesAdded: " +
+                                  std::string(e.what()));
     return;
-  }
-
-  // Getting Properties
-  dbus_message_iter_next(&devIter);
-  dbus_message_iter_recurse(&devIter, &propsIter);
-
-  Device dev{"", "", path, "", -110, false, false, false, false, -1};
-  setDeviceProps(dev, propsIter);
-
-  devices.insert({path, dev});
-  std::string logMsg = "Added Device to Device List. Total Devices: ";
-  logMsg += std::to_string(devices.size());
-  ctx->logger.LogInfo(TAG, logMsg);
-}
-
-void BluetoothManager::handleInterfacesRemovedDbus(DBusMessageIter &rootIter) {
-  if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_OBJECT_PATH) {
-    ctx->logger.LogError(TAG,
-                         "Unable to parse InterfacesRemoved Reply. Unknown "
-                         "Format (The First Entry is not Object Path.)");
-    return;
-  }
-
-  char *path;
-  dbus_message_iter_get_basic(&rootIter, &path);
-  if (devices.find(path) != devices.end()) {
-    devices.erase(path);
-    std::string logMsg = "Removed Device from Device List. Total Devices: ";
-    logMsg += std::to_string(devices.size());
-    ctx->logger.LogInfo(TAG, logMsg);
-  } else {
-    ctx->logger.LogWarning(TAG,
-                           "Unable to find Device in Device List. Skipping.");
   }
 }
 
-void BluetoothManager::handlePropertiesChangedDbus(DBusMessage *msg,
-                                                   DBusMessageIter &rootIter) {
-  const char *path = dbus_message_get_path(msg);
-  if (std::strlen(path) > 37)
-    return;
-
-  // Extract Device Address from Object Path
-  path = std::strstr(path, "dev_");
-  if (!path || std::strlen(path) < 21) {
-    ctx->logger.LogWarning(TAG,
-                           "Unable to Extract Device Address from Object Path. "
-                           "Unknown Format. Skipping.");
-    return;
-  }
-
-  std::string addr = path + 4; // Move past "dev_"
-  for (unsigned long i = 0; i < addr.length(); i++) {
-    if (addr[i] == '_')
-      addr[i] = ':';
-  }
-
-  auto dev = devices.find(addr);
-  if (dev == devices.end()) {
-    std::string errMsg = "Unable to find Device in Device List. Skipping. ";
-    errMsg += addr;
-    ctx->logger.LogError(TAG, errMsg);
-    return;
-  }
-
-  DBusMessageIter entIter;
-  if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_STRING) {
-    ctx->logger.LogError(TAG,
-                         "Unable to parse PropertiesChanged Reply. Unknown "
-                         "Format (The First Entry is not String.)");
-    return;
-  }
-
-  char *iface;
-  dbus_message_iter_get_basic(&rootIter, &iface);
-  if (!HelperFunc::saferStrCmp(iface, "org.bluez.Device1")) {
-    return;
-  }
-
-  dbus_message_iter_next(&rootIter);
-  while (dbus_message_iter_get_arg_type(&rootIter) == DBUS_TYPE_ARRAY) {
-    dbus_message_iter_recurse(&rootIter, &entIter);
-
-    if (dbus_message_iter_get_arg_type(&entIter) == DBUS_TYPE_DICT_ENTRY) {
-      break;
-    }
-    ctx->logger.LogInfo(
-        TAG, std::to_string(dbus_message_iter_get_arg_type(&entIter)));
-
-    dbus_message_iter_next(&rootIter);
-  }
-  if (dbus_message_iter_get_arg_type(&entIter) != DBUS_TYPE_DICT_ENTRY) {
-    ctx->logger.LogError(TAG,
-                         "Unable to parse PropertiesChanged Reply. Unknown "
-                         "Format (No Dict Entry for Property Found.)");
-    return;
-  }
-
-  Device newDevData{"", "", "", "", -110, false, false, false, false, -1};
-  unsigned char flags = setDeviceProps(newDevData, entIter);
-
-  if (flags == 0) {
-    ctx->logger.LogWarning(TAG, "No Property Updated. Skipping.");
-    return;
-  }
-
-  if (flags & DevicePropFlags::NAME)
-    dev->second.name = newDevData.name;
-
-  if (flags & DevicePropFlags::ADDRESS)
-    dev->second.addr = newDevData.addr;
-
-  if (flags & DevicePropFlags::CONNECTED) {
-    dev->second.connected = newDevData.connected;
-
-    if (newDevData.connected) {
-      ctx->showUpdateWindow(UpdateModule::BLUETOOTH,
-                            dev->second.deviceType == "audio-headset"
-                                ? "headset_mic"
-                                : "connected",
-                            "Connected to Device: " + dev->second.name);
+void BluetoothManager::handleInterfacesRemovedDbus(sdbus::Message &msg) {
+  try {
+    std::string path;
+    msg >> path;
+    if (devices.find(path) != devices.end()) {
+      devices.erase(path);
+      std::string logMsg = "Removed Device from Device List. Total Devices: ";
+      logMsg += std::to_string(devices.size());
+      ctx->logger.LogInfo(TAG, logMsg);
     } else {
-      ctx->showUpdateWindow(UpdateModule::BLUETOOTH, "base",
-                            "Disconnected from Device: " + dev->second.name);
+      ctx->logger.LogWarning(TAG,
+                             "Unable to find Device in Device List. Skipping.");
     }
+  } catch (const sdbus::Error &e) {
+    ctx->logger.LogError(TAG, "Failed to handle InterfacesRemoved: " +
+                                  std::string(e.what()));
+    return;
   }
+}
 
-  if (flags & DevicePropFlags::PAIRED)
-    dev->second.paired = newDevData.paired;
+void BluetoothManager::handlePropertiesChangedDbus(sdbus::Message &msg) {
+  try {
+    std::string path = msg.getPath();
+    if (path.size() > 37)
+      return;
 
-  if (flags & DevicePropFlags::RSSI)
-    dev->second.rssi = newDevData.rssi;
+    // Extract Device Address from Object Path
+    path = path.substr(path.find("dev_") + 4);
+    if (path.size() < 17) {
+      ctx->logger.LogWarning(
+          TAG, "Unable to Extract Device Address from Object Path. "
+               "Unknown Format. Skipping.");
+      return;
+    }
+    std::replace(path.begin(), path.end(), '_', ':');
 
-  if (flags & DevicePropFlags::TRUSTED)
-    dev->second.trusted = newDevData.trusted;
+    auto dev = devices.find(path);
+    if (dev == devices.end()) {
+      std::string errMsg = "Unable to find Device in Device List. Skipping. ";
+      errMsg += path;
+      ctx->logger.LogError(TAG, errMsg);
+      return;
+    }
 
-  if (flags & DevicePropFlags::DEVICE_TYPE)
-    dev->second.deviceType = newDevData.deviceType;
+    std::string iface;
+    msg >> iface;
 
-  std::string updateMsg = "Updated Device Properties. Total Devices: " +
-                          std::to_string(devices.size()) +
-                          ". Properties Update Flag: " + std::to_string(flags);
-  ctx->logger.LogInfo(TAG, updateMsg);
+    if (iface != "org.bluez.Device1") {
+      return;
+    }
+
+    std::map<std::string, sdbus::Variant> devData;
+    msg >> devData;
+
+    bool prevConnected = dev->second.connected;
+    setDeviceProps(dev->second, devData);
+
+    if (prevConnected != dev->second.connected) {
+      if (dev->second.connected) {
+        ctx->showUpdateWindow(dev->second.deviceType == "audio-headset"
+                                  ? "audio-headset-symbolic"
+                                  : "bluetooth-active-symbolic",
+                              "Connected to Device: " + dev->second.name);
+      } else {
+        ctx->showUpdateWindow("bluetooth-disconnected-symbolic",
+                              "Disconnected from Device: " + dev->second.name);
+      }
+    }
+
+    std::string updateMsg = "Updated Device Properties. Total Devices: " +
+                            std::to_string(devices.size());
+    ctx->logger.LogInfo(TAG, updateMsg);
+  } catch (const sdbus::Error &e) {
+    ctx->logger.LogError(TAG, "Failed to handle PropertiesChanged: " +
+                                  std::string(e.what()));
+    return;
+  }
 }
 
 int BluetoothManager::updateDevList() {
   devices.clear();
 
-  DBusMessage *reply = dbus_connection_send_with_reply_and_block(
-      ctx->dbus.sysConn, devListMsg, -1, &(ctx->dbus.sysErr));
-  if (!reply && dbus_error_is_set(&(ctx->dbus.sysErr))) {
-    std::string errMsg = "Failed to get a reply. ";
-    errMsg += ctx->dbus.sysErr.message;
-    ctx->logger.LogError(TAG, errMsg);
-    dbus_error_free(&ctx->dbus.sysErr);
+  try {
+
+    std::map<sdbus::ObjectPath,
+             std::map<std::string, std::map<std::string, sdbus::Variant>>>
+        data;
+    devListProxy->callMethod(sdbus::MethodName{"GetManagedObjects"})
+        .onInterface(sdbus::InterfaceName{"org.freedesktop.DBus.ObjectManager"})
+        .storeResultsTo(data);
+
+    for (const auto &[objPath, ifaceData] : data) {
+      if (objPath.find("/org/bluez/hci0/dev") != std::string::npos) {
+        Device dev{"", "", objPath, "", -110, false, false, false, false, -1};
+
+        if (ifaceData.find("org.bluez.Device1") != ifaceData.end()) {
+          const auto &props = ifaceData.at("org.bluez.Device1");
+          setDeviceProps(dev, props);
+        }
+
+        if (ifaceData.find("org.bluez.Battery1") != ifaceData.end()) {
+          const auto &props = ifaceData.at("org.bluez.Battery1");
+          if (props.find("Percentage") != props.end()) {
+            dev.batteryPer = props.at("Percentage").get<uint8_t>();
+          }
+        }
+
+        if (ifaceData.find("org.bluez.MediaControl1") != ifaceData.end()) {
+          const auto &props = ifaceData.at("org.bluez.MediaControl1");
+          if (props.find("MediaConnected") != props.end()) {
+            dev.mediaConnected = props.at("MediaConnected").get<bool>();
+          }
+        }
+
+        if (dev.addr.empty()) {
+          continue;
+        }
+
+        // ctx->logger.LogInfo(TAG, "Adding device: " + dev.name + " (" +
+        // dev.addr + ")");
+        devices.insert({dev.addr, dev});
+      }
+    }
+
+  } catch (const sdbus::Error &e) {
+    ctx->logger.LogError(TAG, "Failed to update Device List: " +
+                                  std::string(e.what()));
     return 1;
   }
-
-  DBusMessageIter rootIter, entIter;
-  dbus_message_iter_init(reply, &rootIter);
-
-  if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_ARRAY) {
-    ctx->logger.LogError(TAG, "No Device Connected");
-    return -1;
-  }
-
-  dbus_message_iter_recurse(&rootIter, &entIter);
-
-  while (dbus_message_iter_get_arg_type(&entIter) == DBUS_TYPE_DICT_ENTRY) {
-    DBusMessageIter entry, ifaceIter;
-    char *objPath;
-
-    dbus_message_iter_recurse(&entIter, &entry);
-    dbus_message_iter_get_basic(&entry, &objPath);
-
-    // Skip every entry (including endpoint and transport) except the actual
-    // device
-    if (!(std::strlen(objPath) == 37 &&
-          HelperFunc::saferStrNCmp(objPath, "/org/bluez/hci0/dev", 19))) {
-      dbus_message_iter_next(&entIter);
-      continue;
-    }
-
-    dbus_message_iter_next(&entry);
-    dbus_message_iter_recurse(&entry, &ifaceIter);
-
-    Device deviceInfo{"",    "",    objPath, "",    -110,
-                      false, false, false,   false, -1};
-
-    while (dbus_message_iter_get_arg_type(&ifaceIter) == DBUS_TYPE_DICT_ENTRY) {
-      DBusMessageIter ifaceEntry, propsIter;
-      char *ifaceName;
-
-      dbus_message_iter_recurse(&ifaceIter, &ifaceEntry);
-      dbus_message_iter_get_basic(&ifaceEntry, &ifaceName);
-
-      dbus_message_iter_next(&ifaceEntry);
-      dbus_message_iter_recurse(&ifaceEntry, &propsIter);
-
-      if (HelperFunc::saferStrCmp(ifaceName, "org.bluez.Device1")) {
-        setDeviceProps(deviceInfo, propsIter);
-      } else if (HelperFunc::saferStrCmp(ifaceName, "org.bluez.Battery1")) {
-        std::string properties[] = {"Percentage"};
-        DBusMessageIter values[1];
-        DbusUtils::getProperties(propsIter, properties, 1, values);
-
-        if (dbus_message_iter_get_arg_type(&values[0]) == DBUS_TYPE_BYTE) {
-          int value;
-          dbus_message_iter_get_basic(&values[0], &value);
-          deviceInfo.batteryPer = value;
-        }
-      } else if (HelperFunc::saferStrCmp(ifaceName,
-                                         "org.bluez.MediaControl1")) {
-        std::string properties[] = {"Connected"};
-        DBusMessageIter values[1];
-        DbusUtils::getProperties(propsIter, properties, 1, values);
-
-        // For Connected
-        if (dbus_message_iter_get_arg_type(&values[0]) == DBUS_TYPE_BOOLEAN) {
-          dbus_bool_t value;
-          dbus_message_iter_get_basic(&values[0], &value);
-          deviceInfo.mediaConnected = value;
-        }
-      }
-
-      dbus_message_iter_next(&ifaceIter);
-    }
-
-    devices.insert({deviceInfo.addr, deviceInfo});
-    dbus_message_iter_next(&entIter);
-  }
-
   return 0;
 }
 
-std::unordered_map<std::string, Device> BluetoothManager::getDeviceList(){
-    std::lock_guard<std::mutex> lock(devicesMtx);
-    
-    return devices;
+std::unordered_map<std::string, Device> BluetoothManager::getDeviceList() {
+  std::lock_guard<std::mutex> lock(devicesMtx);
+
+  return devices;
 }
 
-int BluetoothManager::getPropertyVal(const char *prop) {
-  DBusMessage *msg = dbus_message_new_method_call(
-      "org.bluez", "/org/bluez/hci0", "org.freedesktop.DBus.Properties", "Get");
-  if (!msg) {
-    ctx->logger.LogError(TAG, "Failed to create a message.");
+int BluetoothManager::getPropertyBool(std::string prop, bool &result) {
+
+  try {
+    sdbus::Variant variant;
+    dbusProxy->callMethod(sdbus::MethodName{"Get"})
+        .onInterface(sdbus::InterfaceName{"org.freedesktop.DBus.Properties"})
+        .withArguments(std::string{"org.bluez.Adapter1"}, prop)
+        .storeResultsTo(variant);
+
+    result = variant.get<bool>();
+
+  } catch (const sdbus::Error &e) {
+    ctx->logger.LogError(TAG,
+                         "Failed to get property: " + std::string(e.what()));
     return -1;
   }
 
-  const char *iface = "org.bluez.Adapter1";
-
-  DBusMessageIter args;
-  dbus_message_iter_init_append(msg, &args);
-  dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &iface);
-  dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &prop);
-
-  DBusMessage *reply = dbus_connection_send_with_reply_and_block(
-      ctx->dbus.sysConn, msg, -1, &(ctx->dbus.sysErr));
-  if (!reply && dbus_error_is_set(&(ctx->dbus.sysErr))) {
-    std::string errMsg = "Failed to get a reply. ";
-    errMsg += ctx->dbus.sysErr.message;
-    ctx->logger.LogError(TAG, errMsg);
-    dbus_error_free(&ctx->dbus.sysErr);
-    return -1;
-  }
-  dbus_message_unref(msg);
-
-  DBusMessageIter rootIter, variant;
-
-  if (!dbus_message_iter_init(reply, &rootIter)) {
-    ctx->logger.LogError(TAG, "Reply has no arguments!");
-    return -1;
-  }
-
-  if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_VARIANT) {
-    ctx->logger.LogError(TAG, "Argument is not a variant!");
-    return -1;
-  }
-
-  dbus_message_iter_recurse(&rootIter, &variant);
-
-  if (dbus_message_iter_get_arg_type(&variant) == DBUS_TYPE_BOOLEAN) {
-    dbus_bool_t value;
-    dbus_message_iter_get_basic(&variant, &value);
-    return value;
-  } else {
-    ctx->logger.LogError(TAG, "Argument is not a boolean!");
-    return -1;
-  }
-
-  return -1;
+  return 0;
 }
 
 ResponseMessage BluetoothManager::connectDevice(const BtConnectRequest &req) {
@@ -541,34 +316,24 @@ ResponseMessage BluetoothManager::connectDevice(const BtConnectRequest &req) {
   logMsg += req.devPath;
   ctx->logger.LogInfo(TAG, logMsg);
 
-  DBusMessage *msg = dbus_message_new_method_call(
-      "org.bluez", req.devPath.data(), "org.bluez.Device1",
-      req.state ? "Connect" : "Disconnect");
-  if (!msg) {
-    resp.errMsg = "Failed to create a dbus message.";
-    ctx->logger.LogError(TAG, resp.errMsg);
+  try {
+    auto proxy =
+        sdbus::createProxy(*ctx->dbus.sysConn, sdbus::ServiceName{"org.bluez"},
+                           sdbus::ObjectPath{std::string(req.devPath)});
 
+    proxy->callMethod(sdbus::MethodName{req.state ? "Connect" : "Disconnect"})
+        .onInterface(sdbus::InterfaceName{"org.bluez.Device1"});
+
+    std::string successMsg = req.state ? "Connected" : "Disconnected";
+    successMsg += " to Device: ";
+    successMsg += req.devPath;
+    ctx->logger.LogInfo(TAG, successMsg);
+  } catch (const sdbus::Error &e) {
+    resp.errMsg =
+        "Failed to Connect/Disconnect to Device: " + std::string(e.what());
+    ctx->logger.LogError(TAG, resp.errMsg);
     return resp;
   }
-
-  DBusMessage *reply = dbus_connection_send_with_reply_and_block(
-      ctx->dbus.sysConn, msg, -1, &(ctx->dbus.sysErr));
-  if (!reply && dbus_error_is_set(&(ctx->dbus.sysErr))) {
-    resp.errMsg = "Failed to get a reply. ";
-    resp.errMsg += ctx->dbus.sysErr.message;
-    ctx->logger.LogError(TAG, resp.errMsg);
-    dbus_error_free(&ctx->dbus.sysErr);
-
-    return resp;
-  }
-
-  dbus_message_unref(msg);
-  dbus_message_ref(reply);
-
-  std::string successMsg = req.state ? "Connected" : "Disconnected";
-  successMsg += " to Device: ";
-  successMsg += req.devPath;
-  ctx->logger.LogInfo(TAG, successMsg);
 
   resp.success = true;
   return resp;
@@ -596,7 +361,7 @@ ResponseMessage BluetoothManager::trustDevice(const BtTrustRequest &req) {
   std::string path = std::string(req.devPath.substr(pos + 1));
   std::replace(path.begin(), path.end(), '_', ':');
 
-  const auto &devIt = devices.find(path.c_str());
+  const auto &devIt = devices.find(path);
   if (devIt == devices.end()) {
     resp.errMsg = "Device not found in Device List: ";
     resp.errMsg += req.devPath;
@@ -605,46 +370,25 @@ ResponseMessage BluetoothManager::trustDevice(const BtTrustRequest &req) {
     return resp;
   }
 
-  DBusMessage *msg =
-      dbus_message_new_method_call("org.bluez", req.devPath.data(),
-                                   "org.freedesktop.DBus.Properties", "Set");
-  if (!msg) {
-    resp.errMsg = "Failed to create a dbus message";
-    ctx->logger.LogError(TAG, resp.errMsg);
+  try {
+    auto proxy =
+        sdbus::createProxy(*ctx->dbus.sysConn, sdbus::ServiceName{"org.bluez"},
+                           sdbus::ObjectPath{std::string(req.devPath)});
 
+    proxy->callMethod(sdbus::MethodName{"Set"})
+        .onInterface(sdbus::InterfaceName{"org.freedesktop.DBus.Properties"})
+        .withArguments(std::string{"org.bluez.Device1"}, std::string{"Trusted"},
+                       sdbus::Variant(!devIt->second.trusted));
+
+    std::string successMsg = req.state ? "Trusted" : "Untrusted";
+    successMsg += " Device: ";
+    successMsg += req.devPath;
+    ctx->logger.LogInfo(TAG, successMsg);
+  } catch (const sdbus::Error &e) {
+    resp.errMsg = "Failed to Trust/Remove Device: " + std::string(e.what());
+    ctx->logger.LogError(TAG, resp.errMsg);
     return resp;
   }
-
-  const char *iface = "org.bluez.Device1";
-  const char *prop = "Trusted";
-  dbus_bool_t value = !devIt->second.trusted;
-  DBusMessageIter args, subargs;
-
-  dbus_message_iter_init_append(msg, &args);
-  dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &iface);
-  dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &prop);
-
-  dbus_message_iter_open_container(&args, DBUS_TYPE_VARIANT,
-                                   DBUS_TYPE_BOOLEAN_AS_STRING, &subargs);
-  dbus_message_iter_append_basic(&subargs, DBUS_TYPE_BOOLEAN, &value);
-  dbus_message_iter_close_container(&args, &subargs);
-
-  DBusMessage *reply = dbus_connection_send_with_reply_and_block(
-      ctx->dbus.sysConn, msg, -1, &(ctx->dbus.sysErr));
-  if (!reply && dbus_error_is_set(&(ctx->dbus.sysErr))) {
-    resp.errMsg = "Failed to get a reply. ";
-    resp.errMsg += ctx->dbus.sysErr.message;
-    ctx->logger.LogError(TAG, resp.errMsg);
-    dbus_error_free(&ctx->dbus.sysErr);
-    return resp;
-  }
-
-  dbus_message_unref(msg);
-  dbus_message_ref(reply);
-  std::string successMsg = req.state ? "Trusted" : "Untrusted";
-  successMsg += " Device: ";
-  successMsg += req.devPath;
-  ctx->logger.LogInfo(TAG, successMsg);
 
   resp.success = true;
   return resp;
@@ -656,115 +400,47 @@ ResponseMessage BluetoothManager::removeDevice(const BtRemoveRequest &req) {
   ctx->logger.LogInfo(TAG,
                       "Trying to Remove Device: " + std::string(req.devPath));
 
-  DBusMessage *msg = dbus_message_new_method_call(
-      "org.bluez", "/org/bluez/hci0", "org.bluez.Adapter1", "RemoveDevice");
-  if (!msg) {
-    resp.errMsg = "Failed to create a dbus message.";
-    ctx->logger.LogError(TAG, resp.errMsg);
+  try {
 
+    dbusProxy->callMethod(sdbus::MethodName{"RemoveDevice"})
+        .onInterface(sdbus::InterfaceName{"org.bluez.Adapter1"})
+        .withArguments(sdbus::ObjectPath{std::string(req.devPath)});
+
+    ctx->logger.LogInfo(TAG, "Removed Device: " + std::string(req.devPath));
+  } catch (const sdbus::Error &e) {
+    resp.errMsg = "Failed to Trust/Remove Device: " + std::string(e.what());
+    ctx->logger.LogError(TAG, resp.errMsg);
     return resp;
   }
-
-  DBusMessageIter args;
-  dbus_message_iter_init_append(msg, &args);
-  const char *path = req.devPath.data();
-  dbus_message_iter_append_basic(&args, DBUS_TYPE_OBJECT_PATH, &path);
-
-  DBusMessage *reply = dbus_connection_send_with_reply_and_block(
-      ctx->dbus.sysConn, msg, -1, &(ctx->dbus.sysErr));
-  if (!reply && dbus_error_is_set(&(ctx->dbus.sysErr))) {
-    resp.errMsg = "Failed to get a dbus reply.";
-    resp.errMsg += ctx->dbus.sysErr.message;
-    ctx->logger.LogError(TAG, resp.errMsg);
-    dbus_error_free(&ctx->dbus.sysErr);
-    return resp;
-  }
-
-  dbus_message_unref(msg);
-  dbus_message_ref(reply);
 
   resp.success = true;
   return resp;
 }
 
-unsigned char BluetoothManager::setDeviceProps(Device &dev,
-                                               DBusMessageIter &propsIter) {
-  std::string props[] = {"Name", "Address", "Connected", "Paired",
-                         "RSSI", "Trusted", "Icon"};
-  unsigned char propFlags = 0;
-  DBusMessageIter values[7];
-  DbusUtils::getProperties(propsIter, props, 7, values);
+void BluetoothManager::setDeviceProps(
+    Device &dev, const std::map<std::string, sdbus::Variant> &devData) {
 
-  // For Connected
-  if (props[2][0] == ' ' &&
-      dbus_message_iter_get_arg_type(&values[2]) == DBUS_TYPE_BOOLEAN) {
-    dbus_bool_t value;
-    dbus_message_iter_get_basic(&values[2], &value);
-    dev.connected = value;
-    propFlags |= DevicePropFlags::CONNECTED;
+  if (devData.contains("Name")) {
+    dev.name = devData.at("Name").get<std::string>();
   }
-
-  // For Device Name (Alias)
-  if (props[0][0] == ' ' &&
-      dbus_message_iter_get_arg_type(&values[0]) == DBUS_TYPE_STRING) {
-    char *value;
-    dbus_message_iter_get_basic(&values[0], &value);
-    dev.name = value;
-
-    propFlags |= DevicePropFlags::NAME;
+  if (devData.contains("Address")) {
+    dev.addr = devData.at("Address").get<std::string>();
   }
-
-  // For Address
-  if (props[1][0] == ' ' &&
-      dbus_message_iter_get_arg_type(&values[1]) == DBUS_TYPE_STRING) {
-    char *value;
-    dbus_message_iter_get_basic(&values[1], &value);
-    dev.addr = value;
-
-    propFlags |= DevicePropFlags::ADDRESS;
+  if (devData.contains("RSSI")) {
+    dev.rssi = devData.at("RSSI").get<int16_t>();
   }
-
-  // For Paired
-  if (props[3][0] == ' ' &&
-      dbus_message_iter_get_arg_type(&values[3]) == DBUS_TYPE_BOOLEAN) {
-    dbus_bool_t value;
-    dbus_message_iter_get_basic(&values[3], &value);
-    dev.paired = value;
-
-    propFlags |= DevicePropFlags::PAIRED;
+  if (devData.contains("Paired")) {
+    dev.paired = devData.at("Paired").get<bool>();
   }
-
-  // For RSSI
-  if (props[4][0] == ' ' &&
-      dbus_message_iter_get_arg_type(&values[4]) == DBUS_TYPE_INT16) {
-    dbus_int16_t value;
-    dbus_message_iter_get_basic(&values[4], &value);
-    dev.rssi = value;
-
-    propFlags |= DevicePropFlags::RSSI;
+  if (devData.contains("Trusted")) {
+    dev.trusted = devData.at("Trusted").get<bool>();
   }
-
-  // For Trusted
-  if (props[5][0] == ' ' &&
-      dbus_message_iter_get_arg_type(&values[5]) == DBUS_TYPE_BOOLEAN) {
-    dbus_bool_t value;
-    dbus_message_iter_get_basic(&values[5], &value);
-    dev.trusted = value;
-
-    propFlags |= DevicePropFlags::TRUSTED;
+  if (devData.contains("Connected")) {
+    dev.connected = devData.at("Connected").get<bool>();
   }
-
-  // For Device Icon/Type
-  if (props[6][0] == ' ' &&
-      dbus_message_iter_get_arg_type(&values[6]) == DBUS_TYPE_STRING) {
-    char *value;
-    dbus_message_iter_get_basic(&values[6], &value);
-    dev.deviceType = value;
-
-    propFlags |= DevicePropFlags::DEVICE_TYPE;
+  if (devData.contains("Icon")) {
+    dev.deviceType = devData.at("Icon").get<std::string>();
   }
-
-  return propFlags;
 }
 
 ResponseMessage BluetoothManager::handle(const BtRequest &req) {

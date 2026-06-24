@@ -1,8 +1,10 @@
 #include "header/module.hpp"
-#include "gdk/gdk.h"
-#include "glib-object.h"
-#include "glib.h"
-#include "gtk/gtk.h"
+#include "glibmm/main.h"
+#include "glibmm/priorities.h"
+#include "gtkmm/box.h"
+#include "gtkmm/eventcontrollerscroll.h"
+#include "gtkmm/gestureclick.h"
+#include "gtkmm/label.h"
 #include "modules/workspaces/hyprland/header/manager.hpp"
 #include "services/header/comm_bus.hpp"
 #include <algorithm>
@@ -12,70 +14,62 @@ HyprWSModule::HyprWSModule(AppContext *ctx, CommunicationBus *commBus,
                            HyprWSManager *hyprInstance)
     : hyprInstance(hyprInstance), logger(&ctx->logger), commBus(commBus) {}
 
-GtkWidget *HyprWSModule::setup(unsigned char monitorId) {
-  GtkWidget *mainBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
-  gtk_widget_set_hexpand(mainBox, true);
+Gtk::Box &HyprWSModule::setup(unsigned char monitorId) {
 
-  wsWid = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
-  GtkWidget *wdEvtBox = gtk_event_box_new();
-  gtk_container_add(GTK_CONTAINER(wdEvtBox), wsWid);
-  gtk_widget_set_margin_start(wdEvtBox, 15);
-  gtk_box_pack_start(GTK_BOX(mainBox), wdEvtBox, false, false, 0);
-  gtk_widget_add_events(wdEvtBox, GDK_SCROLL_MASK);
-  g_signal_connect(wdEvtBox, "scroll-event",
-                   G_CALLBACK(HyprWSModule::handleWSScroll), this);
+  mainBox.set_spacing(15);
+  mainBox.set_hexpand(true);
 
-  spWSWid = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 15);
-  gtk_widget_set_margin_start(spWSWid, 15);
-  gtk_box_pack_start(GTK_BOX(mainBox), spWSWid, false, false, 0);
+  wsBox.set_spacing(15);
+  wsBox.set_margin_start(15);
+
+  auto wsScroll = Gtk::EventControllerScroll::create();
+  wsScroll->set_flags(Gtk::EventControllerScroll::Flags::VERTICAL);
+  wsScroll->signal_scroll().connect(
+      [this](double, double dy) -> bool {
+        this->handleWSScroll(dy);
+        return false;
+      },
+      false);
+  wsBox.add_controller(wsScroll);
+  mainBox.append(wsBox);
+
+  spWSBox.set_spacing(15);
+  spWSBox.set_margin_start(15);
+  mainBox.append(spWSBox);
 
   this->monitorId = monitorId;
-  updateWorkspaces(commBus, hyprInstance, wsWid, spWSWid, monitorId);
-  hyprInstance->subscribe([this]() {
-    this->updateWorkspaces(this->commBus, this->hyprInstance, this->wsWid,
-                           this->spWSWid, this->monitorId);
-  });
+  updateWorkspaces();
+  hyprInstance->subscribe([this]() { this->updateWorkspaces(); });
 
   return mainBox;
 }
 
-void HyprWSModule::updateWorkspaces(CommunicationBus *commBus,
-                                    HyprWSManager *hyprInstance,
-                                    GtkWidget *wsBox, GtkWidget *spWSBox,
-                                    unsigned char monitorId) {
+void HyprWSModule::updateWorkspaces() {
 
   if (!hyprInstance->GetWorkspaces()) {
-
-    // Man... Circular Dependency protection could be pain sometime.... ;-;
-    auto data = new UpdateWSData{commBus, hyprInstance, wsBox, spWSBox, monitorId};
-    g_idle_add_full(G_PRIORITY_HIGH_IDLE, updateWorkspaceUI, data,
-                    (GDestroyNotify) nullptr);
+    Glib::signal_idle().connect_once([this] { this->updateWorkspaceUI(); },
+                                     Glib::PRIORITY_HIGH_IDLE);
   }
 }
 
-gboolean HyprWSModule::updateWorkspaceUI(gpointer data) {
-  UpdateWSData *upData = static_cast<UpdateWSData *>(data);
+void HyprWSModule::updateWorkspaceUI() {
   std::string txt = "";
 
-  GList *child = gtk_container_get_children(GTK_CONTAINER(upData->wsWid));
-  for (GList *iter = child; iter != nullptr; iter = iter->next) {
-    gtk_widget_destroy(GTK_WIDGET(iter->data));
+  while (auto child = wsBox.get_first_child()) {
+    wsBox.remove(*child);
   }
-  g_list_free(child);
 
-  child = gtk_container_get_children(GTK_CONTAINER(upData->spWSWid));
-  for (GList *iter = child; iter != nullptr; iter = iter->next) {
-    gtk_widget_destroy(GTK_WIDGET(iter->data));
+  while (auto child = spWSBox.get_first_child()) {
+    spWSBox.remove(*child);
   }
-  g_list_free(child);
 
-  for (auto workspace : upData->wsInstance->workspaces) {
+  for (auto workspace : hyprInstance->workspaces) {
     txt = workspace.second.name;
 
-    if (upData->monitorId != workspace.second.monitorId)
+    if (monitorId != workspace.second.monitorId)
       continue;
 
-    if (upData->wsInstance->activeWorkspaceId == workspace.first &&
+    if (hyprInstance->activeWorkspaceId == workspace.first &&
         workspace.first >= 0) {
       txt = "[ " + txt + " ]";
     } else if (workspace.first < 0 && txt.length() > 0) {
@@ -85,81 +79,54 @@ gboolean HyprWSModule::updateWorkspaceUI(gpointer data) {
 
     txt = "<b>" + txt + "</b>";
 
-    GtkWidget *evtBox = gtk_event_box_new();
-    GtkWidget *wsLabel = gtk_label_new(nullptr);
-    gtk_label_set_markup(GTK_LABEL(wsLabel), txt.c_str());
-    gtk_container_add(GTK_CONTAINER(evtBox), wsLabel);
+    Gtk::Label wsLbl;
+    wsLbl.set_markup(txt);
 
-    ChgWSArgs *args = g_new0(ChgWSArgs, 1);
-    args->commBus = upData->commBus;
-    args->wsId = workspace.first;
+    auto evtBox = Gtk::GestureClick::create();
+    wsLbl.add_controller(evtBox);
 
     if (workspace.first < 0) {
-      gtk_widget_set_tooltip_markup(
-          wsLabel, ("<b>" + workspace.second.name + "</b>").c_str());
-      gtk_box_pack_start(GTK_BOX(upData->spWSWid), evtBox, false, false, 0);
+      wsLbl.set_tooltip_markup("<b>" + workspace.second.name + "</b>");
+      spWSBox.append(wsLbl);
 
-      args->name = workspace.second.name;
-      g_signal_connect_data(evtBox, "button-press-event",
-                            G_CALLBACK(HyprWSModule::chgSPWS), args,
-                            (GClosureNotify)g_free, (GConnectFlags)0);
+      evtBox->signal_pressed().connect(
+          [this, wsId = workspace.first, wsName = workspace.second.name](int, int, double) {
+            chgSPWS(wsId, wsName);
+          });
     } else {
-      gtk_box_pack_start(GTK_BOX(upData->wsWid), evtBox, false, false, 0);
+      wsBox.append(wsLbl);
 
-      g_signal_connect_data(evtBox, "button-press-event",
-                            G_CALLBACK(HyprWSModule::chgWS), args,
-                            (GClosureNotify)g_free, (GConnectFlags)0);
+      evtBox->signal_pressed().connect(
+          [this, wsId = workspace.first](int, int, double) { chgWS(wsId); });
     }
-    gtk_widget_show_all(upData->wsWid);
-    gtk_widget_show_all(upData->spWSWid);
   }
-
-  delete upData;
-  return G_SOURCE_REMOVE;
 }
 
-void HyprWSModule::chgWS([[maybe_unused]] GtkWidget *widget,
-                         [[maybe_unused]] GdkEvent *e, gpointer user_data) {
-  ChgWSArgs *args = static_cast<ChgWSArgs *>(user_data);
-
-  args->commBus->SendMessage(
+void HyprWSModule::chgWS(unsigned int wsId) {
+  commBus->SendMessage(
       HyprSwitchWSRequest{
-          .wsId = args->wsId,
-
-          .correlationId = args->commBus->GetNewCorId(),
+          wsId,
+          ModuleType::HYPR,
+          commBus->GetNewCorId(),
       },
       Priority::HIGH);
 }
 
-void HyprWSModule::handleWSScroll([[maybe_unused]] GtkWidget *widget,
-                                  GdkEventScroll *e, gpointer user_data) {
-  HyprWSModule *self = static_cast<HyprWSModule *>(user_data);
-
-  if (e->direction == GDK_SCROLL_UP) {
-    self->commBus->SendMessage(
-        HyprMoveWSRequest{.monitorId = self->monitorId,
-                          .forw = false,
-
-                          .correlationId = self->commBus->GetNewCorId()},
-        Priority::IMMEDIATE);
-  } else if (e->direction == GDK_SCROLL_DOWN) {
-    self->commBus->SendMessage(
-        HyprMoveWSRequest{.monitorId = self->monitorId,
-                          .forw = true,
-
-                          .correlationId = self->commBus->GetNewCorId()},
-        Priority::IMMEDIATE);
+void HyprWSModule::handleWSScroll(double dy) {
+  if (dy < 0) {
+    commBus->SendMessage(HyprMoveWSRequest{monitorId, false, ModuleType::HYPR,
+                                           commBus->GetNewCorId()},
+                         Priority::IMMEDIATE);
+  } else if (dy > 0) {
+    commBus->SendMessage(HyprMoveWSRequest{monitorId, true, ModuleType::HYPR,
+                                           commBus->GetNewCorId()},
+                         Priority::IMMEDIATE);
   }
 }
 
-void HyprWSModule::chgSPWS([[maybe_unused]] GtkWidget *widget,
-                           [[maybe_unused]] GdkEvent *e, gpointer user_data) {
-  ChgWSArgs *args = static_cast<ChgWSArgs *>(user_data);
+void HyprWSModule::chgSPWS(unsigned int id, std::string name) {
 
-  args->commBus->SendMessage(
-      HyprSwitchSPWSRequest{.wsId = args->wsId,
-                            .name = args->name,
-
-                            .correlationId = args->commBus->GetNewCorId()},
+  commBus->SendMessage(
+      HyprSwitchSPWSRequest{id, name, ModuleType::HYPR, commBus->GetNewCorId()},
       Priority::IMMEDIATE);
 }

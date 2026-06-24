@@ -1,45 +1,70 @@
 #pragma once
 
+#include "giomm/liststore.h"
+#include "glibmm/object.h"
+#include "glibmm/refptr.h"
+#include "gtkmm/button.h"
+#include "gtkmm/dropdown.h"
+#include "gtkmm/scale.h"
+#include "gtkmm/signallistitemfactory.h"
 #include "manager.hpp"
 #include "services/header/comm_bus.hpp"
 #include "services/header/context.hpp"
+#include "sigc++/connection.h"
+#include <cstdint>
+#include <vector>
+
+class PulseAudioDeviceObject : public Glib::Object {
+public:
+  std::string devName;
+  PulseAudioDevice data;
+
+  static Glib::RefPtr<PulseAudioDeviceObject>
+  create(const std::string &devName, const PulseAudioDevice &data);
+
+  PulseAudioDeviceObject(const std::string &devName,
+                         const PulseAudioDevice &data)
+      : devName(devName), data(data) {}
+};
 
 class PulseAudioWindow {
   AppContext *ctx;
   PulseAudioManager *manager;
   CommunicationBus *commBus;
 
-  GtkWidget *outMuteBtn;
-  GtkWidget *outIcon;
-  GtkWidget *outScale;
-  GtkWidget *outDropdown;
-  GtkListStore *outStore;
+  Gtk::Box mainBox;
+  Glib::RefPtr<Gtk::SignalListItemFactory> devFactory;
 
-  GtkWidget *inMuteBtn;
-  GtkWidget *inIcon;
-  GtkWidget *inScale;
-  GtkWidget *inDropdown;
-  GtkListStore *inStore;
+  Gtk::Button outMuteBtn;
+  Gtk::Scale outScale;
+  Gtk::DropDown outDropdown;
+  sigc::connection outPropChgConn;
+  Glib::RefPtr<Gio::ListStore<PulseAudioDeviceObject>> outStore;
 
-  void updateControls(bool mute, const std::vector<uint32_t> &volume,
-                      GtkWidget *icon, GtkWidget *scale);
+  Gtk::Button inMuteBtn;
+  Gtk::Scale inScale;
+  Gtk::DropDown inDropdown;
+  sigc::connection inPropChgConn;
+  Glib::RefPtr<Gio::ListStore<PulseAudioDeviceObject>> inStore;
 
-  static void chgDevice(GtkComboBox *combo, gpointer data);
-  static void handleChgVolume(GtkRange *range, GtkScrollType *scroll,
-                              gdouble value, gpointer user_data);
-  static void handleToggleMute(GtkWidget *widget, gpointer data);
+  void updateControls(bool mute, bool isOutput,
+                      const std::vector<uint32_t> &volumes, Gtk::Button &btn,
+                      Gtk::Scale &scale);
+
+  void chgDevice(bool isOutput);
+  void handleChgVolume(double value, bool isOutput);
+
+  // Device Factory Callbacks
+  void onFactorySetup(const Glib::RefPtr<Gtk::ListItem>& list_item);
+  void onFactoryBind(const Glib::RefPtr<Gtk::ListItem>& list_item);
+  
 
 public:
-  GdkPixbuf *outMuteIcon;
-  GdkPixbuf *outUnmuteIcon;
-  GdkPixbuf *inMuteIcon;
-  GdkPixbuf *inUnmuteIcon;
-
   PulseAudioWindow(AppContext *ctx, CommunicationBus *commBus,
                    PulseAudioManager *manager);
-  void setupIcons();
   void init();
   void update();
 
-  void toggleMute(GtkWidget *widget, gpointer data, bool isOutput);
+  // Also Used by CLI controller
+  void toggleMute(bool isOutput);
 };

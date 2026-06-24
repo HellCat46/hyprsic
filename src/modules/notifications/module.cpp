@@ -1,31 +1,21 @@
 #include "header/module.hpp"
-#include <cstring>
 
 #define TAG "NotificationModule"
 
 NotificationModule::NotificationModule(AppContext *ctx,
                                        CommunicationBus *commBus,
-                                       NotificationManager *notifInstance,
-                                       NotificationWindow *window)
-    : manager(notifInstance), window(window), ctx(ctx), commBus(commBus) {}
+                                       NotificationManager *notifInstance)
+    : manager(notifInstance), ctx(ctx),commBus(commBus) {}
 
-GtkWidget *NotificationModule::setup() {
-  GtkWidget *notifEBox = gtk_event_box_new();
-  GtkWidget *notif = gtk_label_new("");
-  gtk_container_add(GTK_CONTAINER(notifEBox), notif);
-  gtk_widget_set_margin_start(notifEBox, 10);
+Gtk::Box &NotificationModule::setup() {
+  mainBox.append(mainIcon);
+  mainBox.append(mainLbl);
 
-  g_signal_connect(notifEBox, "button-press-event",
-                   G_CALLBACK(NotificationModule::chgVisibiltyWin), this);
-
-  return notifEBox;
+  update();
+  return mainBox;
 }
 
-void NotificationModule::chgVisibiltyWin([[maybe_unused]] GtkWidget *widget,
-                                         [[maybe_unused]] GdkEvent *e,
-                                         gpointer user_data) {
-  NotificationModule *self = static_cast<NotificationModule *>(user_data);
-
-  self->window->update();
-  self->ctx->showCtrlWindow("notifications", 420, 400);
+void NotificationModule::update() {
+    mainIcon.set_from_icon_name(manager->dnd ? "notifications-disabled-symbolic" : "preferences-system-notifications-symbolic");
+    mainLbl.set_text(std::to_string(ctx->dbManager.notifList.size()));
 }

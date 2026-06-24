@@ -1,6 +1,6 @@
 #pragma once
 
-#include "gtk/gtk.h"
+#include "gtkmm/box.h"
 #include "manager.hpp"
 #include "services/header/comm_bus.hpp"
 #include <cstdint>
@@ -28,20 +28,18 @@ class StatusNotifierModule {
   StatusNotifierManager *snManager;
   CommunicationBus *commBus;
 
-  GtkWidget *sniBox;
+  Gtk::Box sniBox;
   std::map<std::string, SNIApp> sniApps;
+
+  void remove(std::string servicePath);
+
+  void handleContextMenuOpen(std::string servicePath);
+  void handleEvtButtonPress(std::string servicePath, uint32_t evtIdx, uint32_t timestamp);
 
 public:
   StatusNotifierModule(AppContext *ctx, CommunicationBus *commBus,
                        StatusNotifierManager *snManager);
 
-  GtkWidget *setup();
+  Gtk::Box &setup();
   void update();
-  static void remove(std::string servicePath,
-                     std::map<std::string, SNIApp> *sniApps, GtkWidget *sniBox);
-
-  static void handleContextMenuOpen(GtkWidget *widget, GdkEventButton *event,
-                                    gpointer user_data);
-  static void handleEvtButtonPress(GtkWidget *widget, GdkEventButton *event,
-                                   gpointer user_data);
 };

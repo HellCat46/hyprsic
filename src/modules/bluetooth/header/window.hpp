@@ -1,7 +1,13 @@
 #pragma once
 
+#include "gtkmm/box.h"
+#include "gtkmm/button.h"
+#include "gtkmm/label.h"
+#include "gtkmm/listbox.h"
+#include "gtkmm/switch.h"
 #include "manager.hpp"
 #include "services/header/comm_bus.hpp"
+#include "services/header/comm_types.hpp"
 #include "services/header/context.hpp"
 
 struct FuncArgs {
@@ -16,25 +22,26 @@ class BluetoothWindow {
   BluetoothManager *manager;
   CommunicationBus *commBus;
 
-  GtkWidget *powerBtn;
-  GtkWidget *scanBtn;
-  GtkWidget *menuBox;
-  GtkWidget *devBox;
+  Gtk::Switch powerBtn;
+  Gtk::Button scanBtn;
+  Gtk::Box menuBox;
+  Gtk::Box devBox;
 
-  GtkWidget *availDevTitle;
-  GtkWidget *availDevList;
-  GtkWidget *pairedDevTitle;
-  GtkWidget *pairedDevList;
+  Gtk::Label availDevTitle;
+  Gtk::ListBox availDevList;
+  Gtk::Label pairedDevTitle;
+  Gtk::ListBox pairedDevList;
 
-  void addDeviceEntry(const Device &dev, GtkWidget *parentBox);
-  static void FreeArgs(gpointer data, GClosure *closure);
+  void addDeviceEntry(const Device &dev, Gtk::ListBox& listBox);
 
-  static void handleDiscovery(GtkWidget *widget, gpointer user_data);
-  static void handlePower(GtkSwitch *widget, gboolean state,
-                          gpointer user_data);
-  static void handleDeviceConnect(GtkWidget *widget, gpointer user_data);
-  static void handleDeviceTrust(GtkWidget *widget, gpointer user_data);
-  static void handleDeviceRemove(GtkWidget *widget, gpointer user_data);
+  void handleDiscovery();
+  void handlePower(bool state);
+  void handleDeviceConnect(bool state, std::string devIfacePath);
+  void handleDeviceTrust(bool state, std::string devIfacePath);
+  void handleDeviceRemove(std::string devIfacePath);
+  
+  // Communication Bus Response
+  void handleResponse(ResponseMessage);
 
 public:
   BluetoothWindow(AppContext *ctx, CommunicationBus *commBus,

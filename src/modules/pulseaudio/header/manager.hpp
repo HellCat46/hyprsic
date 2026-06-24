@@ -20,28 +20,32 @@ struct PulseAudioDevice {
 };
 
 struct PASetVolumeRequest {
-    std::string devName;
-    bool isOutput;
-    uint32_t volume;
-    
-    uint64_t correlationId;
+  std::string devName;
+  bool isOutput;
+  uint32_t volume;
+
+  ModuleType moduleType;
+  uint64_t correlationId;
 };
 
 struct PAToggleMuteRequest {
-    std::string devName;
-    bool isOutput;
-    
-    uint64_t correlationId;
+  std::string devName;
+  bool isOutput;
+
+  ModuleType moduleType;
+  uint64_t correlationId;
 };
 
 struct PAUpdateDefDeviceRequest {
-    std::string devName;
-    bool isOutput;
-    
-    uint64_t correlationId;
+  std::string devName;
+  bool isOutput;
+
+  ModuleType moduleType;
+  uint64_t correlationId;
 };
 
-using PARequest = std::variant<PASetVolumeRequest, PAToggleMuteRequest, PAUpdateDefDeviceRequest>;
+using PARequest = std::variant<PASetVolumeRequest, PAToggleMuteRequest,
+                               PAUpdateDefDeviceRequest>;
 class PulseAudioManager {
   AppContext *ctx;
   pa_context *pulseCtx;
@@ -58,10 +62,9 @@ class PulseAudioManager {
                                  const pa_source_info *info, int eol,
                                  void *data);
 
-  ResponseMessage setVolume(const PASetVolumeRequest& req);
-  ResponseMessage toggleMute(const PAToggleMuteRequest& req);
-  ResponseMessage updateDefDevice(const PAUpdateDefDeviceRequest& req);
-
+  ResponseMessage setVolume(const PASetVolumeRequest &req);
+  ResponseMessage toggleMute(const PAToggleMuteRequest &req);
+  ResponseMessage updateDefDevice(const PAUpdateDefDeviceRequest &req);
 
 public:
   void updateDevices(); // Only for Main Manager Thread Use
@@ -69,8 +72,8 @@ public:
 
   std::string defOutput, defInput;
   std::map<std::string, PulseAudioDevice> outDevs, inDevs;
-  
-  ResponseMessage handle(const PARequest& msg);
+
+  ResponseMessage handle(const PARequest &msg);
 
   ~PulseAudioManager();
 };

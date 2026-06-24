@@ -1,0 +1,11 @@
+CompileFlags:
+  Remove:
+    - -mfpmath=sse
+    - -msse
+    - -msse2
+  Add:
+    - -Wno-builtin-redefinition
+
+Diagnostics:
+  Suppress:
+    - builtin_definition

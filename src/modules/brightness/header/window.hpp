@@ -1,5 +1,9 @@
 #pragma once
 
+#include "gtkmm/adjustment.h"
+#include "gtkmm/box.h"
+#include "gtkmm/label.h"
+#include "gtkmm/scale.h"
 #include "manager.hpp"
 #include "services/header/comm_bus.hpp"
 #include "services/header/context.hpp"
@@ -9,8 +13,12 @@ class BrightnessWindow {
   BrightnessManager *manager;
   CommunicationBus *commBus;
 
-  GtkWidget *winBox;
-  GtkAdjustment *adjWid;
+  Gtk::Box winBox;
+  Glib::RefPtr<Gtk::Adjustment> adjWid;
+  Gtk::Scale scale;
+  Gtk::Label lbl;
+
+  void handleScaleChange(double value);
 
 public:
   BrightnessWindow(AppContext *ctx, CommunicationBus *commBus,
@@ -18,6 +26,4 @@ public:
   void init();
   void update();
 
-  static void handleScaleChange(GtkRange *range, GtkScrollType *scroll,
-                                gdouble value, gpointer data);
-};
+ };

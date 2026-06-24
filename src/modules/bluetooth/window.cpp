@@ -1,7 +1,15 @@
 #include "header/window.hpp"
-#include "glib-object.h"
+#include "gtkmm/box.h"
+#include "gtkmm/button.h"
+#include "gtkmm/enums.h"
+#include "gtkmm/label.h"
+#include "gtkmm/listboxrow.h"
+#include "gtkmm/object.h"
+#include "gtkmm/scrolledwindow.h"
+#include "gtkmm/switch.h"
 #include "modules/bluetooth/header/manager.hpp"
-
+#include "sigc++/adaptors/bind.h"
+#include "sigc++/functors/mem_fun.h"
 #define TAG "BluetoothWindow"
 
 BluetoothWindow::BluetoothWindow(AppContext *ctx, CommunicationBus *commBus,
@@ -9,104 +17,100 @@ BluetoothWindow::BluetoothWindow(AppContext *ctx, CommunicationBus *commBus,
     : ctx(ctx), manager(manager), commBus(commBus) {}
 
 void BluetoothWindow::init() {
-  menuBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  menuBox.set_orientation(Gtk::Orientation::VERTICAL);
 
   // Navigation Box with Close Button
-  GtkWidget *navBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-  gtk_box_pack_start(GTK_BOX(menuBox), navBox, false, false, 0);
-  gtk_widget_set_margin_bottom(navBox, 10);
+  Gtk::Box navBox{Gtk::Orientation::HORIZONTAL, 5};
+  menuBox.append(navBox);
+  navBox.set_margin_bottom(10);
 
   // Items in Nav Bar
-  GtkWidget *title = gtk_label_new(NULL);
-  gtk_label_set_markup(GTK_LABEL(title), "<big><b>Bluetooth Manager</b></big>");
-  gtk_label_set_xalign(GTK_LABEL(title), 0);
-  gtk_box_pack_start(GTK_BOX(navBox), title, false, true, 0);
+  Gtk::Label title;
+  title.set_markup("<big><b>Bluetooth Manager</b></big>");
+  title.set_xalign(0);
+  title.set_hexpand(true);
+  navBox.append(title);
 
-  scanBtn = gtk_button_new_with_label(manager->discovering ? "Stop" : "Scan");
-  gtk_box_pack_end(GTK_BOX(navBox), scanBtn, false, false, 0);
-  g_signal_connect(scanBtn, "clicked", G_CALLBACK(handleDiscovery), this);
+  scanBtn.set_label(manager->discovering ? "Stop" : "Scan");
+  navBox.append(scanBtn);
+  scanBtn.signal_clicked().connect(
+      sigc::mem_fun(*this, &BluetoothWindow::handleDiscovery));
 
   // Top Box with Power and Scan Buttons
-  GtkWidget *topBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-  gtk_box_pack_start(GTK_BOX(menuBox), topBox, false, false, 0);
+  Gtk::Box topBox{Gtk::Orientation::HORIZONTAL, 5};
+  menuBox.append(topBox);
 
   // Power Toggle
-  GtkWidget *powerBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-  GtkWidget *powerLbl = gtk_label_new(nullptr);
-  gtk_label_set_markup(GTK_LABEL(powerLbl), "<b>Power</b>");
-  gtk_widget_set_halign(powerLbl, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(powerBox), powerLbl, false, false, 0);
+  Gtk::Box powerBox{Gtk::Orientation::HORIZONTAL, 5};
+  Gtk::Label powerLbl;
+  powerLbl.set_markup("<b>Power</b>");
+  powerLbl.set_halign(Gtk::Align::START);
+  powerLbl.set_hexpand(true);
+  powerBox.append(powerLbl);
 
-  powerBtn = gtk_switch_new();
-  gtk_switch_set_state(GTK_SWITCH(powerBtn), manager->power);
-  gtk_box_pack_end(GTK_BOX(topBox), powerBtn, false, false, 0);
-  gtk_box_pack_start(GTK_BOX(topBox), powerBox, false, false, 0);
-  g_signal_connect(powerBtn, "state-set", G_CALLBACK(handlePower), this);
+  
+  
+  powerBtn.set_active(manager->power);
+  powerBtn.set_state(manager->power);
+  powerBtn.signal_state_set().connect(
+      [this](bool state) -> bool {
+        this->handlePower(state);
+        return false;
+      },
+      false);
+  powerBox.append(powerBtn);
+  topBox.append(powerBox);
 
-  devBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-  gtk_box_pack_start(GTK_BOX(menuBox), devBox, false, false, 0);
+  devBox.set_orientation(Gtk::Orientation::VERTICAL);
+  devBox.set_spacing(5);
+  menuBox.append(devBox);
 
   // Device List Sections
-  pairedDevTitle = gtk_label_new(nullptr);
-  gtk_label_set_markup(GTK_LABEL(pairedDevTitle),
-                       "<b><u>Paired Devices:</u></b>");
-  gtk_widget_set_halign(pairedDevTitle, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(devBox), pairedDevTitle, false, false, 0);
+  pairedDevTitle.set_markup("<b><u>Paired Devices:</u></b>");
+  pairedDevTitle.set_halign(Gtk::Align::START);
+  devBox.append(pairedDevTitle);
+  devBox.append(pairedDevList);
 
-  pairedDevList = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-  gtk_box_pack_start(GTK_BOX(devBox), pairedDevList, false, false, 0);
+  availDevTitle.set_markup("<b><u>Available Devices:</u></b>");
+  availDevTitle.set_halign(Gtk::Align::START);
+  devBox.append(availDevTitle);
 
-  availDevTitle = gtk_label_new(nullptr);
-  gtk_label_set_markup(GTK_LABEL(availDevTitle),
-                       "<b><u>Available Devices:</u></b>");
-  gtk_widget_set_halign(availDevTitle, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(devBox), availDevTitle, false, false, 0);
+  Gtk::ScrolledWindow availDevScroll;
+  availDevScroll.set_policy(Gtk::PolicyType::NEVER, Gtk::PolicyType::AUTOMATIC);
+  availDevScroll.set_size_request(200, 150);
 
-  GtkWidget *availDevScroll = gtk_scrolled_window_new(nullptr, nullptr);
-  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(availDevScroll),
-                                 GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
-  gtk_widget_set_size_request(availDevScroll, 200, 150);
-  availDevList = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-  gtk_container_add(GTK_CONTAINER(availDevScroll), availDevList);
-  gtk_box_pack_start(GTK_BOX(devBox), availDevScroll, false, false, 0);
+  availDevScroll.set_child(availDevList);
+  devBox.append(availDevScroll);
 
-  gtk_widget_show_all(menuBox);
+  pairedDevTitle.hide();
+  pairedDevList.hide();
+  availDevTitle.hide();
+  availDevList.hide();
 
-  gtk_widget_hide(pairedDevTitle);
-  gtk_widget_hide(pairedDevList);
-  gtk_widget_hide(availDevTitle);
-  gtk_widget_hide(availDevList);
+  devBox.set_margin_top(20);
+  menuBox.set_margin_top(5);
+  menuBox.set_margin_bottom(5);
+  menuBox.set_margin_start(10);
+  menuBox.set_margin_end(10);
 
-  gtk_widget_set_margin_top(devBox, 20);
-  gtk_widget_set_margin_top(menuBox, 5);
-  gtk_widget_set_margin_bottom(menuBox, 5);
-  gtk_widget_set_margin_start(menuBox, 10);
-  gtk_widget_set_margin_end(menuBox, 10);
-
-  ctx->addModule(menuBox, "bluetooth");
   update(true);
+  ctx->addModule(menuBox, "bluetooth");
 }
 
 void BluetoothWindow::update(bool force) {
-  if (!gtk_widget_get_visible(menuBox) && !force)
+  if (!menuBox.get_visible() && !force)
     return;
 
-  GList *children = gtk_container_get_children(GTK_CONTAINER(availDevList));
-  for (GList *iter = children; iter != nullptr; iter = iter->next) {
-    gtk_widget_destroy(GTK_WIDGET(iter->data));
-  }
-  g_list_free(children);
+  powerBtn.set_active(manager->power);
+  powerBtn.set_state(manager->power);
 
-  children = gtk_container_get_children(GTK_CONTAINER(pairedDevList));
-  for (GList *iter = children; iter != nullptr; iter = iter->next) {
-    gtk_widget_destroy(GTK_WIDGET(iter->data));
-  }
-  g_list_free(children);
+  availDevList.remove_all();
+  pairedDevList.remove_all();
 
   // Repopulate Device List
   int pairedDevs = 0, availDevs = 0;
   auto devices = manager->getDeviceList();
-  
+
   if (devices.size() > 0) {
     for (auto [_, device] : devices) {
 
@@ -125,30 +129,31 @@ void BluetoothWindow::update(bool force) {
   }
 
   if (pairedDevs > 0) {
-    gtk_widget_show(pairedDevTitle);
-    gtk_widget_show(pairedDevList);
+    pairedDevTitle.show();
+    pairedDevList.show();
   } else {
-    gtk_widget_hide(pairedDevTitle);
-    gtk_widget_hide(pairedDevList);
+    pairedDevTitle.hide();
+    pairedDevList.hide();
   }
 
   if (availDevs > 0) {
-    gtk_widget_show(availDevTitle);
-    gtk_widget_show(availDevList);
+    availDevTitle.show();
+    availDevList.show();
   } else {
-    gtk_widget_hide(availDevTitle);
-    gtk_widget_hide(availDevList);
+    availDevTitle.hide();
+    availDevList.hide();
   }
 }
 
-void BluetoothWindow::addDeviceEntry(const Device &dev, GtkWidget *parentBox) {
-
-  GtkWidget *devSection = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+void BluetoothWindow::addDeviceEntry(const Device &dev, Gtk::ListBox &listBox) {
+  Gtk::Box devItem{Gtk::Orientation::HORIZONTAL, 5};
+  devItem.set_margin_bottom(5);
+  devItem.set_margin_top(5);
 
   // Device Label
-  std::string devLabel = dev.name.length() > 0 ? dev.name : dev.addr;
-  if (devLabel.size() > 20) {
-    devLabel = devLabel.substr(0, 17) + "...";
+  std::string devLblStr = dev.name.length() > 0 ? dev.name : dev.addr;
+  if (devLblStr.size() > 20) {
+    devLblStr = devLblStr.substr(0, 17) + "...";
   }
 
   // Tooltip Info
@@ -159,96 +164,71 @@ void BluetoothWindow::addDeviceEntry(const Device &dev, GtkWidget *parentBox) {
     devTooltip += "\nSignal Strength: " + std::to_string(dev.rssi) + " dBm";
 
   // Adding Label and Tooltip
-  GtkWidget *devLabelWid = gtk_label_new(devLabel.c_str());
-  gtk_box_pack_start(GTK_BOX(devSection), devLabelWid, false, false, 2);
-  gtk_widget_set_tooltip_text(devLabelWid, devTooltip.c_str());
+  Gtk::Label devLbl{devLblStr};
+  devLbl.set_xalign(0);
+  devLbl.set_tooltip_text(devTooltip);
+  devLbl.set_hexpand(true);
+  devItem.append(devLbl);
 
   // Only Shown for Paired Devices
   if (dev.paired) {
     // Device Unpair Button
-    GtkWidget *devRemoveBtn = gtk_button_new_with_label("✖");
-    gtk_box_pack_end(GTK_BOX(devSection), devRemoveBtn, false, false, 2);
-    gtk_widget_set_tooltip_text(devRemoveBtn, "Remove Device");
-
-    // Connect Signal
-    FuncArgs *rmvArgs = g_new0(FuncArgs, 1);
-    rmvArgs->devIfacePath = g_strdup(dev.path.c_str());
-    rmvArgs->commBus = commBus;
-    rmvArgs->ctx = ctx;
-    g_signal_connect_data(devRemoveBtn, "clicked",
-                          G_CALLBACK(BluetoothWindow::handleDeviceRemove),
-                          rmvArgs, (GClosureNotify)FreeArgs, (GConnectFlags)0);
+    auto devRmvBtn = Gtk::make_managed<Gtk::Button>("✖");
+    devRmvBtn->set_tooltip_text("Remove Device");
+    devItem.append(*devRmvBtn);
+    devRmvBtn->signal_clicked().connect(sigc::bind(
+        sigc::mem_fun(*this, &BluetoothWindow::handleDeviceRemove), dev.path));
 
     // Device Trust Button
-    GtkWidget *devTrustBtn = gtk_button_new_with_label("");
-    gtk_box_pack_end(GTK_BOX(devSection), devTrustBtn, false, false, 2);
-    gtk_widget_set_tooltip_text(devTrustBtn, dev.trusted ? "Untrust Device"
-                                                         : "Trust Device");
-
-    // Connect Signal
-    FuncArgs *trustArgs = g_new0(FuncArgs, 1);
-    trustArgs->devIfacePath = g_strdup(dev.path.c_str());
-    trustArgs->state = !dev.trusted;
-    trustArgs->commBus = commBus;
-    trustArgs->ctx = ctx;
-    g_signal_connect_data(
-        devTrustBtn, "clicked", G_CALLBACK(BluetoothWindow::handleDeviceTrust),
-        trustArgs, (GClosureNotify)FreeArgs, (GConnectFlags)0);
+    auto devTrustBtn = Gtk::make_managed<Gtk::Button>("");
+    devTrustBtn->set_tooltip_text(dev.trusted ? "Untrust Device"
+                                             : "Trust Device");
+    devItem.append(*devTrustBtn);
+    devTrustBtn->signal_clicked().connect(
+        sigc::bind(sigc::mem_fun(*this, &BluetoothWindow::handleDeviceTrust),
+                   !dev.trusted, dev.path));
   }
 
   // Device Connect Button Connect Icon
-  GtkWidget *devConnBtn = gtk_button_new_with_label("");
-  gtk_box_pack_end(GTK_BOX(devSection), devConnBtn, false, false, 2);
-  gtk_widget_set_tooltip_text(devConnBtn, dev.connected ? "Disconnect Device"
-                                                        : "Connect Device");
+  auto devConnBtn = Gtk::make_managed<Gtk::Button>("");
+  devConnBtn->set_tooltip_text(dev.connected ? "Disconnect Device"
+                                            : "Connect Device");
+  devItem.append(*devConnBtn);
+  devConnBtn->signal_clicked().connect(
+      sigc::bind(sigc::mem_fun(*this, &BluetoothWindow::handleDeviceConnect),
+                 !dev.connected, dev.path));
 
-  // Connect Signal
-  FuncArgs *args = new FuncArgs();
-  args->devIfacePath = dev.path;
-  args->state = !dev.connected;
-  args->commBus = commBus;
-  args->ctx = ctx;
-  g_signal_connect_data(devConnBtn, "clicked",
-                        G_CALLBACK(BluetoothWindow::handleDeviceConnect), args,
-                        (GClosureNotify)FreeArgs, (GConnectFlags)0);
+  auto row = Gtk::make_managed<Gtk::ListBoxRow>();
+  row->set_child(devItem);
 
-  gtk_box_pack_start(GTK_BOX(parentBox), devSection, false, false, 2);
-  gtk_widget_show_all(devSection);
+  listBox.append(*row);
 }
 
-void BluetoothWindow::handleDiscovery([[maybe_unused]] GtkWidget *widget,
-                                      gpointer user_data) {
-  BluetoothWindow *self = static_cast<BluetoothWindow *>(user_data);
+void BluetoothWindow::handleDiscovery() {
 
-  if (self->manager->discovering) {
-    self->ctx->logger.LogInfo(TAG, "Stopping Bluetooth Discovery.");
+  if (manager->discovering) {
+    ctx->logger.LogInfo(TAG, "Stopping Bluetooth Discovery.");
 
-    self->commBus->SendMessage(
-        BtSwitchDiscoveryRequest{.on = false,
-                                 .correlationId = self->commBus->GetNewCorId()},
-        Priority::LOW);
+    commBus->SendMessage(BtSwitchDiscoveryRequest{false, ModuleType::BLUETOOTH,
+                                                  commBus->GetNewCorId()},
+                         Priority::LOW);
   } else {
-    self->ctx->logger.LogInfo(TAG, "Starting Bluetooth Discovery.");
+    ctx->logger.LogInfo(TAG, "Starting Bluetooth Discovery.");
 
-    self->commBus->SendMessage(
-        BtSwitchDiscoveryRequest{.on = true,
-                                 .correlationId = self->commBus->GetNewCorId()},
-        Priority::NORMAL);
+    commBus->SendMessage(BtSwitchDiscoveryRequest{true, ModuleType::BLUETOOTH,
+                                                  commBus->GetNewCorId()},
+                         Priority::NORMAL);
     // self->update();
   }
 
-  gtk_button_set_label(GTK_BUTTON(self->scanBtn),
-                       self->manager->discovering ? "Stop" : "Scan");
+  scanBtn.set_label(manager->discovering ? "Stop" : "Scan");
 }
 
-void BluetoothWindow::handlePower([[maybe_unused]] GtkSwitch *widget,
-                                  gboolean state, gpointer user_data) {
-  BluetoothWindow *self = static_cast<BluetoothWindow *>(user_data);
+void BluetoothWindow::handlePower(bool state) {
 
-  self->commBus->SendMessage(
-      BtSwitchPowerRequest{.on = bool(state),
-                           .correlationId = self->commBus->GetNewCorId()},
-      Priority::NORMAL);
+  commBus->SendMessage(BtSwitchPowerRequest{state, ModuleType::BLUETOOTH,
+                                            commBus->GetNewCorId()},
+                       Priority::NORMAL);
 
   // std::string msg = "Bluetooth Power Switched ";
   // msg += (state ? "ON" : "OFF");
@@ -257,40 +237,27 @@ void BluetoothWindow::handlePower([[maybe_unused]] GtkSwitch *widget,
   //                             state ? "base" : "disabled", msg);
 }
 
-void BluetoothWindow::handleDeviceTrust([[maybe_unused]] GtkWidget *widget,
-                                        gpointer user_data) {
-  FuncArgs *args = static_cast<FuncArgs *>(user_data);
+void BluetoothWindow::handleDeviceTrust(bool state, std::string devIfacePath) {
 
-  args->commBus->SendMessage(
-      BtTrustRequest{.state = args->state,
-                     .devPath = args->devIfacePath,
-                     .correlationId = args->commBus->GetNewCorId()},
-      Priority::LOW);
+  commBus->SendMessage(BtTrustRequest{state, devIfacePath,
+                                      ModuleType::BLUETOOTH,
+                                      commBus->GetNewCorId()},
+                       Priority::LOW);
 }
 
-void BluetoothWindow::handleDeviceRemove([[maybe_unused]] GtkWidget *widget,
-                                         gpointer user_data) {
-  FuncArgs *args = static_cast<FuncArgs *>(user_data);
+void BluetoothWindow::handleDeviceRemove(std::string devIfacePath) {
 
-  args->commBus->SendMessage(
-      BtRemoveRequest{.devPath = args->devIfacePath,
-                      .correlationId = args->commBus->GetNewCorId()},
-      Priority::LOW);
+  commBus->SendMessage(BtRemoveRequest{devIfacePath, ModuleType::BLUETOOTH,
+                                       commBus->GetNewCorId()},
+                       Priority::LOW);
 }
 
-void BluetoothWindow::handleDeviceConnect([[maybe_unused]] GtkWidget *widget,
-                                          gpointer user_data) {
-  FuncArgs *args = static_cast<FuncArgs *>(user_data);
+void BluetoothWindow::handleDeviceConnect(bool state,
+                                          std::string devIfacePath) {
 
-  args->commBus->SendMessage(
-      BtConnectRequest{.state = args->state,
-                       .devPath = args->devIfacePath,
-                       .correlationId = args->commBus->GetNewCorId()},
-      Priority::LOW);
-}
-
-void BluetoothWindow::FreeArgs(gpointer data,
-                               [[maybe_unused]] GClosure *closure) {
-  FuncArgs *args = static_cast<FuncArgs *>(data);
-  delete args;
+  ctx->logger.LogInfo(TAG, "Device Connect: " + devIfacePath + " state: " + std::to_string(state));
+  commBus->SendMessage(BtConnectRequest{state, devIfacePath,
+                                        ModuleType::BLUETOOTH,
+                                        commBus->GetNewCorId()},
+                       Priority::LOW);
 }

@@ -1,13 +1,19 @@
 #include "header/manager.hpp"
-#include "dbus/dbus-protocol.h"
-#include "dbus/dbus.h"
 #include "services/header/comm_types.hpp"
-#include "utils/helper_func.hpp"
 #include <cstddef>
 #include <cstring>
+#include <map>
+#include <memory>
+#include <sdbus-c++/Error.h>
+#include <sdbus-c++/IConnection.h>
+#include <sdbus-c++/IProxy.h>
+#include <sdbus-c++/Message.h>
+#include <sdbus-c++/Types.h>
+#include <sdbus-c++/VTableItems.h>
 #include <string>
 #include <string_view>
 #include <unistd.h>
+#include <vector>
 
 #define TAG "WifiManager"
 
@@ -17,9 +23,21 @@ WifiManager::WifiManager(AppContext *appCtx)
 
   RegisterAgent(true);
   GetManagedObjects();
+  
+  try {
+    dbusProxy = sdbus::createProxy(*ctx->dbus.sysConn,
+                                   sdbus::ServiceName{"net.connman.iwd"},
+                                   sdbus::ObjectPath{devAdapter});
+    ctx->logger.LogInfo(TAG, "Successfully created D-Bus proxy for Adapter: " + devAdapter);
+
+  } catch (const std::exception &e) {
+    ctx->logger.LogError(TAG, "Failed to create D-Bus proxy: " +
+                                  std::string{e.what()});
+    return;
+  }
+
   GetConnectedDevice();
   GetDevices();
-
   update();
 }
 
@@ -29,514 +47,271 @@ void WifiManager::update(bool force) {
 }
 
 void WifiManager::RegisterAgent(bool reg) {
-  DBusMessage *msg = dbus_message_new_method_call(
-      "net.connman.iwd", "/net/connman/iwd", "net.connman.iwd.AgentManager",
-      reg ? "RegisterAgent" : "UnregisterAgent");
-  if (!msg) {
-    ctx->logger.LogError(TAG,
-                         "Failed to create D-Bus message for RegisterAgent");
+  try {
+    auto proxy = sdbus::createProxy(*ctx->dbus.sysConn,
+                                    sdbus::ServiceName{"net.connman.iwd"},
+                                    sdbus::ObjectPath{"/net/connman/iwd"});
+
+    proxy
+        ->callMethod(
+            sdbus::MethodName{reg ? "RegisterAgent" : "UnregisterAgent"})
+        .onInterface(sdbus::InterfaceName{"net.connman.iwd.AgentManager"})
+        .withArguments(sdbus::ObjectPath{agentPath});
+  } catch (const sdbus::Error &e) {
+    ctx->logger.LogError(TAG, std::string{"D-Bus RegisterAgent call failed: "} +
+                                  e.what());
     return;
   }
-
-  DBusMessageIter args;
-  dbus_message_iter_init_append(msg, &args);
-
-  const char *path = agentPath.c_str();
-  dbus_message_iter_append_basic(&args, DBUS_TYPE_OBJECT_PATH, &path);
-
-  dbus_message_iter_init_closed(&args);
-
-  DBusMessage *reply = dbus_connection_send_with_reply_and_block(
-      ctx->dbus.sysConn, msg, -1, &ctx->dbus.sysErr);
-  if (dbus_error_is_set(&ctx->dbus.sysErr) && !reply) {
-    ctx->logger.LogError(TAG, std::string("D-Bus RegisterAgent call failed: ") +
-                                  ctx->dbus.sysErr.message);
-    dbus_error_free(&ctx->dbus.sysErr);
-    dbus_message_unref(msg);
-    return;
-  }
-
-  dbus_message_unref(msg);
-  dbus_message_unref(reply);
 }
 
 void WifiManager::GetManagedObjects() {
+  try {
+    auto proxy = sdbus::createProxy(*ctx->dbus.sysConn,
+                                    sdbus::ServiceName{"net.connman.iwd"},
+                                    sdbus::ObjectPath{"/"});
 
-  DBusMessage *msg = dbus_message_new_method_call(
-      "net.connman.iwd", "/", "org.freedesktop.DBus.ObjectManager",
-      "GetManagedObjects");
-  if (!msg) {
-    ctx->logger.LogError(TAG, "Failed to create D-Bus message for ListNames");
-    return;
-  }
+    // (a{oa{sa{sv}}})
+    std::map<sdbus::ObjectPath,
+             std::map<std::string, std::map<std::string, sdbus::Variant>>>
+        data;
 
-  DBusMessage *reply = dbus_connection_send_with_reply_and_block(
-      ctx->dbus.sysConn, msg, -1, &ctx->dbus.sysErr);
-  if (dbus_error_is_set(&ctx->dbus.sysErr) && !reply) {
-    ctx->logger.LogError(TAG,
-                         std::string("D-Bus GetManagedObjects call failed: ") +
-                             ctx->dbus.sysErr.message);
-    dbus_error_free(&ctx->dbus.sysErr);
-    dbus_message_unref(msg);
-    return;
-  }
+    proxy->callMethod(sdbus::MethodName{"GetManagedObjects"})
+        .onInterface(sdbus::InterfaceName{"org.freedesktop.DBus.ObjectManager"})
+        .storeResultsTo(data);
 
-  DBusMessageIter iter;
-  dbus_message_iter_init(reply, &iter);
+    for (const auto &[path, ifaces] : data) {
 
-  if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY) {
+      if (ifaces.contains("net.connman.iwd.Device")) {
+        auto ifaceData = ifaces.at("net.connman.iwd.Device");
+
+        if (ifaceData.contains("Powered")) {
+          powered = ifaceData.at("Powered").get<bool>();
+        }
+
+        if (ifaceData.contains("Address")) {
+          devAddr = ifaceData.at("Address").get<std::string>();
+        }
+
+        if (ifaceData.contains("Name")) {
+          devName = ifaceData.at("Name").get<std::string>();
+        }
+
+        devAdapter = path;
+      }
+
+      if (ifaces.contains("net.connman.iwd.KnownNetwork")) {
+        auto ifaceData = ifaces.at("net.connman.iwd.KnownNetwork");
+
+        WifiStation dev;
+        if (ifaceData.contains("Name")) {
+          dev.ssid = ifaceData.at("Name").get<std::string>();
+        }
+        if (ifaceData.contains("Type")) {
+          dev.type = ifaceData.at("Type").get<std::string>();
+        }
+        if (ifaceData.contains("AutoConnect")) {
+          dev.autoConn = ifaceData.at("AutoConnect").get<bool>();
+        }
+
+        dev.known = true;
+        dev.rssi = -100;
+
+        size_t pos = path.rfind("/");
+        if (pos != std::string_view::npos) {
+          devices.insert({path.substr(pos + 1), dev});
+        }
+      }
+    }
+
+  } catch (const sdbus::Error &e) {
     ctx->logger.LogError(
-        TAG,
-        "Unexpected argument type (Array Type) in GetManagedObjects reply");
-
+        TAG, std::string{"D-Bus GetManagedObjects call failed: "} + e.what());
     return;
   }
 
-  DBusMessageIter arrayIter;
-  dbus_message_iter_recurse(&iter, &arrayIter);
-
-  while (dbus_message_iter_get_arg_type(&arrayIter) != DBUS_TYPE_INVALID) {
-
-    DBusMessageIter dictEntryIter;
-    dbus_message_iter_recurse(&arrayIter, &dictEntryIter);
-
-    if (dbus_message_iter_get_arg_type(&dictEntryIter) !=
-        DBUS_TYPE_OBJECT_PATH) {
-      ctx->logger.LogError(TAG,
-                           "Unexpected argument type (Object Path Type) in "
-                           "GetManagedObjects reply");
-
-      return;
-    }
-
-    char *name;
-    dbus_message_iter_get_basic(&dictEntryIter, &name);
-
-    dbus_message_iter_next(&dictEntryIter);
-
-    DBusMessageIter inArrIter;
-    dbus_message_iter_recurse(&dictEntryIter, &inArrIter);
-
-    // Accessing 'net.connman.iwd.Device' properties
-    dbus_message_iter_recurse(&inArrIter, &dictEntryIter);
-
-    char *iface;
-    dbus_message_iter_get_basic(&dictEntryIter, &iface);
-    dbus_message_iter_next(&dictEntryIter);
-    dbus_message_iter_recurse(&dictEntryIter, &inArrIter);
-
-    if (HelperFunc::saferStrCmp(iface, "net.connman.iwd.Device")) {
-      devPath = name;
-      while (dbus_message_iter_get_arg_type(&inArrIter) ==
-             DBUS_TYPE_DICT_ENTRY) {
-        DBusMessageIter propIter;
-        dbus_message_iter_recurse(&inArrIter, &propIter);
-
-        char *propName;
-        dbus_message_iter_get_basic(&propIter, &propName);
-
-        DBusMessageIter valueIter;
-        dbus_message_iter_next(&propIter);
-        dbus_message_iter_recurse(&propIter, &valueIter);
-
-        if (HelperFunc::saferStrNCmp(propName, "Powered", 7)) {
-          dbus_bool_t powered;
-          dbus_message_iter_get_basic(&valueIter, &powered);
-
-          this->powered = powered;
-        } else if (HelperFunc::saferStrNCmp(propName, "Address", 7)) {
-          char *address;
-          dbus_message_iter_get_basic(&valueIter, &address);
-
-          devAddr = std::string(address);
-        } else if (HelperFunc::saferStrNCmp(propName, "Name", 4)) {
-          char *name;
-          dbus_message_iter_get_basic(&valueIter, &name);
-
-          devName = std::string(name);
-        } else if (HelperFunc::saferStrNCmp(propName, "Adapter", 7)) {
-          char *mode;
-          dbus_message_iter_get_basic(&valueIter, &mode);
-
-          devAdapter = std::string(mode);
-        }
-
-        dbus_message_iter_next(&inArrIter);
-      }
-    } else if (HelperFunc::saferStrCmp(iface, "net.connman.iwd.KnownNetwork")) {
-
-      WifiStation dev;
-      while (dbus_message_iter_get_arg_type(&inArrIter) ==
-             DBUS_TYPE_DICT_ENTRY) {
-        DBusMessageIter propIter;
-        dbus_message_iter_recurse(&inArrIter, &propIter);
-
-        char *propName;
-        dbus_message_iter_get_basic(&propIter, &propName);
-
-        DBusMessageIter valueIter;
-        dbus_message_iter_next(&propIter);
-        dbus_message_iter_recurse(&propIter, &valueIter);
-
-        if (HelperFunc::saferStrCmp(propName, "Name")) {
-
-          char *name;
-          dbus_message_iter_get_basic(&valueIter, &name);
-          dev.ssid = name;
-        } else if (HelperFunc::saferStrCmp(propName, "Type")) {
-
-          char *type;
-          dbus_message_iter_get_basic(&valueIter, &type);
-          dev.type = type;
-        } else if (HelperFunc::saferStrCmp(propName, "AutoConnect")) {
-
-          dbus_bool_t *autoConn;
-          dbus_message_iter_get_basic(&valueIter, &autoConn);
-          dev.autoConn = autoConn;
-        }
-
-        dbus_message_iter_next(&inArrIter);
-      }
-
-      dev.known = true;
-      dev.rssi = -100;
-
-      std::string nameStr(name);
-      size_t pos = nameStr.rfind("/");
-      if (pos != std::string_view::npos) {
-
-        devices.insert({nameStr.substr(pos + 1), dev});
-      }
-    }
-
-    dbus_message_iter_next(&arrayIter);
-  }
-
-  dbus_message_unref(msg);
-  dbus_message_unref(reply);
-
-  ctx->logger.LogInfo(TAG, "Successfully retrieved Device Path:" + devPath +
-                               ", Address: " + devAddr + ", Name: " + devName +
-                               ", Adapter: " + devAdapter);
+  ctx->logger.LogInfo(TAG,
+                      "Successfully retrieved Device Adapter: " + devAdapter +
+                          ", Address: " + devAddr + ", Name: " + devName);
   ctx->logger.LogInfo(TAG, "Known Networks Count: " +
                                std::to_string(devices.size()));
 }
 
-ResponseMessage WifiManager::Scan(const WifiScanRequest& req) {
+ResponseMessage WifiManager::Scan(const WifiScanRequest &req) {
   ResponseMessage resp{
       .success = false, .errMsg = "", .correlationId = req.correlationId};
 
-  DBusMessage *msg = dbus_message_new_method_call(
-      "net.connman.iwd", devPath.c_str(), "net.connman.iwd.Station", "Scan");
-  if (!msg) {
-    resp.errMsg = "Failed to create D-Bus message for Scan";
+  try {
+    dbusProxy->callMethod(sdbus::MethodName{"Scan"})
+        .onInterface("net.connman.iwd.Station");
+  } catch (const std::exception &e) {
+    resp.errMsg = "Scan failed: " + std::string{e.what()};
     ctx->logger.LogError(TAG, resp.errMsg);
     return resp;
   }
-
-  DBusMessage *reply = dbus_connection_send_with_reply_and_block(
-      ctx->dbus.sysConn, msg, -1, &ctx->dbus.sysErr);
-  if (dbus_error_is_set(&ctx->dbus.sysErr) && !reply) {
-    resp.errMsg = "D-Bus Scan call failed: ";
-    resp.errMsg += ctx->dbus.sysErr.message;
-
-    ctx->logger.LogError(TAG, resp.errMsg);
-    dbus_error_free(&ctx->dbus.sysErr);
-    dbus_message_unref(msg);
-
-    return resp;
-  }
-
-  dbus_message_unref(msg);
-  dbus_message_unref(reply);
 
   scanning = true;
-
   resp.success = true;
   return resp;
 }
 
 int WifiManager::GetConnectedDevice() {
-  DBusMessage *msg =
-      dbus_message_new_method_call("net.connman.iwd", devPath.c_str(),
-                                   "org.freedesktop.DBus.Properties", "Get");
-  if (!msg) {
-    ctx->logger.LogError(
-        TAG, "Failed to create D-Bus message for Get Connected Device");
+
+  try {
+    sdbus::Variant deviceVar;
+    dbusProxy->callMethod(sdbus::MethodName{"Get"})
+        .onInterface(sdbus::InterfaceName{"org.freedesktop.DBus.Properties"})
+        .withArguments(std::string{"net.connman.iwd.Station"},
+                       std::string{"ConnectedNetwork"})
+        .storeResultsTo(deviceVar);
+
+    connDev = deviceVar.get<sdbus::ObjectPath>();
+    clearDevicePath(connDev);
+  } catch (const std::exception &e) {
+    ctx->logger.LogError(TAG,
+                         "GetConnectedDevice failed: " + std::string{e.what()});
     return -1;
   }
 
-  DBusMessageIter args;
-  dbus_message_iter_init_append(msg, &args);
-
-  const char *interfaceName = "net.connman.iwd.Station";
-  const char *propertyName = "ConnectedNetwork";
-  dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &interfaceName);
-  dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &propertyName);
-
-  DBusMessage *reply = dbus_connection_send_with_reply_and_block(
-      ctx->dbus.sysConn, msg, -1, &ctx->dbus.sysErr);
-  if (dbus_error_is_set(&ctx->dbus.sysErr) && !reply) {
-    ctx->logger.LogError(
-        TAG, std::string("D-Bus Get Connected Device call failed: ") +
-                 ctx->dbus.sysErr.message);
-    dbus_error_free(&ctx->dbus.sysErr);
-    dbus_message_unref(msg);
-    return -1;
-  }
-
-  DBusMessageIter replyIter, valueIter;
-  dbus_message_iter_init(reply, &replyIter);
-  dbus_message_iter_recurse(&replyIter, &valueIter);
-
-  char *connDevPath;
-  dbus_message_iter_get_basic(&valueIter, &connDevPath);
-  connDev = connDevPath;
-
-  size_t pos = connDev.rfind("/");
-  if (pos != std::string_view::npos) {
-    connDev = connDev.substr(pos + 1);
-  }
-
-  dbus_message_unref(msg);
-  dbus_message_unref(reply);
   return 0;
 }
 
 void WifiManager::GetDevices() {
-  DBusMessage *msg = dbus_message_new_method_call(
-      "net.connman.iwd", devPath.c_str(), "net.connman.iwd.Station",
-      "GetOrderedNetworks");
-  if (!msg) {
-    ctx->logger.LogError(
-        TAG, "Failed to create D-Bus message for GetOrderedNetworks");
-    return;
-  }
+  try {
 
-  DBusMessage *reply = dbus_connection_send_with_reply_and_block(
-      ctx->dbus.sysConn, msg, -1, &ctx->dbus.sysErr);
-  if (dbus_error_is_set(&ctx->dbus.sysErr) && !reply) {
-    ctx->logger.LogError(TAG,
-                         std::string("D-Bus GetOrderedNetworks call failed: ") +
-                             ctx->dbus.sysErr.message);
-    dbus_error_free(&ctx->dbus.sysErr);
-    dbus_message_unref(msg);
-    return;
-  }
+    std::vector<sdbus::Struct<sdbus::ObjectPath, int16_t>> netList;
+    dbusProxy->callMethod(sdbus::MethodName{"GetOrderedNetworks"})
+        .onInterface("net.connman.iwd.Station")
+        .storeResultsTo(netList);
 
-  DBusMessageIter arrayIter, deviceIter;
-  dbus_message_iter_init(reply, &arrayIter);
-  dbus_message_iter_recurse(&arrayIter, &deviceIter);
+    for (const auto &network : netList) {
+      WifiStation station;
+      std::string netPath = network.get<0>();
+      clearDevicePath(netPath);
+      
+      station.rssi = network.get<1>() / 100;
 
-  while (dbus_message_iter_get_arg_type(&deviceIter) != DBUS_TYPE_INVALID) {
-    DBusMessageIter structIter;
-    dbus_message_iter_recurse(&deviceIter, &structIter);
+      auto it = devices.find(netPath);
+      if (it != devices.end()) {
+        it->second.rssi = station.rssi;
+        continue;
+      }
 
-    std::string devicePath;
-    WifiStation station;
-
-    char *path;
-    dbus_message_iter_get_basic(&structIter, &path);
-    dbus_message_iter_next(&structIter);
-    devicePath = path;
-
-    size_t pos = devicePath.rfind("/");
-    if (pos != std::string_view::npos) {
-      devicePath = devicePath.substr(pos + 1);
+      if (!GetDeviceInfo(netPath, station)) {
+        station.known = false;
+      }
+      devices.insert({netPath, station});
     }
 
-    dbus_int16_t rssi = 0;
-    dbus_message_iter_get_basic(&structIter, &rssi);
-    station.rssi = rssi / 100;
-
-    auto it = devices.find(devicePath);
-    if (it != devices.end()) {
-      it->second.rssi = rssi / 100;
-      dbus_message_iter_next(&deviceIter);
-      continue;
-    }
-
-    if (!GetDeviceInfo(devicePath, station)) {
-      station.known = false;
-      devices.insert({devicePath, station});
-    }
-    dbus_message_iter_next(&deviceIter);
+  } catch (const std::exception &e) {
+    ctx->logger.LogError(TAG, "GetDevices failed: " + std::string{e.what()});
   }
-
-  dbus_message_unref(msg);
-  dbus_message_unref(reply);
 }
 
 int WifiManager::GetDeviceInfo(std::string dev, WifiStation &station) {
+  try {
+    std::unique_ptr<sdbus::IProxy> proxy = sdbus::createProxy(
+        *ctx->dbus.sysConn, sdbus::ServiceName{"net.connman.iwd"},
+        sdbus::ObjectPath{devAdapter + "/" + dev});
 
-  DBusMessage *msg = dbus_message_new_method_call(
-      "net.connman.iwd", (devPath + "/" + dev).c_str(),
-      "org.freedesktop.DBus.Properties", "GetAll");
-  if (!msg) {
-    ctx->logger.LogError(TAG,
-                         "Failed to create D-Bus message for Get Device Info");
-    return -1;
-  }
+    std::map<std::string, sdbus::Variant> devData;
+    proxy->callMethod(sdbus::MethodName{"GetAll"})
+        .onInterface("org.freedesktop.DBus.Properties")
+        .withArguments(std::string{"net.connman.iwd.Network"})
+        .storeResultsTo(devData);
 
-  DBusMessageIter args;
-  dbus_message_iter_init_append(msg, &args);
-  const char *interfaceName = "net.connman.iwd.Network";
-  dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &interfaceName);
+    if (devData.contains("Name")) {
+      station.ssid = devData.at("Name").get<std::string>();
+    }
 
-  DBusMessage *reply = dbus_connection_send_with_reply_and_block(
-      ctx->dbus.sysConn, msg, -1, &ctx->dbus.sysErr);
-  if (dbus_error_is_set(&ctx->dbus.sysErr) && !reply) {
-    ctx->logger.LogError(TAG,
-                         std::string("D-Bus Get Device Info call failed: ") +
-                             ctx->dbus.sysErr.message);
-    dbus_error_free(&ctx->dbus.sysErr);
-    dbus_message_unref(msg);
-    return -1;
-  }
-
-  DBusMessageIter arrayIter, structIter;
-  dbus_message_iter_init(reply, &arrayIter);
-  dbus_message_iter_recurse(&arrayIter, &structIter);
-
-  while (dbus_message_iter_get_arg_type(&structIter) != DBUS_TYPE_INVALID) {
-    DBusMessageIter propertyIter;
-    dbus_message_iter_recurse(&structIter, &propertyIter);
-
-    char *propName;
-    dbus_message_iter_get_basic(&propertyIter, &propName);
-
-    DBusMessageIter valueIter;
-    dbus_message_iter_next(&propertyIter);
-    dbus_message_iter_recurse(&propertyIter, &valueIter);
-
-    if (HelperFunc::saferStrNCmp(propName, "Name", 4)) {
-      char *name;
-      dbus_message_iter_get_basic(&valueIter, &name);
-      station.ssid = std::string(name);
-
-    } else if (HelperFunc::saferStrNCmp(propName, "Connected", 9)) {
-      dbus_bool_t connected;
-      dbus_message_iter_get_basic(&valueIter, &connected);
+    if (devData.contains("Connected")) {
+      bool connected = devData.at("Connected").get<bool>();
       if (connected) {
         connDev = dev;
       }
-
-    } else if (HelperFunc::saferStrNCmp(propName, "Type", 4)) {
-      char *type;
-      dbus_message_iter_get_basic(&valueIter, &type);
-      station.type = std::string(type);
     }
 
-    dbus_message_iter_next(&structIter);
+    if (devData.contains("Type")) {
+      station.type = devData.at("Type").get<std::string>();
+    }
+
+  } catch (const std::exception &e) {
+    ctx->logger.LogError(TAG, "GetDeviceInfo failed: " + std::string{e.what()});
+    return -1;
   }
 
-  dbus_message_unref(msg);
-  dbus_message_unref(reply);
   return 0;
 }
 
 bool WifiManager::IsPowered() const { return powered; }
 bool WifiManager::IsScanning() const { return scanning; }
 
-ResponseMessage WifiManager::Connect(const WifiConnectRequest& req) {
+ResponseMessage WifiManager::Connect(const WifiConnectRequest &req) {
   ResponseMessage resp{
       .success = false, .errMsg = "", .correlationId = req.correlationId};
 
-  std::string path = devPath + "/" + req.netPath;
+  std::string path = devAdapter + "/" + req.netPath;
 
-  DBusMessage *msg = dbus_message_new_method_call(
-      "net.connman.iwd", path.c_str(), "net.connman.iwd.Network", "Connect");
-  if (!msg) {
-    resp.errMsg = "Failed to create D-Bus message for Connect";
+  try {
+    std::unique_ptr<sdbus::IProxy> proxy = sdbus::createProxy(
+        *ctx->dbus.sysConn, sdbus::ServiceName{"net.connman.iwd"},
+        sdbus::ObjectPath{path});
+
+    proxy->callMethod(sdbus::MemberName{"Connect"})
+        .onInterface(sdbus::InterfaceName{"net.connman.iwd.Network"});
+  } catch (const sdbus::Error &e) {
+    resp.errMsg = "D-Bus Connect call failed: " + std::string{e.what()};
     ctx->logger.LogError(TAG, resp.errMsg);
-
     return resp;
   }
-
-  if (!dbus_connection_send(ctx->dbus.sysConn, msg, 0)) {
-    resp.errMsg = "D-Bus Connect call failed";
-    ctx->logger.LogError(TAG, resp.errMsg);
-    dbus_message_unref(msg);
-
-    return resp;
-  }
-
-  dbus_message_unref(msg);
 
   resp.success = true;
   return resp;
 }
 
-ResponseMessage WifiManager::Disconnect(const WifiDisconnectRequest& req) {
+ResponseMessage WifiManager::Disconnect(const WifiDisconnectRequest &req) {
   ResponseMessage resp{
       .success = false, .errMsg = "", .correlationId = req.correlationId};
 
-  DBusMessage *msg =
-      dbus_message_new_method_call("net.connman.iwd", devPath.c_str(),
-                                   "net.connman.iwd.Station", "Disconnect");
-  if (!msg) {
-    resp.errMsg = "Failed to create D-Bus message for Disconnect";
-    ctx->logger.LogError(TAG, resp.errMsg);
+  try {
+    dbusProxy->callMethod(sdbus::MemberName{"Disconnect"})
+        .onInterface(sdbus::InterfaceName{"net.connman.iwd.Station"});
 
+    connDev = "";
+  } catch (const sdbus::Error &e) {
+    resp.errMsg = "D-Bus Connect call failed: " + std::string{e.what()};
+    ctx->logger.LogError(TAG, resp.errMsg);
     return resp;
   }
-
-  DBusMessage *reply = dbus_connection_send_with_reply_and_block(
-      ctx->dbus.sysConn, msg, -1, &ctx->dbus.sysErr);
-  if (dbus_error_is_set(&ctx->dbus.sysErr) && !reply) {
-    resp.errMsg = "D-Bus Disconnect call failed: ";
-    resp.errMsg += ctx->dbus.sysErr.message;
-
-    ctx->logger.LogError(TAG, resp.errMsg);
-    dbus_error_free(&ctx->dbus.sysErr);
-    dbus_message_unref(msg);
-
-    return resp;
-  }
-
-  dbus_message_unref(msg);
-  dbus_message_unref(reply);
 
   resp.success = true;
   return resp;
 }
 
-ResponseMessage WifiManager::Forget(const WifiForgetRequest& req) {
+ResponseMessage WifiManager::Forget(const WifiForgetRequest &req) {
   ResponseMessage resp{
       .success = false, .errMsg = "", .correlationId = req.correlationId};
 
   std::string path = "/net/connman/iwd/" + req.netPath;
 
-  DBusMessage *msg =
-      dbus_message_new_method_call("net.connman.iwd", path.c_str(),
-                                   "net.connman.iwd.KnownNetwork", "Forget");
-  if (!msg) {
-    resp.errMsg = "Failed to create D-Bus message for Forget";
+  try {
+    std::unique_ptr<sdbus::IProxy> proxy = sdbus::createProxy(
+        *ctx->dbus.sysConn, sdbus::ServiceName{"net.connman.iwd"},
+        sdbus::ObjectPath{path});
+
+    proxy->callMethod(sdbus::MemberName{"Forget"})
+        .onInterface(sdbus::InterfaceName{"net.connman.iwd.KnownNetwork"});
+  } catch (const sdbus::Error &e) {
+    resp.errMsg = "D-Bus Connect call failed: " + std::string{e.what()};
     ctx->logger.LogError(TAG, resp.errMsg);
     return resp;
   }
-
-  DBusMessage *reply = dbus_connection_send_with_reply_and_block(
-      ctx->dbus.sysConn, msg, -1, &ctx->dbus.sysErr);
-  if (dbus_error_is_set(&ctx->dbus.sysErr) && !reply) {
-    resp.errMsg = "D-Bus Forget call failed: ";
-    resp.errMsg += ctx->dbus.sysErr.message;
-
-    ctx->logger.LogError(TAG, resp.errMsg);
-    dbus_error_free(&ctx->dbus.sysErr);
-    dbus_message_unref(msg);
-
-    return resp;
-  }
-
-  dbus_message_unref(msg);
-  dbus_message_unref(reply);
 
   resp.success = true;
   return resp;
 }
 
-ResponseMessage WifiManager::SubmitPassphrase(const WifiSubmitPassphraseRequest& req) {
+ResponseMessage
+WifiManager::SubmitPassphrase(const WifiSubmitPassphraseRequest &req) {
   ResponseMessage resp{
       .success = false, .errMsg = "", .correlationId = req.correlationId};
 
@@ -545,36 +320,19 @@ ResponseMessage WifiManager::SubmitPassphrase(const WifiSubmitPassphraseRequest&
     return resp;
   }
 
-  DBusMessage *reply = dbus_message_new_method_return(authMsg);
-  if (!reply) {
+  try {
+    sdbus::MethodReply reply = authMsg->createReply();
+    reply << req.password;
+    reply.send();
+
+    ctx->logger.LogInfo(TAG, "Submitted passphrase for device: " + authDev);
+    authMsg = nullptr;
+    authDev = "";
+  } catch (const sdbus::Error &e) {
     resp.errMsg = "Failed to create reply for Passphrase Method Response";
     ctx->logger.LogError(TAG, resp.errMsg);
-
     return resp;
   }
-
-  DBusMessageIter args;
-  dbus_message_iter_init_append(reply, &args);
-
-  const char *passphrase = req.password.c_str();
-  dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &passphrase);
-  dbus_message_iter_init_closed(&args);
-
-  if (!dbus_connection_send(ctx->dbus.sysConn, reply, 0)) {
-    resp.errMsg = "Failed to send Passphrase Method Response";
-    ctx->logger.LogError(TAG, resp.errMsg);
-    dbus_message_unref(reply);
-
-    return resp;
-  }
-
-  dbus_connection_flush(ctx->dbus.sysConn);
-  ctx->logger.LogInfo(TAG, "Submitted passphrase for device: " + authDev);
-
-  dbus_message_unref(reply);
-  dbus_message_unref(authMsg);
-  authMsg = nullptr;
-  authDev = "";
 
   resp.success = true;
   return resp;
@@ -583,61 +341,34 @@ ResponseMessage WifiManager::SubmitPassphrase(const WifiSubmitPassphraseRequest&
 void WifiManager::addMatchRulesDbus() {
   ctx->logger.LogInfo(TAG, "Adding D-Bus Match Rules for WifiManager");
 
-  dbus_bus_add_match(ctx->dbus.sysConn,
-                     ("type='method_call',interface='net.connman.iwd.Agent',"
-                      "member='RequestPassphrase',path='" +
-                      agentPath + "'")
-                         .c_str(),
-                     &(ctx->dbus.sysErr));
-  if (dbus_error_is_set(&(ctx->dbus.sysErr))) {
-    std::string errMsg =
-        "Failed to add filter for Method Call Member RequestPassphrase: ";
-    errMsg += ctx->dbus.sysErr.message;
-    ctx->logger.LogError(TAG, errMsg);
-    dbus_error_free(&ctx->dbus.sysErr);
-    return;
-  }
+  try {
+    dbusObj =
+        sdbus::createObject(*ctx->dbus.sysConn, sdbus::ObjectPath{agentPath});
 
-  dbus_bus_add_match(ctx->dbus.sysConn,
-                     ("type='method_call',interface='net.connman.iwd.Agent',"
-                      "member='Cancel',path='" +
-                      agentPath + "'")
-                         .c_str(),
-                     &ctx->dbus.sysErr);
-  if (dbus_error_is_set(&ctx->dbus.sysErr)) {
-    std::string errMsg =
-        "Failed to add D-Bus match rule for InterfacesAdded signal: ";
-    errMsg += ctx->dbus.sysErr.message;
-    ctx->logger.LogError(TAG, errMsg);
-    dbus_error_free(&ctx->dbus.sysErr);
-    return;
-  }
+    dbusObj
+        ->addVTable(
+            sdbus::MethodVTableItem{sdbus::MethodName{"RequestPassphrase"},
+                                    sdbus::Signature{"s"},
+                                    {},
+                                    {},
+                                    {},
+                                    [this](sdbus::MethodCall msg) {
+                                      handleRequestPassphraseDbus(msg);
+                                    },
+                                    {}},
+            sdbus::MethodVTableItem{
+                sdbus::MethodName{"Cancel"},
+                sdbus::Signature{""},
+                {},
+                {},
+                {},
+                [this](sdbus::MethodCall _) { handleRequestCancelDbus(); },
+                {}})
+        .forInterface("net.connman.iwd.Agent");
 
-  dbus_bus_add_match(
-      ctx->dbus.sysConn,
-      "type='signal', interface='org.freedesktop.DBus.ObjectManager', "
-      "member='InterfacesRemoved'",
-      &(ctx->dbus.sysErr));
-  if (dbus_error_is_set(&(ctx->dbus.sysErr))) {
-    std::string errMsg =
-        "Failed to add filter for Signal Member InterfaceRemoved: ";
-    errMsg += ctx->dbus.sysErr.message;
-    ctx->logger.LogError(TAG, errMsg);
-    dbus_error_free(&ctx->dbus.sysErr);
-    return;
-  }
-
-  dbus_bus_add_match(
-      ctx->dbus.sysConn,
-      "type='signal',interface='org.freedesktop.DBus.Properties',"
-      "member='PropertiesChanged'",
-      &ctx->dbus.sysErr);
-  if (dbus_error_is_set(&ctx->dbus.sysErr)) {
-    std::string errMsg =
-        "Failed to add D-Bus match rule for PropertiesChanged signal: ";
-    errMsg += ctx->dbus.sysErr.message;
-    ctx->logger.LogError(TAG, errMsg);
-    dbus_error_free(&ctx->dbus.sysErr);
+  } catch (const sdbus::Error &e) {
+    ctx->logger.LogError(TAG, "Failed to add D-Bus match rules: " +
+                                  std::string(e.what()));
     return;
   }
 
@@ -645,22 +376,12 @@ void WifiManager::addMatchRulesDbus() {
                       "Successfully added D-Bus match rules for WifiManager");
 }
 
-void WifiManager::handleRequestPassphraseDbus(DBusMessage *msg,
-                                              DBusMessageIter &rootIter) {
-  if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_OBJECT_PATH) {
-    ctx->logger.LogError(TAG,
-                         "Failed to parse RequestPassphrase signal: expected "
-                         "first argument to be a objectpath");
-    return;
-  }
-
-  char *path;
-  dbus_message_iter_get_basic(&rootIter, &path);
-
-  std::string ssid(path);
+void WifiManager::handleRequestPassphraseDbus(sdbus::MethodCall msg) {
+  std::string ssid;
+  msg >> ssid;
   size_t pos = ssid.rfind("/");
   if (pos != std::string_view::npos) {
-    authMsg = msg;
+    authMsg = std::make_unique<sdbus::MethodCall>(msg);
     authDev = ssid.substr(pos + 1);
   }
 }
@@ -668,155 +389,68 @@ void WifiManager::handleRequestPassphraseDbus(DBusMessage *msg,
 void WifiManager::handleRequestCancelDbus() {
   authDev = "";
   if (authMsg) {
-    dbus_message_unref(authMsg);
-    authMsg = nullptr;
+    authMsg.reset();
   }
 }
 
-void WifiManager::handleInterfacesRemovedDbus(DBusMessageIter &rootIter) {
-  char *objPath;
-  if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_OBJECT_PATH) {
-    ctx->logger.LogError(TAG,
-                         "Failed to parse InterfacesAdded signal: expected "
-                         "first argument to be an object path");
-    return;
-  }
+void WifiManager::handleInterfacesRemovedDbus(sdbus::Message &msg) {
+  std::string objPath;
 
-  dbus_message_iter_get_basic(&rootIter, &objPath);
-  if (!HelperFunc::saferStrNCmp(objPath, "/net/connman/iwd", 16)) {
-    return;
-  }
-
-  std::string objPathStr(objPath);
-  size_t pos = objPathStr.rfind("/");
-  if (pos != std::string_view::npos) {
-    objPathStr = objPathStr.substr(pos + 1);
-  }
-
-  devices.erase(objPathStr);
-  if (connDev == objPathStr) {
-    connDev = "";
-  }
-}
-
-void WifiManager::handlePropertiesChangedDbus(DBusMessage *msg,
-                                              DBusMessageIter &rootIter) {
-
-  char *iface;
-  if (dbus_message_iter_get_arg_type(&rootIter) != DBUS_TYPE_STRING) {
-    ctx->logger.LogError(TAG,
-                         "Failed to parse PropertiesChanged signal: expected "
-                         "first argument to be a string (interface name)");
-    return;
-  }
-
-  dbus_message_iter_get_basic(&rootIter, &iface);
-  dbus_message_iter_next(&rootIter);
-
-  std::string_view ifaceStr(iface);
-  if (ifaceStr == "net.connman.iwd.Station") {
-
-    DBusMessageIter arrIter;
-    dbus_message_iter_recurse(&rootIter, &arrIter);
-
-    while (dbus_message_iter_get_arg_type(&arrIter) != DBUS_TYPE_INVALID) {
-      DBusMessageIter dictIter;
-      dbus_message_iter_recurse(&arrIter, &dictIter);
-
-      char *propName;
-      if (dbus_message_iter_get_arg_type(&dictIter) != DBUS_TYPE_STRING) {
-        ctx->logger.LogError(TAG, "Failed to parse PropertiesChanged signal: "
-                                  "expected property name to be a string");
-        return;
-      }
-
-      dbus_message_iter_get_basic(&dictIter, &propName);
-      if (HelperFunc::saferStrNCmp(propName, "Scanning", 8)) {
-        dbus_message_iter_next(&dictIter);
-        dbus_bool_t scanning;
-        if (dbus_message_iter_get_arg_type(&dictIter) != DBUS_TYPE_VARIANT) {
-          ctx->logger.LogError(
-              TAG, "Failed to parse PropertiesChanged signal: expected "
-                   "Connected property value to be a boolean variant");
-          return;
-        }
-
-        DBusMessageIter variantIter;
-        dbus_message_iter_recurse(&dictIter, &variantIter);
-        if (dbus_message_iter_get_arg_type(&variantIter) != DBUS_TYPE_BOOLEAN) {
-          ctx->logger.LogError(
-              TAG, "Failed to parse PropertiesChanged signal: expected "
-                   "Connected property value to be a boolean");
-          return;
-        }
-
-        dbus_message_iter_get_basic(&variantIter, &scanning);
-        this->scanning = scanning;
-      }
-
-      dbus_message_iter_next(&arrIter);
+  try {
+    msg >> objPath;
+    clearDevicePath(objPath);
+    
+    devices.erase(objPath);
+    if (connDev == objPath) {
+      connDev = "";
     }
-  } else if (ifaceStr == "net.connman.iwd.Network") {
-    DBusMessageIter arrIter;
-    dbus_message_iter_recurse(&rootIter, &arrIter);
+  } catch (const sdbus::Error &e) {
+    ctx->logger.LogError(TAG, "Failed to parse InterfacesRemoved signal: " +
+                                  std::string(e.what()));
+  }
+}
 
-    while (dbus_message_iter_get_arg_type(&arrIter) != DBUS_TYPE_INVALID) {
-      DBusMessageIter dictIter;
-      dbus_message_iter_recurse(&arrIter, &dictIter);
+void WifiManager::handlePropertiesChangedDbus(sdbus::Message &msg) {
+  std::string iface;
 
-      char *propName;
-      if (dbus_message_iter_get_arg_type(&dictIter) != DBUS_TYPE_STRING) {
-        ctx->logger.LogError(TAG, "Failed to parse PropertiesChanged signal: "
-                                  "expected property name to be a string");
-        return;
+  try {
+    msg >> iface;
+
+    if (iface == "net.connman.iwd.Station") {
+      std::map<std::string, sdbus::Variant> props;
+      msg >> props;
+
+      if (props.contains("Scanning")) {
+        this->scanning = props["Scanning"].get<bool>();
       }
+      if (props.contains("ConnectedNetwork")) {
+        connDev = props["ConnectedNetwork"].get<std::string>();
+        clearDevicePath(connDev);
+      }
+    } else if (iface == "net.connman.iwd.Network") {
+      std::map<std::string, sdbus::Variant> props;
+      msg >> props;
 
-      dbus_message_iter_get_basic(&dictIter, &propName);
-      if (HelperFunc::saferStrNCmp(propName, "Connected", 9)) {
-        dbus_message_iter_next(&dictIter);
-        dbus_bool_t connected;
-        if (dbus_message_iter_get_arg_type(&dictIter) != DBUS_TYPE_VARIANT) {
-          ctx->logger.LogError(
-              TAG, "Failed to parse PropertiesChanged signal: expected "
-                   "Connected property value to be a boolean variant");
-          return;
-        }
+      if (props.contains("Connected")) {
+        bool connected = props["Connected"].get<bool>();
 
-        DBusMessageIter variantIter;
-        dbus_message_iter_recurse(&dictIter, &variantIter);
-        if (dbus_message_iter_get_arg_type(&variantIter) != DBUS_TYPE_BOOLEAN) {
-          ctx->logger.LogError(
-              TAG, "Failed to parse PropertiesChanged signal: expected "
-                   "Connected property value to be a boolean");
-          return;
-        }
-
-        dbus_message_iter_get_basic(&variantIter, &connected);
         if (connected) {
-          const char *path = dbus_message_get_path(msg);
-          connDev = path;
-        } else {
-          connDev = "";
-        }
-
-        size_t pos = connDev.rfind("/");
-        if (pos != std::string_view::npos) {
-          connDev = connDev.substr(pos + 1);
+          connDev = msg.getPath();
+          clearDevicePath(connDev);
         }
       }
-
-      dbus_message_iter_next(&arrIter);
     }
+
+  } catch (const sdbus::Error &e) {
+    ctx->logger.LogError(TAG, "Failed to parse PropertiesChanged signal: " +
+                                  std::string(e.what()));
+    return;
   }
 }
 
-std::string WifiManager::getAuthDev() const {
-    return authDev;
-}
+std::string WifiManager::getAuthDev() const { return authDev; }
 
-std::string WifiManager::getConnDev() const {
-    return connDev;
-}
+std::string WifiManager::getConnDev() const { return connDev; }
 
 WifiManager::~WifiManager() { RegisterAgent(false); }
 
@@ -842,4 +476,11 @@ ResponseMessage WifiManager::handle(const WifiRequest &req) {
       req);
 
   return resp;
+}
+
+void WifiManager::clearDevicePath(std::string &devPath) {
+    size_t pos = devPath.rfind("/");
+    if (pos != std::string::npos) {
+        devPath = devPath.substr(pos + 1);
+    }
 }

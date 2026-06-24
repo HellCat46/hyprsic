@@ -3,10 +3,11 @@
 #include "services/header/comm_types.hpp"
 #include "services/header/context.hpp"
 #include <cstdint>
+#include <sdbus-c++/IProxy.h>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <variant>
-#include <vector>
 
 struct PlayerTrack {
   std::string playerName;
@@ -19,13 +20,18 @@ struct MprisPlayPauseRequest {
   uint64_t correlationId;
 };
 
-struct MprisGetPlayerInfoRequest {
+struct MprisPlayPauseResponse {
   uint64_t correlationId;
 };
 
 struct MprisGetPositionRequest {
   uint64_t correlationId;
 };
+
+struct MprisGetPositionResponse {
+  uint64_t correlationId;
+};
+
 
 struct MprisSetPositionRequest {
   uint64_t position;
@@ -42,39 +48,39 @@ struct MprisNextTrackRequest {
 };
 
 using MprisRequest =
-    std::variant<MprisPlayPauseRequest, MprisGetPlayerInfoRequest,
-                 MprisGetPositionRequest, MprisSetPositionRequest, MprisGetPlayerInfoRequest,
-                 MprisNextTrackRequest, MprisPreviousTrackRequest>;
+    std::variant<MprisPlayPauseRequest, MprisGetPositionRequest,
+                 MprisSetPositionRequest, MprisNextTrackRequest,
+                 MprisPreviousTrackRequest>;
 
 class MprisManager {
   AppContext *ctx;
-  std::vector<std::string> players;
+  std::unordered_map<std::string, std::unique_ptr<sdbus::IProxy>> players;
   PlayerTrack playingTrack;
 
   void addPlayer(const std::string &playerName);
   void removePlayer(const std::string &playerName);
+  
+  void GetPlayerInfo();
+  int GetPlayerInfoDbusCall(const std::string& player);
 
-  ResponseMessage PlayPause(const MprisPlayPauseRequest& req);
-  bool PlayPauseDbusCall(const char *player);
+  ResponseMessage PlayPause(const MprisPlayPauseRequest &req);
 
-  ResponseMessage GetPlayerInfo(const MprisGetPlayerInfoRequest& req);
-  int GetPlayerInfoDbusCall(const char *player, PlayerTrack *track);
-
-  ResponseMessage GetPosition(const MprisGetPositionRequest& req);
+  ResponseMessage GetPosition(const MprisGetPositionRequest &req);
   int GetCurrentPositionDbusCall();
 
-  ResponseMessage SetPosition(const MprisSetPositionRequest& req);
-  ResponseMessage PreviousTrack(const MprisPreviousTrackRequest& req);
-  ResponseMessage NextTrack(const MprisNextTrackRequest& req);
+  ResponseMessage SetPosition(const MprisSetPositionRequest &req);
+  ResponseMessage PreviousTrack(const MprisPreviousTrackRequest &req);
+  ResponseMessage NextTrack(const MprisNextTrackRequest &req);
 
 public:
   MprisManager(AppContext *appCtx);
+  void update();
 
   bool hasPlayer() const;
   PlayerTrack getPlayingTrack() const;
 
-  void handlePlayerChangesDbus(const std::string_view name,
+  void handlePlayerChangesDbus(const std::string &name,
                                const std::string_view newOwner);
-  
-  ResponseMessage handle(const MprisRequest& msg);
+
+  ResponseMessage handle(const MprisRequest &msg);
 };

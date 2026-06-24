@@ -337,7 +337,7 @@ ResponseMessage HyprWSManager::MoveToWS(const HyprMoveWSRequest& req) {
     }
   }
 
-  if (wsId == -1) {
+  if (wsId == -1UL) {
     resp.errMsg = "No Workspace Found on the Target Monitor";
     logger->LogDebug(TAG, resp.errMsg);
 

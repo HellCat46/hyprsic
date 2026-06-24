@@ -95,7 +95,7 @@ void Application::handleActions(std::string_view action,
 void Application::IPCToggleView(std::string_view module) {
   if (module == "pulseaudio") {
 
-    ctx.showCtrlWindow("pulseaudio", 400, -1);
+    ctx.showCtrlWindow("pulseaudio", 400);
   } else if (module == "bluetooth") {
 
     ctx.showCtrlWindow("bluetooth", 400, 200);
@@ -104,7 +104,13 @@ void Application::IPCToggleView(std::string_view module) {
     ctx.showCtrlWindow("notifications", 420, 400);
   } else if (module == "brightness") {
 
-    ctx.showCtrlWindow("brightness", 340, 70);
+    ctx.showCtrlWindow("brightness", 340);
+  } else if (module == "mpris") {
+      
+    ctx.showCtrlWindow("mpris", 400, 300);
+  } else if (module == "wifi") {
+
+    ctx.showCtrlWindow("wifi", 400, 300);
   }
 }
 
@@ -112,8 +118,8 @@ void Application::IPCCtrlAudioDev(std::string_view args) {
   if (args == "play-pause") {
     commBus.SendMessage(MprisPlayPauseRequest{.correlationId = commBus.GetNewCorId()}, Priority::IMMEDIATE);
   } else if (args == "toggle-mic") {
-    paWindow.toggleMute(nullptr, nullptr, false);
+    paWindow.toggleMute(false);
   } else if (args == "toggle-output") {
-    paWindow.toggleMute(nullptr, nullptr, true);
+    paWindow.toggleMute(true);
   }
 }

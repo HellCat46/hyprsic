@@ -1,8 +1,6 @@
 #pragma once
 
-#include "cstdlib"
-#include "cstring"
-#include "gtk/gtk.h"
+#include "gtkmm/box.h"
 #include "services/header/comm_types.hpp"
 #include "services/header/logging.hpp"
 #include "string"
@@ -23,14 +21,15 @@ struct Workspace {
 };
 
 struct WSListenerData {
-  GtkWidget *wsBox;
-  GtkWidget *spWSBox;
+  Gtk::Box &wsBox;
+  Gtk::Box &spWSBox;
   unsigned char windowId;
 };
 
 struct HyprSwitchWSRequest {
   unsigned int wsId;
 
+  ModuleType moduleType;
   uint64_t correlationId;
 };
 
@@ -38,6 +37,7 @@ struct HyprMoveWSRequest {
   unsigned char monitorId;
   bool forw;
 
+  ModuleType moduleType;
   uint64_t correlationId;
 };
 
@@ -45,6 +45,7 @@ struct HyprSwitchSPWSRequest {
   unsigned int wsId;
   std::string name;
 
+  ModuleType moduleType;
   uint64_t correlationId;
 };
 

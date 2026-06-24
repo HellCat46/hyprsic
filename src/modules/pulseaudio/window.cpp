@@ -1,371 +1,223 @@
 #include "header/window.hpp"
-#include "gtk/gtk.h"
+#include "giomm/liststore.h"
+#include "gtk/gtkshortcut.h"
+#include "gtkmm/enums.h"
+#include "gtkmm/label.h"
+#include "gtkmm/object.h"
 #include "modules/pulseaudio/header/manager.hpp"
 #include "services/header/comm_bus.hpp"
+#include "sigc++/functors/mem_fun.h"
+#include <memory>
+#include <string>
+#include <vector>
 
 #define TAG "PulseAudioWindow"
 
 PulseAudioWindow::PulseAudioWindow(AppContext *ctx, CommunicationBus *commBus,
                                    PulseAudioManager *manager)
-    : ctx(ctx), manager(manager), commBus(commBus) {}
+    : ctx(ctx), manager(manager), commBus(commBus) {
+
+  outStore = Gio::ListStore<PulseAudioDeviceObject>::create();
+  inStore = Gio::ListStore<PulseAudioDeviceObject>::create();
+
+  devFactory = Gtk::SignalListItemFactory::create();
+  devFactory->signal_setup().connect(
+      sigc::mem_fun(*this, &PulseAudioWindow::onFactorySetup));
+  devFactory->signal_bind().connect(
+      sigc::mem_fun(*this, &PulseAudioWindow::onFactoryBind));
+}
 
 void PulseAudioWindow::init() {
-  GtkWidget *mainBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-  gtk_widget_set_margin_start(mainBox, 15);
-  gtk_widget_set_margin_end(mainBox, 15);
-  gtk_widget_set_margin_top(mainBox, 15);
-  gtk_widget_set_margin_bottom(mainBox, 15);
+  mainBox.set_orientation(Gtk::Orientation::VERTICAL);
+  mainBox.set_spacing(10);
+  mainBox.set_margin(15);
 
   // Output Device Controls
-  GtkWidget *outTitle = gtk_label_new(nullptr);
-  gtk_label_set_markup(GTK_LABEL(outTitle), "<b>Output Device:</b>");
-  gtk_widget_set_halign(outTitle, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(mainBox), outTitle, false, false, 0);
+  Gtk::Label outTitle;
+  outTitle.set_markup("<b>Output Device:</b>");
+  outTitle.set_halign(Gtk::Align::START);
+  mainBox.append(outTitle);
 
-  GtkWidget *outBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-  gtk_box_pack_start(GTK_BOX(mainBox), outBox, false, false, 0);
+  Gtk::Box outBox{Gtk::Orientation::HORIZONTAL, 10};
+  mainBox.append(outBox);
 
-  outMuteBtn = gtk_event_box_new();
-  gtk_box_pack_start(GTK_BOX(outBox), outMuteBtn, false, false, 0);
-  g_signal_connect(outMuteBtn, "button-press-event",
-                   G_CALLBACK(handleToggleMute), this);
-  outIcon = gtk_image_new_from_pixbuf(nullptr);
-  gtk_container_add(GTK_CONTAINER(outMuteBtn), outIcon);
+  outMuteBtn.set_image_from_icon_name("audio-volume-high-symbolic");
+  outMuteBtn.signal_clicked().connect([this]() { toggleMute(true); });
+  outBox.append(outMuteBtn);
 
-  if (GDK_IS_PIXBUF(outUnmuteIcon))
-    gtk_image_set_from_pixbuf(GTK_IMAGE(outIcon), outUnmuteIcon);
+  outScale.set_range(0, 100);
+  outScale.set_hexpand(true);
+  outBox.append(outScale);
+  outScale.signal_change_value().connect(
+      [this](Gtk::ScrollType, double value) -> bool {
+        handleChgVolume(value, true);
+        return false;
+      },
+      false);
 
-  outScale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 100, 1);
-  gtk_box_pack_start(GTK_BOX(outBox), outScale, true, true, 0);
-  g_signal_connect(outScale, "change-value", G_CALLBACK(handleChgVolume), this);
-
-  outStore = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_STRING);
-  outDropdown = gtk_combo_box_new_with_model(GTK_TREE_MODEL(outStore));
-  g_signal_connect(outDropdown, "changed", G_CALLBACK(chgDevice), this);
-  gtk_box_pack_start(GTK_BOX(mainBox), outDropdown, false, false, 0);
-
-  GtkCellRenderer *outRenderer = gtk_cell_renderer_text_new();
-  gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(outDropdown), outRenderer, true);
-  gtk_cell_layout_set_attributes(GTK_CELL_LAYOUT(outDropdown), outRenderer,
-                                 "text", 1, nullptr);
+  outPropChgConn = outDropdown.property_selected().signal_changed().connect(
+      [this]() { chgDevice(true); });
+  outDropdown.set_model(outStore);
+  outDropdown.set_factory(devFactory);
+  mainBox.append(outDropdown);
 
   // Input Device Controls
-  GtkWidget *inTitle = gtk_label_new(nullptr);
-  gtk_label_set_markup(GTK_LABEL(inTitle), "<b>Input Device:</b>");
-  gtk_widget_set_halign(inTitle, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(mainBox), inTitle, false, false, 0);
-  gtk_widget_set_margin_top(inTitle, 20);
+  Gtk::Label inTitle;
+  inTitle.set_markup("<b>Input Device:</b>");
+  inTitle.set_halign(Gtk::Align::START);
+  inTitle.set_margin_top(20);
+  mainBox.append(inTitle);
 
-  GtkWidget *inBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-  gtk_box_pack_start(GTK_BOX(mainBox), inBox, true, true, 0);
+  Gtk::Box inBox{Gtk::Orientation::HORIZONTAL, 5};
+  mainBox.append(inBox);
 
-  inMuteBtn = gtk_event_box_new();
-  gtk_box_pack_start(GTK_BOX(inBox), inMuteBtn, false, false, 0);
-  g_signal_connect(inMuteBtn, "button-press-event",
-                   G_CALLBACK(handleToggleMute), this);
-  inIcon = gtk_image_new_from_pixbuf(nullptr);
-  gtk_container_add(GTK_CONTAINER(inMuteBtn), inIcon);
+  inMuteBtn.set_image_from_icon_name("microphone-sensitivity-high-symbolic");
+  inMuteBtn.signal_clicked().connect([this]() { toggleMute(false); });
+  inBox.append(inMuteBtn);
 
-  if (GDK_IS_PIXBUF(inUnmuteIcon))
-    gtk_image_set_from_pixbuf(GTK_IMAGE(inIcon), inUnmuteIcon);
+  inScale.set_range(0, 100);
+  inScale.set_hexpand(true);
+  inScale.signal_change_value().connect(
+      [this](Gtk::ScrollType, double value) -> bool {
+        handleChgVolume(value, false);
+        return false;
+      },
+      false);
+  inBox.append(inScale);
 
-  inScale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 100, 1);
-  gtk_box_pack_start(GTK_BOX(inBox), inScale, true, true, 0);
-  g_signal_connect(inScale, "change-value", G_CALLBACK(handleChgVolume), this);
-
-  inStore = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_STRING);
-  inDropdown = gtk_combo_box_new_with_model(GTK_TREE_MODEL(inStore));
-  g_signal_connect(inDropdown, "changed", G_CALLBACK(chgDevice), this);
-  gtk_box_pack_start(GTK_BOX(mainBox), inDropdown, false, false, 0);
-
-  GtkCellRenderer *inRenderer = gtk_cell_renderer_text_new();
-  gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(inDropdown), inRenderer, true);
-  gtk_cell_layout_set_attributes(GTK_CELL_LAYOUT(inDropdown), inRenderer,
-                                 "text", 1, nullptr);
-
-  gtk_widget_show_all(mainBox);
+  inPropChgConn = inDropdown.property_selected().signal_changed().connect(
+      [this]() { chgDevice(false); });
+  inDropdown.set_model(inStore);
+  inDropdown.set_factory(devFactory);
+  mainBox.append(inDropdown);
 
   ctx->addModule(mainBox, "pulseaudio");
   update();
 }
 
-void PulseAudioWindow::setupIcons() {
-  // Load Svg Icons
-  GInputStream *stream;
-  GError *err;
-  do {
-    stream = nullptr;
-    err = nullptr;
-    inMuteIcon = nullptr;
-    auto icon = ctx->resStore.icons.find("audio_mic_mute");
-    if (icon == ctx->resStore.icons.end()) {
-      ctx->logger.LogError(TAG, "Mic Mute Icon Not Found in Resource Store");
-      break;
-    }
-
-    stream = g_memory_input_stream_new_from_data(icon->second.data(),
-                                                 icon->second.size(), nullptr);
-    if (stream == nullptr) {
-      ctx->logger.LogError(TAG,
-                           "Failed to Create GInputStream for Mic Mute Icon");
-      break;
-    }
-
-    inMuteIcon = gdk_pixbuf_new_from_stream_at_scale(stream, 16, 16, true,
-                                                     nullptr, &err);
-    if (err) {
-      ctx->logger.LogError(TAG, "Failed to load mic mute icon: " +
-                                    std::string(err->message));
-      g_error_free(err);
-      break;
-    }
-    g_object_unref(stream);
-  } while (0);
-
-  do {
-    stream = nullptr;
-    err = nullptr;
-    inUnmuteIcon = nullptr;
-    // Unmute Icon
-    auto icon = ctx->resStore.icons.find("audio_mic_unmute");
-    if (icon == ctx->resStore.icons.end()) {
-      ctx->logger.LogError(TAG, "Mic Unmute Icon Not Found in Resource Store");
-      break;
-    }
-
-    stream = g_memory_input_stream_new_from_data(icon->second.data(),
-                                                 icon->second.size(), nullptr);
-    if (stream == nullptr) {
-      ctx->logger.LogError(TAG,
-                           "Failed to Create GInputStream for Mic Unmute Icon");
-      break;
-    }
-
-    inUnmuteIcon = gdk_pixbuf_new_from_stream_at_scale(stream, 16, 16, true,
-                                                       nullptr, &err);
-    if (err) {
-      ctx->logger.LogError(TAG, "Failed to load mic unmute icon: " +
-                                    std::string(err->message));
-      g_error_free(err);
-      break;
-    }
-    g_object_unref(stream);
-  } while (0);
-
-  do {
-    stream = nullptr;
-    err = nullptr;
-    outMuteIcon = nullptr;
-    auto icon = ctx->resStore.icons.find("audio_speaker_mute");
-    if (icon == ctx->resStore.icons.end()) {
-      ctx->logger.LogError(TAG,
-                           "Speaker Mute Icon Not Found in Resource Store");
-      break;
-    }
-
-    stream = g_memory_input_stream_new_from_data(icon->second.data(),
-                                                 icon->second.size(), nullptr);
-    if (stream == nullptr) {
-      ctx->logger.LogError(
-          TAG, "Failed to Create GInputStream for Speaker Mute Icon");
-      break;
-    }
-
-    outMuteIcon = gdk_pixbuf_new_from_stream_at_scale(stream, 16, 16, true,
-                                                      nullptr, &err);
-    if (err) {
-      ctx->logger.LogError(TAG, "Failed to load volume mute icon: " +
-                                    std::string(err->message));
-      g_error_free(err);
-      break;
-    }
-    g_object_unref(stream);
-  } while (0);
-
-  do {
-    stream = nullptr;
-    err = nullptr;
-    outUnmuteIcon = nullptr;
-    auto icon = ctx->resStore.icons.find("audio_speaker_unmute");
-    if (icon == ctx->resStore.icons.end()) {
-      ctx->logger.LogError(TAG,
-                           "Speaker Unmute Icon Not Found in Resource Store");
-      break;
-    }
-
-    stream = g_memory_input_stream_new_from_data(icon->second.data(),
-                                                 icon->second.size(), nullptr);
-    if (stream == nullptr) {
-      ctx->logger.LogError(
-          TAG, "Failed to Create GInputStream for Speaker Unmute Icon");
-      break;
-    }
-
-    outUnmuteIcon = gdk_pixbuf_new_from_stream_at_scale(stream, 16, 16, true,
-                                                        nullptr, &err);
-    if (err) {
-      ctx->logger.LogError(TAG, "Failed to load volume unmute icon: " +
-                                    std::string(err->message));
-      g_error_free(err);
-      break;
-    }
-    g_object_unref(stream);
-  } while (0);
-
-  ctx->logger.LogInfo(
-      TAG,
-      "Icons Loaded: " + std::string(GDK_IS_PIXBUF(inMuteIcon) ? "Yes" : "No") +
-          ", " + std::string(GDK_IS_PIXBUF(inUnmuteIcon) ? "Yes" : "No") +
-          ", " + std::string(GDK_IS_PIXBUF(outMuteIcon) ? "Yes" : "No") + ", " +
-          std::string(GDK_IS_PIXBUF(outUnmuteIcon) ? "Yes" : "No"));
-}
-
 void PulseAudioWindow::update() {
-  // Adding Items to Output Selector
-  gtk_list_store_clear(outStore);
-  GtkTreeIter iter, activeIter;
-  bool foundActive = false;
+  
+  outPropChgConn.block();
+  int idx = 0;
+  outStore->remove_all();
   for (const auto &[devName, devInfo] : manager->outDevs) {
-    gtk_list_store_append(outStore, &iter);
-
-    gtk_list_store_set(outStore, &iter, 0, devName.c_str(), 1,
-                       devInfo.description.c_str(), -1);
+    outStore->append(PulseAudioDeviceObject::create(devName, devInfo));
 
     if (devName == manager->defOutput) {
-      activeIter = iter;
-      foundActive = true;
+      outDropdown.set_selected(idx);
 
       // Using Default Output Device for Control Widgets
-      updateControls(devInfo.mute, devInfo.volume, outIcon, outScale);
+      updateControls(devInfo.mute, true, devInfo.volume, outMuteBtn, outScale);
     }
+
+    idx++;
   }
-  if (foundActive) {
-    gtk_combo_box_set_active_iter(GTK_COMBO_BOX(outDropdown), &activeIter);
-  }
+  outPropChgConn.unblock();
 
   // Adding Items to Input Selector
-  gtk_list_store_clear(inStore);
+  inPropChgConn.block();
+  idx = 0;
+  inStore->remove_all();
   for (const auto &[devName, devInfo] : manager->inDevs) {
-    gtk_list_store_append(inStore, &iter);
-
-    gtk_list_store_set(inStore, &iter, 0, devName.c_str(), 1,
-                       devInfo.description.c_str(), -1);
+    inStore->append(PulseAudioDeviceObject::create(devName, devInfo));
 
     if (devName == manager->defInput) {
-      activeIter = iter;
-      foundActive = true;
+      inDropdown.set_selected(idx);
 
       // Using Default Input Device for Control Widgets
-      updateControls(devInfo.mute, devInfo.volume, inIcon, inScale);
+      updateControls(devInfo.mute, false, devInfo.volume, inMuteBtn, inScale);
     }
+    idx++;
   }
-
-  if (foundActive) {
-    gtk_combo_box_set_active_iter(GTK_COMBO_BOX(inDropdown), &activeIter);
-  }
+  inPropChgConn.unblock();
 }
 
-void PulseAudioWindow::updateControls(bool mute,
-                                      const std::vector<uint32_t> &volume,
-                                      GtkWidget *icon, GtkWidget *scale) {
-  if (icon == outIcon && GDK_IS_PIXBUF(outUnmuteIcon) &&
-      GDK_IS_PIXBUF(outMuteIcon)) {
-    gtk_image_set_from_pixbuf(GTK_IMAGE(icon),
-                              mute ? outUnmuteIcon : outMuteIcon);
-
-  } else if (icon == inIcon && GDK_IS_PIXBUF(inUnmuteIcon) &&
-             GDK_IS_PIXBUF(inMuteIcon)) {
-    gtk_image_set_from_pixbuf(GTK_IMAGE(icon),
-                              mute ? inUnmuteIcon : inMuteIcon);
+void PulseAudioWindow::updateControls(bool mute, bool isOutput,
+                                      const std::vector<uint32_t> &volumes,
+                                      Gtk::Button &muteBtn, Gtk::Scale &scale) {
+  if (isOutput) {
+    muteBtn.set_image_from_icon_name(mute ? "audio-volume-muted-symbolic"
+                                          : "audio-volume-high-symbolic");
+  } else {
+    muteBtn.set_image_from_icon_name(
+        mute ? "microphone-sensitivity-muted-symbolic"
+             : "microphone-sensitivity-high-symbolic");
   }
 
   uint32_t avgVol = 0;
-  for (const auto &vol : volume) {
+  for (const auto &vol : volumes) {
     avgVol += vol;
   }
-  avgVol /= volume.size();
-  gtk_range_set_value(GTK_RANGE(scale),
-                      (uint32_t)(((float)avgVol / 65535) * 100));
+
+  avgVol /= volumes.size();
+
+  scale.set_value(((float)avgVol / 65535) * 100);
 }
 
-void PulseAudioWindow::handleChgVolume(GtkRange *range,
-                                       [[maybe_unused]] GtkScrollType *scroll,
-                                       [[maybe_unused]] gdouble value,
-                                       gpointer data) {
-  PulseAudioWindow *self = static_cast<PulseAudioWindow *>(data);
+void PulseAudioWindow::handleChgVolume(double value, bool isOutput) {
 
-  if (range == GTK_RANGE(self->outScale)) {
-    uint32_t volume = (uint32_t)gtk_range_get_value(range);
+  if (isOutput) {
+    uint32_t volume = (uint32_t)value;
 
-    self->commBus->SendMessage(
-        PASetVolumeRequest{.devName = self->manager->defOutput,
+    commBus->SendMessage(
+        PASetVolumeRequest{.devName = manager->defOutput,
                            .isOutput = true,
                            .volume = volume,
-                           .correlationId = self->commBus->GetNewCorId()},
+                           .correlationId = commBus->GetNewCorId()},
         Priority::NORMAL);
-  } else if (range == GTK_RANGE(self->inScale)) {
-    uint32_t volume = (uint32_t)gtk_range_get_value(range);
+  } else {
+    uint32_t volume = (uint32_t)value;
 
-    self->commBus->SendMessage(
-        PASetVolumeRequest{.devName = self->manager->defInput,
+    commBus->SendMessage(
+        PASetVolumeRequest{.devName = manager->defInput,
                            .isOutput = false,
                            .volume = volume,
-                           .correlationId = self->commBus->GetNewCorId()},
+                           .correlationId = commBus->GetNewCorId()},
         Priority::NORMAL);
   }
 }
 
-void PulseAudioWindow::chgDevice(GtkComboBox *combo, gpointer data) {
-  PulseAudioWindow *self = static_cast<PulseAudioWindow *>(data);
+void PulseAudioWindow::chgDevice(bool isOutput) {
 
-  GtkTreeIter iter;
-  if (gtk_combo_box_get_active_iter(combo, &iter)) {
-    gchar *devName;
-    gtk_tree_model_get(GTK_TREE_MODEL(gtk_combo_box_get_model(combo)), &iter, 0,
-                       &devName, -1);
+  if (isOutput) {
+    auto selected = outDropdown.get_selected();
+    if (selected == GTK_INVALID_LIST_POSITION)
+      return;
 
-    if (combo == GTK_COMBO_BOX(self->outDropdown) &&
-        self->manager->defOutput != devName) {
+    auto selectedItem = outStore->get_item(selected);
+    if (!selectedItem)
+      return;
 
-      self->commBus->SendMessage(
-          PAUpdateDefDeviceRequest{.devName = devName,
-                                   .isOutput = true,
-                                   .correlationId =
-                                       self->commBus->GetNewCorId()},
-          Priority::IMMEDIATE);
-    } else if (combo == GTK_COMBO_BOX(self->inDropdown) &&
-               self->manager->defInput != devName) {
+    commBus->SendMessage(
+        PAUpdateDefDeviceRequest{.devName = selectedItem->devName,
+                                 .isOutput = true,
+                                 .correlationId = commBus->GetNewCorId()},
+        Priority::IMMEDIATE);
+  } else {
+    auto selected = inDropdown.get_selected();
+    if (selected == GTK_INVALID_LIST_POSITION)
+      return;
 
-      self->commBus->SendMessage(
-          PAUpdateDefDeviceRequest{.devName = devName,
-                                   .isOutput = false,
-                                   .correlationId =
-                                       self->commBus->GetNewCorId()},
-          Priority::IMMEDIATE);
-    }
-    g_free(devName);
+    auto selectedItem = inStore->get_item(selected);
+    if (!selectedItem)
+      return;
+
+    commBus->SendMessage(
+        PAUpdateDefDeviceRequest{.devName = selectedItem->devName,
+                                 .isOutput = false,
+                                 .correlationId = commBus->GetNewCorId()},
+        Priority::IMMEDIATE);
   }
 }
 
-void PulseAudioWindow::handleToggleMute(GtkWidget *widget, gpointer data) {
-  PulseAudioWindow *self = static_cast<PulseAudioWindow *>(data);
-
-  if (widget == self->outMuteBtn) {
-    self->toggleMute(widget, data, true);
-  } else if (widget == self->inMuteBtn) {
-    self->toggleMute(widget, data, false);
-  }
-}
-
-void PulseAudioWindow::toggleMute([[maybe_unused]] GtkWidget *widget,
-                                  [[maybe_unused]] gpointer data,
-                                  bool isOutput) {
+void PulseAudioWindow::toggleMute(bool isOutput) {
   if (isOutput) {
     commBus->SendMessage(
         PAToggleMuteRequest{.devName = manager->defOutput,
                             .isOutput = true,
                             .correlationId = commBus->GetNewCorId()},
         Priority::IMMEDIATE);
+
     // TODO
     // if (res == 1) {
     //   if (GDK_IS_PIXBUF(outUnmuteIcon))
@@ -401,5 +253,29 @@ void PulseAudioWindow::toggleMute([[maybe_unused]] GtkWidget *widget,
     //   ctx->showUpdateWindow(UpdateModule::PULSEAUDIO, "mic_unmute",
     //                         "Input Device Unmuted");
     // }
+  }
+}
+
+Glib::RefPtr<PulseAudioDeviceObject>
+PulseAudioDeviceObject::create(const std::string &devName,
+                               const PulseAudioDevice &data) {
+  return Glib::make_refptr_for_instance<PulseAudioDeviceObject>(
+      new PulseAudioDeviceObject(devName, data));
+}
+
+void PulseAudioWindow::onFactorySetup(
+    const Glib::RefPtr<Gtk::ListItem> &list_item) {
+  auto lbl = Gtk::make_managed<Gtk::Label>("");
+  lbl->set_halign(Gtk::Align::START);
+  list_item->set_child(*lbl);
+}
+
+void PulseAudioWindow::onFactoryBind(
+    const Glib::RefPtr<Gtk::ListItem> &list_item) {
+  auto lbl = dynamic_cast<Gtk::Label *>(list_item->get_child());
+  auto dev =
+      std::dynamic_pointer_cast<PulseAudioDeviceObject>(list_item->get_item());
+  if (lbl && dev) {
+    lbl->set_label(dev->data.description);
   }
 }

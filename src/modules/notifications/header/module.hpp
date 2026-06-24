@@ -1,24 +1,24 @@
 #pragma once
 
-#include "glib.h"
-#include "gtk/gtk.h"
+#include "gtkmm/image.h"
+#include "gtkmm/label.h"
 #include "manager.hpp"
-#include "window.hpp"
+#include "services/header/comm_bus.hpp"
 
 class NotificationModule {
   NotificationManager *manager;
-  NotificationWindow *window;
   AppContext *ctx;
   CommunicationBus *commBus;
 
+  Gtk::Box mainBox;
+  Gtk::Image mainIcon;
+  Gtk::Label mainLbl;
+
 public:
   NotificationModule(AppContext *ctx, CommunicationBus *commBus,
-                     NotificationManager *notifInstance,
-                     NotificationWindow *window);
+                     NotificationManager *notifInstance);
 
   // Notification List Functions
-  GtkWidget *setup();
-
-  static void chgVisibiltyWin(GtkWidget *widget, GdkEvent *e,
-                              gpointer user_data);
+  Gtk::Box& setup();
+  void update();
 };
