@@ -1,33 +1,45 @@
-#include "module.hpp"
-#include "glib-object.h"
-#include "gtk/gtk.h"
-#include "modules/wifi/manager.hpp"
-#include "modules/wifi/window.hpp"
+#include "header/module.hpp"
+#include "gtkmm/label.h"
+#include "modules/wifi/header/window.hpp"
+#include <cctype>
 
-WifiModule::WifiModule(AppContext *ctx, WifiManager *mgr, WifiWindow *window)
-    : ctx(ctx), manager(mgr), window(window) {}
+#define TAG "WifiModule"
 
-GtkWidget *WifiModule::setup() {
-  GtkWidget *evtBox = gtk_event_box_new();
-  g_signal_connect(evtBox, "button-press-event", G_CALLBACK(openWindow), this);
+WifiModule::WifiModule(AppContext *ctx, WifiManager *mgr)
+    : ctx(ctx), manager(mgr) {}
 
-  mainLbl = gtk_label_new("Not Connected");
-  gtk_container_add(GTK_CONTAINER(evtBox), mainLbl);
+Gtk::Box &WifiModule::setup() {
+  mainBox.set_spacing(5);
+  mainBox.append(icon);
+  mainBox.append(lbl);
 
   update();
-  return evtBox;
+  return mainBox;
 }
 
 void WifiModule::update() {
-  auto it = manager->devices.find(manager->connDev);
+
+  auto it = manager->devices.find(manager->getConnDev());
   if (it != manager->devices.end()) {
-    gtk_label_set_text(GTK_LABEL(mainLbl), it->second.ssid.c_str());
-    return;
+    lbl.set_text(it->second.ssid);
+
+    WifiWindow::addTooltip(mainBox, it->second);
+    std::string tooltipTxt = mainBox.get_tooltip_markup();
+    size_t pos = tooltipTxt.rfind(" ");
+    if (pos == std::string::npos) {
+      return;
+    }
+
+    tooltipTxt = tooltipTxt.substr(pos + 1);
+    if (!tooltipTxt.empty()) {
+      tooltipTxt[0] = std::tolower(tooltipTxt[0]);
+      tooltipTxt = "signal-" + tooltipTxt + "-";
+    }
+
+    icon.set_from_icon_name("network-wireless-" + tooltipTxt + "symbolic");
+  } else {
+
+    icon.set_from_icon_name("network-wireless-offline-symbolic");
+    lbl.set_text("Not Connected");
   }
-  gtk_label_set_text(GTK_LABEL(mainLbl), "Not Connected");
-}
-void WifiModule::openWindow([[maybe_unused]] GtkWidget *widget,
-                            [[maybe_unused]] GdkEvent *e, gpointer user_data) {
-  WifiModule *self = static_cast<WifiModule *>(user_data);
-  self->ctx->showCtrlWindow("wifi", 400, 400);
 }

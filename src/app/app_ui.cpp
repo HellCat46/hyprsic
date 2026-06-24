@@ -1,71 +1,83 @@
-#include "app.hpp"
-#include "app/window.hpp"
+#include "gdkmm/display.h"
+#include "giomm/application.h"
+#include "glibmm/main.h"
+#include "gtkmm/application.h"
+#include "header/app.hpp"
+#include "header/window.hpp"
+#include "services/header/comm_bus.hpp"
+
+#define TAG "Application UI"
 
 Application::Application()
-    : stat(&ctx.logger), mem(&ctx.logger), load(&ctx.logger), battery(&ctx),
-      tempManager(&ctx), btManager(&ctx), btWindow(&ctx, &btManager),
-      notifManager(&ctx), notifWindow(&ctx, &notifManager), mprisManager(&ctx),
-      mprisWindow(&ctx, &mprisManager), scrnsavrManager(&ctx),
-      hyprInstance(&ctx.logger), snManager(&ctx), paManager(&ctx.logger),
-      paWindow(&ctx, &paManager), wifiManager(&ctx),
-      wifiWindow(&ctx, &wifiManager), brtManager(&ctx),
-      brtWindow(&ctx, &brtManager) {
+    : Gtk::Application("com.hellcat.hyprsic",
+                       Gio::Application::Flags::DEFAULT_FLAGS),
+      stat(&ctx.logger), mem(&ctx.logger), load(&ctx.logger), battery(&ctx),
+      tempManager(&ctx), btManager(&ctx), btWindow(&ctx, &commBus, &btManager),
+      notifManager(&ctx), notifWindow(&ctx, &commBus, &notifManager),
+      mprisManager(&ctx), mprisWindow(&ctx, &commBus, &mprisManager),
+      scrnsavrManager(&ctx), hyprInstance(&ctx.logger), snManager(&ctx),
+      paManager(&ctx), paWindow(&ctx, &commBus, &paManager), wifiManager(&ctx),
+      wifiWindow(&ctx, &commBus, &wifiManager), brtManager(&ctx),
+      brtWindow(&ctx, &commBus, &brtManager),
+      commBus(&ctx, &btManager, &mprisManager, &paManager, &scrnsavrManager,
+              &wifiManager, &hyprInstance, &brtManager, &snManager) {}
 
-  app = gtk_application_new("com.hellcat.hyprsic", G_APPLICATION_DEFAULT_FLAGS);
-  g_signal_connect(app, "activate", G_CALLBACK(activate), this);
+Glib::RefPtr<Application> Application::create() {
+  return Glib::RefPtr<Application>(new Application());
 }
 
-int Application::Run(int argc, char **argv) {
-  int status = g_application_run(G_APPLICATION(app), argc, argv);
-  g_object_unref(app);
+void Application::on_activate() {
+  Gtk::Application::on_activate();
+  // Required Because GTK doesn't care about layer shell windows for some reason...
+  hold();
+  
+  auto dp = Gdk::Display::get_default();
 
-  return status;
-}
+  btManager.setup();
+  hyprInstance.liveEventListener();
+  captureSessionDBus();
+  captureSystemDBus();
 
-void Application::activate(GtkApplication *app, gpointer user_data) {
-  Application *self = static_cast<Application *>(user_data);
-  GdkDisplay *display = gdk_display_get_default();
+  cliIPCThread = std::thread(&Application::captureCLIIPC, this);
 
-  self->btManager.setup();
-  self->hyprInstance.liveEventListener();
-  self->ssnDBusThread = std::thread(&Application::captureSessionDBus, self);
-  self->sysDBusThread = std::thread(&Application::captureSystemDBus, self);
-  self->cliIPCThread = std::thread(&Application::captureCLIIPC, self);
+  ctx.initWindows();
+  paWindow.init();
+  btWindow.init();
+  mprisWindow.init();
+  notifWindow.init();
+  brtWindow.init();
+  wifiWindow.init();
 
-  self->ctx.initWindows();
-  self->paWindow.setupIcons();
-  self->paWindow.init();
-  self->btWindow.init();
-  self->mprisWindow.init();
-  self->notifWindow.init();
-  self->brtWindow.init();
-  self->wifiWindow.init();
-  // clipboardManager.init(display);
-
-  int mCount = gdk_display_get_n_monitors(display);
+  auto monitors = dp->get_monitors();
+  int mCount = monitors->get_n_items();
+  ctx.logger.LogInfo(TAG,
+                     "on_activate: monitors count: " +
+                     std::to_string(mCount));
   for (int idx = 0; idx < mCount; idx++) {
-    self->mainWindows.push_back(std::unique_ptr<Window>(new Window(
-        &self->ctx, &self->hyprInstance, &self->snManager, &self->stat,
-        &self->mem, &self->load, &self->battery, &self->tempManager,
-        &self->scrnsavrManager, &self->mprisManager, &self->mprisWindow,
-        &self->notifManager, &self->notifWindow, &self->btManager,
-        &self->btWindow, &self->brtManager, &self->brtWindow, &self->paManager,
-        &self->paWindow, &self->wifiManager, &self->wifiWindow)));
+    auto monitor =
+        std::dynamic_pointer_cast<Gdk::Monitor>(monitors->get_object(idx));
 
-    self->mainWindows.back()->create(app, display, idx);
+    mainWindows.push_back(std::unique_ptr<AppWindow>(new AppWindow(
+        &ctx, &commBus, &hyprInstance, &snManager, &stat, &mem, &load,
+        &battery, &tempManager, &scrnsavrManager, &mprisManager,
+        &notifManager, &btManager, &brtManager, &paManager, &wifiManager)));
+
+    mainWindows.back()->create(monitor, idx);
   }
 
-  g_timeout_add(self->delay, UpdateUI, self);
-  self->dataUpdateThread = std::thread(&Application::UpdateData, self);
+  Glib::signal_timeout().connect(sigc::mem_fun(*this, &Application::UpdateUI),
+                                 delay);
+
+  dataUpdateThread = std::thread(&Application::UpdateData, this);
 }
 
 void Application::UpdateData() {
   while (true) {
-    btManager.getDeviceList();
+    btManager.updateDevList();
     stat.UpdateData();
     tempManager.update();
-    paManager.getDevices();
-    mprisManager.GetPlayerInfo();
+    paManager.updateDevices();
+    mprisManager.update();
     brtManager.update();
     wifiManager.update();
 
@@ -73,19 +85,24 @@ void Application::UpdateData() {
   }
 }
 
-gboolean Application::UpdateUI(gpointer data) {
-  Application *self = static_cast<Application *>(data);
+bool Application::UpdateUI() {
+  btWindow.update();
+  notifWindow.update();
+  mprisWindow.update();
+  brtWindow.update();
+  paWindow.update();
+  wifiWindow.update();
 
-  self->btWindow.update();
-  self->notifWindow.update();
-  self->mprisWindow.update();
-  self->brtWindow.update();
-  self->paWindow.update();
-  self->wifiWindow.update();
-
-  for (auto &window : self->mainWindows) {
+  for (auto &window : mainWindows) {
     window->update();
   }
 
   return true;
+}
+
+Application::~Application() {
+  if (cliIPCThread.joinable())
+    cliIPCThread.detach();
+  if (dataUpdateThread.joinable())
+    dataUpdateThread.detach();
 }

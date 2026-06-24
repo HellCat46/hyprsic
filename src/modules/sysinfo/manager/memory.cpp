@@ -1,6 +1,5 @@
-#include "memory.hpp"
-#include "../../../utils/helper_func.hpp"
-#include "cstring"
+#include "../header/manager/memory.hpp"
+#include "utils/helper_func.hpp"
 #include "fstream"
 
 #define TAG "Memory"

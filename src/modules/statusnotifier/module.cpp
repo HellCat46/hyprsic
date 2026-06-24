@@ -1,26 +1,27 @@
-#include "module.hpp"
-#include "gdk-pixbuf/gdk-pixbuf.h"
-#include "glib-object.h"
-#include "glib.h"
-#include "gtk/gtk.h"
-#include "manager.hpp"
+#include "header/module.hpp"
+#include "gdk/gdk.h"
+#include "gtkmm/enums.h"
+#include "gtkmm/gestureclick.h"
+#include "gtkmm/label.h"
+#include "gtkmm/separator.h"
+#include "modules/statusnotifier/header/manager.hpp"
 #include <map>
 #include <string>
 
 #define TAG "StatusNotifierModule"
 
 StatusNotifierModule::StatusNotifierModule(
-    AppContext *ctx, StatusNotifierManager *snManagerInstance) {
-  snManager = snManagerInstance;
-  logger = &ctx->logger;
-}
+    AppContext *ctx, CommunicationBus *commBus,
+    StatusNotifierManager *snManagerInstance)
+    : logger(&ctx->logger), snManager(snManagerInstance), commBus(commBus) {}
 
-GtkWidget* StatusNotifierModule::setup() {
-  sniBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
+Gtk::Box &StatusNotifierModule::setup() {
+  sniBox.set_spacing(2);
 
-  snManager->removeCallbacks.push_back(
-      {StatusNotifierModule::remove, sniBox, &sniApps});
-  
+  // TODO: Replace with CommunicationBus...
+  // snManager->removeCallbacks.push_back(
+  //     {StatusNotifierModule::remove, sniBox, &sniApps});
+
   return sniBox;
 }
 
@@ -29,118 +30,80 @@ void StatusNotifierModule::update() {
     if (sniApps.find(servicePath) != sniApps.end())
       return; // Already Added
 
-    GdkPixbuf *scaledPixbuf =
-        gdk_pixbuf_scale_simple(appInfo.pixmap, 24, 24, GDK_INTERP_BILINEAR);
-    SNIApp app;
+    auto &app = sniApps.emplace(servicePath, SNIApp{}).first->second;
 
-    app.icon = gtk_event_box_new();
-    GtkWidget *iconImg = gtk_image_new_from_pixbuf(scaledPixbuf);
-    gtk_container_add(GTK_CONTAINER(app.icon), iconImg);
+    app.icon.set(
+        appInfo.pixmap->scale_simple(24, 24, Gdk::InterpType::BILINEAR));
 
-    app.popOver = gtk_popover_new(app.icon);
-    gtk_widget_set_size_request(app.popOver, 200, -1);
-    gtk_widget_set_margin_bottom(app.popOver, 30);
+    auto gesClick = Gtk::GestureClick::create();
+    gesClick->set_button(GDK_BUTTON_SECONDARY);
+    gesClick->signal_pressed().connect(
+        [this, servicePath](int, double, double) { handleContextMenuOpen(servicePath); });
+    app.icon.add_controller(gesClick);
 
-    MenuActionArgs *args = g_new0(MenuActionArgs, 1);
-    args->snManager = snManager;
-    args->itemId = servicePath;
-    args->logger = logger;
-    args->sniApp = app;
+    app.popOver.set_size_request(200, -1);
+    app.popOver.set_margin_bottom(30);
 
-    // g_signal_connect(app.popOver, "focus-out-event",
-    // G_CALLBACK(StatusNotifierModule::handleContextMenuOpen), args);
-    g_signal_connect(app.icon, "button-press-event",
-                     G_CALLBACK(StatusNotifierModule::handleContextMenuOpen),
-                     args);
+    sniBox.append(app.icon);
 
-    gtk_box_pack_start(GTK_BOX(sniBox), app.icon, false, false, 0);
-    gtk_widget_show_all(sniBox);
+    app.parentBox.set_margin_bottom(10);
+    app.parentBox.set_margin_top(10);
 
-    sniApps.insert({servicePath, app});
-  }
-}
+    app.popOver.set_parent(app.parentBox);
+    for (const auto &[index, menuItem] : appInfo.menuActions) {
+      if (menuItem.isSeparator) {
+        Gtk::Separator sep{Gtk::Orientation::HORIZONTAL};
+        app.parentBox.append(sep);
+      } else if (menuItem.visible) {
+        Gtk::Label menuBtn{menuItem.label};
+        auto lblGesClick = Gtk::GestureClick::create();
+        menuBtn.set_sensitive(menuItem.enabled);
+        menuBtn.add_controller(lblGesClick);
 
-void StatusNotifierModule::remove(std::string servicePath,
-                                  std::map<std::string, SNIApp> *sniApps,
-                                  GtkWidget *sniBox) {
-  auto it = sniApps->find(servicePath);
-  if (it != sniApps->end()) {
-    gtk_container_remove(GTK_CONTAINER(sniBox), it->second.icon);
-    gtk_widget_destroy(it->second.icon);
-    sniApps->erase(it);
-  }
-}
-
-void StatusNotifierModule::handleContextMenuOpen(GtkWidget *widget,
-                                                 GdkEventButton *event,
-                                                 gpointer user_data) {
-
-  MenuActionArgs *args = (MenuActionArgs *)user_data;
-  if (gtk_widget_get_visible(args->sniApp.popOver)) {
-    gtk_popover_popdown(GTK_POPOVER(args->sniApp.popOver));
-    gtk_widget_destroy(args->sniApp.parentBox);
-    return;
-  }
-
-  if (event->type != GDK_BUTTON_PRESS || event->button != 3)
-    return; // Skip All but Right Clicks
-
-  auto item = args->snManager->registeredItems.find(args->itemId);
-  if (item == args->snManager->registeredItems.end())
-    return;
-
-  args->sniApp.parentBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-  gtk_widget_set_margin_bottom(args->sniApp.parentBox, 10);
-  gtk_widget_set_margin_top(args->sniApp.parentBox, 10);
-
-  gtk_container_add(GTK_CONTAINER(args->sniApp.popOver),
-                    args->sniApp.parentBox);
-
-  for (const auto &[index, menuItem] : item->second.menuActions) {
-
-    if (menuItem.isSeparator) {
-      GtkWidget *separator = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
-      gtk_box_pack_start(GTK_BOX(args->sniApp.parentBox), separator, false,
-                         false, 0);
-    } else if (menuItem.visible) {
-      GtkWidget *menuEvtBox = gtk_event_box_new();
-      GtkWidget *menuBtn = gtk_label_new(menuItem.label.c_str());
-
-      gtk_container_add(GTK_CONTAINER(menuEvtBox), menuBtn);
-      gtk_widget_set_sensitive(menuBtn, menuItem.enabled);
-
-      gtk_box_pack_start(GTK_BOX(args->sniApp.parentBox), menuEvtBox, false,
-                         false, 0);
-      
-        EvtBtnPressArgs *btnArgs = g_new0(EvtBtnPressArgs, 1);
-        btnArgs->snManager = args->snManager;
-        btnArgs->itemId = args->itemId;
-        btnArgs->logger = args->logger;
-        btnArgs->sniApp = args->sniApp;
-        btnArgs->evtIdx = index;
-        g_signal_connect_data(
-            menuEvtBox, "button-press-event",
-            G_CALLBACK(StatusNotifierModule::handleEvtButtonPress), btnArgs,
-            (GClosureNotify)g_free, (GConnectFlags)0);
+        lblGesClick->set_button(GDK_BUTTON_PRIMARY);
+        lblGesClick->signal_pressed().connect(
+            [this, servicePath, evtIdx = menuItem.index, lblGesClick](int, double, double) { handleEvtButtonPress(servicePath, evtIdx, lblGesClick->get_current_event_time()); });
+        app.parentBox.append(menuBtn);
+      }
     }
-  }
-  gtk_widget_show_all(args->sniApp.parentBox);
+    app.popOver.popdown();
 
-  gtk_popover_popup(GTK_POPOVER(args->sniApp.popOver));
+    sniBox.append(app.icon);
+  }
 }
 
-void StatusNotifierModule::handleEvtButtonPress(GtkWidget *widget,
-                                                 GdkEventButton *event,
-                                                 gpointer user_data) {
-  if (event->type != GDK_BUTTON_PRESS || event->button != 1)
-    return;
-  
-  
-  EvtBtnPressArgs *args = (EvtBtnPressArgs *)user_data;
-  auto item = args->snManager->registeredItems.find(args->itemId);
-  if (item == args->snManager->registeredItems.end())
+void StatusNotifierModule::remove(std::string servicePath) {
+  auto it = sniApps.find(servicePath);
+  if (it != sniApps.end()) {
+    it->second.icon.unparent();
+    sniApps.erase(it);
+  }
+}
+
+void StatusNotifierModule::handleContextMenuOpen(std::string servicePath) {
+  auto it = sniApps.find(servicePath);
+  if (it == sniApps.end())
     return;
 
-  args->snManager->executeMenuAction(args->itemId, item->second.menu_path,
-      event->time, args->evtIdx);
+  if (it->second.popOver.is_visible()) {
+    it->second.popOver.popdown();
+  } else {
+    it->second.popOver.popup();
+  }
+}
+
+void StatusNotifierModule::handleEvtButtonPress(std::string servicePath,
+                                                 uint32_t evtIdx,
+                                                 uint32_t timestamp) {
+  auto item = snManager->registeredItems.find(servicePath);
+  if (item == snManager->registeredItems.end())
+    return;
+
+  commBus->SendMessage(
+      SNIExecuteMenuAction{.itemService = servicePath,
+                           .menuPath = item->second.menu_path,
+                           .timestamp = timestamp,
+                           .actionIndex = evtIdx,
+                           .correlationId = commBus->GetNewCorId()},
+      Priority::HIGH);
 }

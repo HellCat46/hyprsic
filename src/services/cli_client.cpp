@@ -11,7 +11,7 @@
 #include <unistd.h>
 
 void CLIClient::Run(int argc, char **argv) {
-  CLI::App cliApp{"HyprSic - A Status Bar and Control Center for Hyprland"};
+  CLI::App cliApp{"Hyprsic - A Status Bar and Control Center for Hyprland"};
 
   bool debugPreview = false;
   cliApp.add_flag(
@@ -25,7 +25,7 @@ void CLIClient::Run(int argc, char **argv) {
   viewCmd->add_option("module", winName, "Module to Toggle")
       ->required()
       ->check(CLI::IsMember(
-          {"pulseaudio", "bluetooth", "notifications", "media", "brightness"}));
+          {"pulseaudio", "bluetooth", "notifications", "brightness", "mpris", "wifi"}));
   
   // Audio Control Command
   std::string audioAction;

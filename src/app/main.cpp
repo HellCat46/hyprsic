@@ -1,12 +1,11 @@
-#include "app.hpp"
-#include "cstdlib"
-#include "cstring"
+#include "header/app.hpp"
 #include "services/header/cli_client.hpp"
 
 int main(int argc, char **argv) {
   CLIClient::Run(argc, argv);
 
-  Application app;
+  // g_log_set_always_fatal((GLogLevelFlags)(G_LOG_LEVEL_WARNING | G_LOG_LEVEL_CRITICAL));
 
-  return app.Run(argc, argv);
+  auto app = Application::create();
+  return app->run(argc, argv);
 }

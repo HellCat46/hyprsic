@@ -91,21 +91,21 @@ DBManager::DBManager(LoggingManager *logMgr) : localDB(nullptr) {
   }
 }
 
-bool DBManager::insertNotification(const NotificationRecord *notif) {
+bool DBManager::insertNotification(const NotificationRecord& notif) {
   try {
-    insertStmt->bind(1, notif->id);
-    insertStmt->bind(2, notif->app_name);
-    insertStmt->bind(3, notif->summary);
-    insertStmt->bind(4, notif->body);
+    insertStmt->bind(1, notif.id);
+    insertStmt->bind(2, notif.app_name);
+    insertStmt->bind(3, notif.summary);
+    insertStmt->bind(4, notif.body);
 
     insertStmt->exec();
     insertStmt->reset();
     
 
-    notifList.push_front(*notif);
+    notifList.push_front(notif);
     return 0;
   } catch (const std::exception &e) {
-    logger->LogError(TAG, "Failed to insert notification ID: " + notif->id +
+    logger->LogError(TAG, "Failed to insert notification ID: " + notif.id +
                               " Error: " + e.what());
     insertStmt->reset();
 

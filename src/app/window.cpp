@@ -1,104 +1,86 @@
-#include "window.hpp"
-#include "modules/wifi/module.hpp"
-#include <cstring>
-#include <ctime>
+#include "header/window.hpp"
+#include "gtk4-layer-shell.h"
+#include "gtkmm-4.0/gdkmm/monitor.h"
+#include "gtkmm/label.h"
+#include "gtkmm/widget.h"
+#include "services/header/comm_bus.hpp"
+#include <functional>
+#include <memory>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <vector>
 
 #define TAG "Application"
 
-Window::Window(AppContext *ctx, HyprWSManager *hyprMgr,
-               StatusNotifierManager *snManager, Stats *stat, Memory *mem,
-               SysLoad *load, BatteryInfo *battery, TemperatureManager *tempMgr,
-               ScreenSaverManager *scrnsavrMgr, MprisManager *mprisMgr,
-               MprisWindow *mprisWindow, NotificationManager *notifInstance,
-               NotificationWindow *notifWindow, BluetoothManager *btMgr,
-               BluetoothWindow *btWindow, BrightnessManager *brtMgr,
-               BrightnessWindow *brtWindow, PulseAudioManager *paMgr,
-               PulseAudioWindow *paWindow, WifiManager *wifiMgr,
-               WifiWindow *wifiWin)
+AppWindow::AppWindow(AppContext *ctx, CommunicationBus *commBus,
+                     HyprWSManager *hyprMgr, StatusNotifierManager *snManager,
+                     Stats *stat, Memory *mem, SysLoad *load,
+                     BatteryInfo *battery, TemperatureManager *tempMgr,
+                     ScreenSaverManager *scrnsavrMgr, MprisManager *mprisMgr,
+                     NotificationManager *notifInstance,
+                    BluetoothManager *btMgr,
+                     BrightnessManager *brtMgr,
+                     PulseAudioManager *paMgr, WifiManager *wifiMgr)
     : sysinfoModule(ctx, stat, mem, load, battery, tempMgr),
-      mprisModule(ctx, mprisMgr, mprisWindow), hyprModule(ctx, hyprMgr),
-      scrnsavrModule(ctx, scrnsavrMgr), btModule(ctx, btMgr, btWindow),
-      notifModule(ctx, notifInstance, notifWindow), snModule(ctx, snManager),
-      paModule(paMgr, ctx, paWindow), brtModule(ctx, brtMgr, brtWindow),
-      wifiModule(ctx, wifiMgr, wifiWin) {}
+      mprisModule(ctx, mprisMgr, commBus),
+      hyprModule(ctx, commBus, hyprMgr),
+      scrnsavrModule(ctx, commBus, scrnsavrMgr), btModule(ctx, btMgr),
+      notifModule(ctx, commBus, notifInstance),
+      snModule(ctx, commBus, snManager), paModule(paMgr, ctx),
+      brtModule(ctx, brtMgr), wifiModule(ctx, wifiMgr) {}
 
-void Window::create(GtkApplication *app, GdkDisplay *dp, int monitorIdx) {
-  auto monitor = gdk_display_get_monitor(dp, monitorIdx);
+void AppWindow::create(std::shared_ptr<Gdk::Monitor> monitor, int monIdx) {
 
-  window = gtk_application_window_new(app);
+  auto winObj = this->gobj();
+  gtk_layer_init_for_window(winObj);
+  gtk_layer_set_layer(winObj, GTK_LAYER_SHELL_LAYER_TOP);
+  gtk_layer_set_monitor(winObj, monitor->gobj());
+  gtk_layer_set_anchor(winObj, GTK_LAYER_SHELL_EDGE_BOTTOM, true);
+  gtk_layer_set_anchor(winObj, GTK_LAYER_SHELL_EDGE_LEFT, true);
+  gtk_layer_set_anchor(winObj, GTK_LAYER_SHELL_EDGE_RIGHT, true);
+  gtk_layer_set_exclusive_zone(winObj, 25);
 
-  gtk_layer_init_for_window(GTK_WINDOW(window));
-  gtk_layer_set_layer(GTK_WINDOW(window), GTK_LAYER_SHELL_LAYER_TOP);
-  gtk_layer_set_monitor(GTK_WINDOW(window), monitor);
+  set_size_request(-1, 25);
 
-  gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_BOTTOM, true);
-  gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_LEFT, true);
-  gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_RIGHT, true);
-  gtk_layer_set_exclusive_zone(GTK_WINDOW(window), 25);
-  gtk_widget_set_size_request(window, -1, 25);
+  Gtk::Box mainBox;
+  set_child(mainBox);
 
-  GtkWidget *mainGrid = gtk_grid_new();
-  gtk_grid_set_column_homogeneous(GTK_GRID(mainGrid), true);
-  gtk_container_add(GTK_CONTAINER(window), mainGrid);
+  mainBox.append(hyprModule.setup(monIdx));
 
-  GtkWidget *wid = hyprModule.setup(monitorIdx);
-  gtk_grid_attach(GTK_GRID(mainGrid), wid, 0, 0, 2, 1);
+  auto& mpris = mprisModule.setup();
+  mpris.set_hexpand(true);
+  mpris.set_halign(Gtk::Align::CENTER);
+  mainBox.append(mpris);
 
-  wid = mprisModule.setup();
-  gtk_grid_attach(GTK_GRID(mainGrid), wid, 2, 0, 1, 1);
-
-  // Right Box to Show System Stats
-  GtkWidget *right_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-  gtk_grid_attach(GTK_GRID(mainGrid), right_box, 3, 0, 3, 1);
-  gtk_widget_set_hexpand(right_box, true);
-
-  GtkWidget *rightGrid = gtk_grid_new();
-  gtk_box_pack_end(GTK_BOX(right_box), rightGrid, false, false, 0);
-  gtk_grid_set_column_spacing(GTK_GRID(rightGrid), 10);
-  gtk_widget_set_margin_end(right_box, 5);
+  Gtk::Box rightBox;
+  rightBox.set_spacing(10);
+  rightBox.set_halign(Gtk::Align::END);
+  mainBox.append(rightBox);
 
   // System Info Widgets
-  auto wids = sysinfoModule.setup();
-  for (unsigned long i = 0; i < wids.size(); i++) {
-    gtk_grid_attach(GTK_GRID(rightGrid), wids[i], i, 0, 1, 1);
-  }
+  std::vector<std::reference_wrapper<Gtk::Widget>> wids;
+  sysinfoModule.setup(wids);
+  for (auto& w : wids)
+      rightBox.append(w.get());
+  
+  rightBox.append(wifiModule.setup());
+  rightBox.append(brtModule.setup());
+  rightBox.append(notifModule.setup());
+  rightBox.append(btModule.setup());
+  rightBox.append(scrnsavrModule.setup());
+  rightBox.append(paModule.setup());
+  rightBox.append(snModule.setup());
 
-  int loc = wids.size();
-  wid = wifiModule.setup();
-  gtk_grid_attach(GTK_GRID(rightGrid), wid, loc++, 0, 1, 1);
-
-  wid = brtModule.setup();
-  gtk_grid_attach(GTK_GRID(rightGrid), wid, loc++, 0, 1, 1);
-
-  wid = notifModule.setup();
-  gtk_grid_attach(GTK_GRID(rightGrid), wid, loc++, 0, 1, 1);
-
-  wid = btModule.setup();
-  gtk_grid_attach(GTK_GRID(rightGrid), wid, loc++, 0, 1, 1);
-
-  wid = scrnsavrModule.setup();
-  gtk_grid_attach(GTK_GRID(rightGrid), wid, loc++, 0, 1, 1);
-
-  wids = paModule.setup();
-  for (unsigned long i = 0; i < wids.size(); i++) {
-    gtk_grid_attach(GTK_GRID(rightGrid), wids[i], loc + i, 0, 1, 1);
-  }
-
-  loc += wids.size();
-  wid = snModule.setup();
-  gtk_grid_attach(GTK_GRID(rightGrid), wid, loc, 0, 1, 1);
-
-  gtk_widget_show_all(window);
+  this->show();
 }
 
-void Window::update() {
+void AppWindow::update() {
   sysinfoModule.update();
   mprisModule.update();
   snModule.update();
   paModule.update();
   brtModule.update();
   wifiModule.update();
+  notifModule.update();
 }

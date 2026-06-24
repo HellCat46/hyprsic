@@ -1,7 +1,6 @@
-#include "sys_load.hpp"
-#include "cmath"
-#include "cstring"
-#include "fstream"
+#include "../header/manager/sys_load.hpp"
+#include <cmath>
+#include <fstream>
 
 #define TAG "SysLoad"
 

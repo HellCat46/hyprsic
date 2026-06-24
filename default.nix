@@ -11,6 +11,7 @@ pkgs.stdenv.mkDerivation {
     meson
     ninja
     gcc
+    python3
     wayland-scanner
   ];
 
@@ -25,8 +26,8 @@ pkgs.stdenv.mkDerivation {
     cairo
     pango
     systemd
-    gtk3
-    gtk-layer-shell
+    gtk4
+    gtk4-layer-shell
     sqlite
     sqlitecpp
   ];

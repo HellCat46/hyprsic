@@ -1,11 +1,11 @@
 #pragma once
-#include "../modules/sysinfo/manager/battery.hpp"
-#include "../modules/sysinfo/manager/disk.hpp"
-#include "../modules/sysinfo/manager/memory.hpp"
-#include "../modules/sysinfo/manager/network.hpp"
-#include "../modules/sysinfo/manager/stats.hpp"
-#include "../modules/sysinfo/manager/sys_load.hpp"
-#include "../modules/workspaces/hyprland/manager.hpp"
+#include "../modules/sysinfo/header/manager/battery.hpp"
+#include "../modules/sysinfo/header/manager/disk.hpp"
+#include "../modules/sysinfo/header/manager/memory.hpp"
+#include "../modules/sysinfo/header/manager/network.hpp"
+#include "../modules/sysinfo/header/manager/stats.hpp"
+#include "../modules/sysinfo/header/manager/sys_load.hpp"
+#include "../modules/workspaces/hyprland/header/manager.hpp"
 #include "math.h"
 
 class Display {

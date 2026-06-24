@@ -1,5 +1,6 @@
-#include "manager.hpp"
+#include "header/manager.hpp"
 #include "cstdlib"
+#include "services/header/comm_types.hpp"
 #include "sstream"
 #include "sys/poll.h"
 #include "sys/socket.h"
@@ -198,9 +199,9 @@ void HyprWSManager::liveEventListener() {
         }
 
         if (chngMade) {
+          
           for (auto &listener : listeners) {
-            listener.first(this, listener.second.wsBox, listener.second.spWSBox,
-                           listener.second.windowId);
+            listener();
           }
         }
       }
@@ -216,8 +217,8 @@ long HyprWSManager::parseWorkspaceId(std::string_view stPoint) {
   long id = 0;
   bool neg = false;
 
-  for (int idx = 0; stPoint[idx] != '\n' && stPoint[idx] != '\0' &&
-                    stPoint[idx] != ',' && idx < stPoint.size();
+  for (unsigned long idx = 0; stPoint[idx] != '\n' && stPoint[idx] != '\0' &&
+                              stPoint[idx] != ',' && idx < stPoint.size();
        idx++) {
     if (stPoint[idx] >= 48 && stPoint[idx] <= 57) {
       id = (id * 10) + (stPoint[idx] - 48);
@@ -286,54 +287,71 @@ Json::Value HyprWSManager::executeQuery(const std::string &msg,
   return root;
 }
 
-int HyprWSManager::SwitchToWS(int wsId) {
-  if (workspaces.find(wsId) == workspaces.end()) {
-    logger->LogDebug(TAG, "Workspace Not Found");
-    return 1;
+ResponseMessage HyprWSManager::SwitchToWS(const HyprSwitchWSRequest& req) {
+  ResponseMessage resp{
+      .success = false, .errMsg = "", .correlationId = req.correlationId};
+
+  if (workspaces.find(req.wsId) == workspaces.end()) {
+    resp.errMsg = "Workspace Not Found";
+    logger->LogDebug(TAG, resp.errMsg);
+
+    return resp;
   }
 
   std::string err;
   Json::Value res =
-      executeQuery("s/dispatch workspace " + std::to_string(wsId), err);
+      executeQuery("s/dispatch workspace " + std::to_string(req.wsId), err);
   if (res == -2) {
+    resp.errMsg = "Failed to Switch to Workspace: " + err;
+    logger->LogError(TAG, resp.errMsg);
 
-    logger->LogError(TAG, "Failed to Switch to Workspace: " + err);
-    return 1;
+    return resp;
   }
 
   if (res >= 0) {
-    activeWorkspaceId = wsId;
+    activeWorkspaceId = req.wsId;
   }
-  return 0;
+
+  resp.success = true;
+  return resp;
 }
 
-int HyprWSManager::MoveToWS(int wsId, unsigned char monitorId, bool forward) {
+ResponseMessage HyprWSManager::MoveToWS(const HyprMoveWSRequest& req) {
+  ResponseMessage resp{
+      .success = false, .errMsg = "", .correlationId = req.correlationId};
+  unsigned long wsId = activeWorkspaceId;
+  
   auto srtPt = workspaces.find(wsId);
   if (srtPt == workspaces.end()) {
-    logger->LogDebug(TAG, "Workspace Not Found");
-    return 1;
+    resp.errMsg = "Workspace Not Found";
+    logger->LogDebug(TAG, resp.errMsg);
+
+    return resp;
   }
 
   wsId = -1;
-  for (auto it = srtPt; it != workspaces.end(); forward ? it++ : it--) {
-    if (it->second.monitorId == monitorId && it != srtPt) {
+  for (auto it = srtPt; it != workspaces.end(); req.forw ? it++ : it--) {
+    if (it->second.monitorId == req.monitorId && it != srtPt) {
       wsId = it->first;
       break;
     }
   }
 
-  if (wsId == -1) {
-    logger->LogDebug(TAG, "No Workspace Found on the Target Monitor");
-    return 1;
+  if (wsId == -1UL) {
+    resp.errMsg = "No Workspace Found on the Target Monitor";
+    logger->LogDebug(TAG, resp.errMsg);
+
+    return resp;
   }
 
   std::string err;
   Json::Value res =
       executeQuery("s/dispatch workspace " + std::to_string(wsId), err);
   if (res == -2) {
+    resp.errMsg = "Failed to Switch to Workspace: " + err;
+    logger->LogError(TAG, resp.errMsg);
 
-    logger->LogError(TAG, "Failed to Switch to Workspace: " + err);
-    return 1;
+    return resp;
   }
 
   if (res) {
@@ -341,22 +359,33 @@ int HyprWSManager::MoveToWS(int wsId, unsigned char monitorId, bool forward) {
     activeWorkspaceId = wsId;
   }
 
-  return 0;
+  resp.success = true;
+  return resp;
 }
 
-int HyprWSManager::SwitchSPWS(int wsId, std::string name) {
-  if (workspaces.find(wsId) == workspaces.end()) {
-    logger->LogDebug(TAG, "Workspace Not Found");
-    return 1;
+ResponseMessage HyprWSManager::SwitchSPWS(const HyprSwitchSPWSRequest& req) {
+  ResponseMessage resp{
+      .success = false, .errMsg = "", .correlationId = req.correlationId};
+
+  if (workspaces.find(req.wsId) == workspaces.end()) {
+      resp.errMsg = "Workspace Not Found";
+    logger->LogDebug(TAG, resp.errMsg);
+    
+    return resp;
   }
 
   std::string err;
-  if (executeQuery("s/dispatch togglespecialworkspace " + name, err) == -2) {
+  if (executeQuery("s/dispatch togglespecialworkspace " + req.name, err) ==
+      -2) {
 
-    logger->LogError(TAG, "Failed to Switch to Special Workspace: " + err);
-    return 1;
+    resp.errMsg = "Failed to Switch to Special Workspace: " + err;
+    logger->LogError(TAG, resp.errMsg);
+    
+    return resp;
   }
-  return 0;
+  
+  resp.success = true;
+  return resp;
 }
 
 int HyprWSManager::GetWorkspaces() {
@@ -435,9 +464,27 @@ int HyprWSManager::GetMonitors() {
 }
 
 void HyprWSManager::subscribe(
-    std::function<void(HyprWSManager *wsInstance, GtkWidget *wsBox,
-                       GtkWidget *spWSBox, unsigned char monitorId)>
-        updateFunc,
-    GtkWidget *wsBox, GtkWidget *spWSBox, unsigned char windowId) {
-  listeners.push_back({updateFunc, WSListenerData{wsBox, spWSBox, windowId}});
+    std::function<void()>
+        updateFunc) {
+  listeners.push_back(updateFunc);
+}
+
+ResponseMessage HyprWSManager::handle(const HyprRequest &req) {
+  ResponseMessage resp;
+
+  std::visit(
+      [&](auto &reqMsg) {
+        using T = std::decay_t<decltype(reqMsg)>;
+
+        if constexpr (std::is_same_v<T, HyprSwitchSPWSRequest>) {
+          resp = SwitchSPWS(reqMsg);
+        } else if constexpr (std::is_same_v<T, HyprSwitchWSRequest>) {
+          resp = SwitchToWS(reqMsg);
+        } else if constexpr (std::is_same_v<T, HyprMoveWSRequest>) {
+          resp = MoveToWS(reqMsg);
+        }
+      },
+      req);
+
+  return resp;
 }

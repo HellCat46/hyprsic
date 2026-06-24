@@ -1,4 +1,5 @@
-#include "manager.hpp"
+#include "header/manager.hpp"
+#include "services/header/comm_types.hpp"
 #include <pulse/context.h>
 #include <pulse/introspect.h>
 #include <pulse/operation.h>
@@ -8,31 +9,30 @@
 
 #define TAG "PulseAudioManager"
 
-PulseAudioManager::PulseAudioManager(LoggingManager *logMgr) : logger(logMgr) {
+PulseAudioManager::PulseAudioManager(AppContext *ctx) : ctx(ctx) {
 
   mainLoop = pa_threaded_mainloop_new();
   if (mainLoop == nullptr) {
-    logger->LogError(TAG, "Failed to Get Pulseaudio Main Loop.");
+    ctx->logger.LogError(TAG, "Failed to Get Pulseaudio Main Loop.");
     return;
   }
 
   pa_mainloop_api *mainLoopAPI = pa_threaded_mainloop_get_api(mainLoop);
-  pulseContext = pa_context_new(mainLoopAPI, "hyprsic");
-  if (!pulseContext) {
-    logger->LogError(TAG, "Failed to Create a Pulseaudio Context.");
+  pulseCtx = pa_context_new(mainLoopAPI, "hyprsic");
+  if (!pulseCtx) {
+    ctx->logger.LogError(TAG, "Failed to Create a Pulseaudio Context.");
     return;
   }
 
-  pa_context_set_state_callback(pulseContext, contextStateHandler, this);
+  pa_context_set_state_callback(pulseCtx, contextStateHandler, this);
 
-  if (pa_context_connect(pulseContext, nullptr, PA_CONTEXT_NOFAIL, nullptr) <
-      0) {
-    logger->LogError(TAG, "Failed to Connect the Pulseaudio Context.");
+  if (pa_context_connect(pulseCtx, nullptr, PA_CONTEXT_NOFAIL, nullptr) < 0) {
+    ctx->logger.LogError(TAG, "Failed to Connect the Pulseaudio Context.");
     return;
   }
 
   if (pa_threaded_mainloop_start(mainLoop) < 0) {
-    logger->LogError(TAG, "Failed to Start the Pulseaudio Context.");
+    ctx->logger.LogError(TAG, "Failed to Start the Pulseaudio Context.");
     return;
   }
 
@@ -44,7 +44,7 @@ void PulseAudioManager::contextStateHandler(pa_context *pulseCtx, void *data) {
 
   switch (pa_context_get_state(pulseCtx)) {
   case PA_CONTEXT_READY:
-    self->logger->LogInfo(
+    self->ctx->logger.LogInfo(
         TAG, "PulseAudio Connection Established. Subscribing to Events...");
     pa_context_get_server_info(pulseCtx, serverInfoCallBack, data);
 
@@ -55,22 +55,23 @@ void PulseAudioManager::contextStateHandler(pa_context *pulseCtx, void *data) {
                                     PA_SUBSCRIPTION_EVENT_SOURCE |
                                     PA_SUBSCRIPTION_EVENT_SINK),
         nullptr, nullptr);
-    self->logger->LogInfo(TAG, "Successfully Subscribed to Pulseaudio Events.");
+    self->ctx->logger.LogInfo(TAG,
+                              "Successfully Subscribed to Pulseaudio Events.");
     break;
   case PA_CONTEXT_TERMINATED:
-    self->logger->LogInfo(TAG, "Connection Terminated");
+    self->ctx->logger.LogInfo(TAG, "Connection Terminated");
     break;
   case PA_CONTEXT_FAILED:
-    self->logger->LogError(TAG, "Connection Failed");
+    self->ctx->logger.LogError(TAG, "Connection Failed");
     break;
   default:
     break;
   }
 }
 
-void PulseAudioManager::serverInfoCallBack([[maybe_unused]] pa_context *pulseCtx,
-                                           const pa_server_info *info,
-                                           void *data) {
+void PulseAudioManager::serverInfoCallBack(
+    [[maybe_unused]] pa_context *pulseCtx, const pa_server_info *info,
+    void *data) {
   PulseAudioManager *playing = (PulseAudioManager *)data;
 
   playing->defInput = info->default_source_name;
@@ -79,7 +80,7 @@ void PulseAudioManager::serverInfoCallBack([[maybe_unused]] pa_context *pulseCtx
 
 void PulseAudioManager::handleStateChanges(
     pa_context *pulseCtx, const pa_subscription_event_type eventType,
-     [[maybe_unused]] unsigned int idx, void *data) {
+    [[maybe_unused]] unsigned int idx, void *data) {
   unsigned int facility = eventType & PA_SUBSCRIPTION_EVENT_FACILITY_MASK;
 
   switch (facility) {
@@ -99,8 +100,8 @@ void PulseAudioManager::handleStateChanges(
 }
 
 void PulseAudioManager::sinkInfoCallBack([[maybe_unused]] pa_context *pulseCtx,
-                                         const pa_sink_info *info,[[maybe_unused]] int eol,
-                                         void *data) {
+                                         const pa_sink_info *info,
+                                         [[maybe_unused]] int eol, void *data) {
   if (info == nullptr)
     return;
 
@@ -128,15 +129,15 @@ void PulseAudioManager::sinkInfoCallBack([[maybe_unused]] pa_context *pulseCtx,
     dev.volume.push_back(info->volume.values[i]);
   }
   self->outDevs.insert({info->name, dev});
-  self->logger->LogDebug(
+  self->ctx->logger.LogDebug(
       TAG, "Sink Device Found: " + std::string(info->name) +
                " | Description: " + dev.description + "(Total " +
                std::to_string(self->outDevs.size()) + " Devices)");
 }
 
-void PulseAudioManager::sourceInfoCallBack([[maybe_unused]] pa_context *pulseCtx,
-                                           const pa_source_info *info,[[maybe_unused]] int eol,
-                                           void *data) {
+void PulseAudioManager::sourceInfoCallBack(
+    [[maybe_unused]] pa_context *pulseCtx, const pa_source_info *info,
+    [[maybe_unused]] int eol, void *data) {
   if (info == nullptr)
     return;
 
@@ -164,130 +165,154 @@ void PulseAudioManager::sourceInfoCallBack([[maybe_unused]] pa_context *pulseCtx
     dev.volume.push_back(info->volume.values[i]);
   }
   self->inDevs.insert({info->name, dev});
-  self->logger->LogInfo(TAG,
-                        "Source Device Found: " + std::string(info->name) +
-                            " | Description: " + dev.description + "(Total " +
-                            std::to_string(self->inDevs.size()) + " Devices)");
+  self->ctx->logger.LogInfo(
+      TAG, "Source Device Found: " + std::string(info->name) +
+               " | Description: " + dev.description + "(Total " +
+               std::to_string(self->inDevs.size()) + " Devices)");
 }
 
-void PulseAudioManager::getDevices() {
+void PulseAudioManager::updateDevices() {
   pa_threaded_mainloop_lock(mainLoop);
-  pa_context_get_sink_info_list(pulseContext, sinkInfoCallBack, this);
-  pa_context_get_source_info_list(pulseContext, sourceInfoCallBack, this);
+  pa_context_get_sink_info_list(pulseCtx, sinkInfoCallBack, this);
+  pa_context_get_source_info_list(pulseCtx, sourceInfoCallBack, this);
   pa_threaded_mainloop_unlock(mainLoop);
 }
 
-void PulseAudioManager::setVolume(const std::string &devName, bool isOutput,
-                                  uint32_t volume) {
+ResponseMessage PulseAudioManager::setVolume(const PASetVolumeRequest &req) {
+  ResponseMessage resp{
+      .success = false, .errMsg = "", .correlationId = req.correlationId};
+
   pa_cvolume paVolume;
-  pa_cvolume_set(&paVolume, 2, (uint32_t)((float)volume / 100 * 65535));
+  pa_cvolume_set(&paVolume, 2, (uint32_t)((float)req.volume / 100 * 65535));
 
   pa_threaded_mainloop_lock(mainLoop);
 
-  if (isOutput) {
-    auto it = outDevs.find(devName);
+  if (req.isOutput) {
+    auto it = outDevs.find(req.devName);
     if (it == outDevs.end()) {
       pa_threaded_mainloop_unlock(mainLoop);
-      return;
+
+      resp.errMsg =
+          "Failed to Set Volume. Output Device Not Found: " + req.devName;
+      return resp;
     }
 
-    auto op = pa_context_set_sink_volume_by_index(
-        pulseContext, it->second.index, &paVolume, nullptr, nullptr);
+    auto op = pa_context_set_sink_volume_by_index(pulseCtx, it->second.index,
+                                                  &paVolume, nullptr, nullptr);
 
     if (op)
       pa_operation_unref(op);
 
   } else {
-    auto it = inDevs.find(devName);
+    auto it = inDevs.find(req.devName);
     if (it == inDevs.end()) {
       pa_threaded_mainloop_unlock(mainLoop);
-      return;
+
+      resp.errMsg =
+          "Failed to Set Volume. Input Device Not Found: " + req.devName;
+      return resp;
     }
 
     auto op = pa_context_set_source_volume_by_index(
-        pulseContext, it->second.index, &paVolume, nullptr, nullptr);
+        pulseCtx, it->second.index, &paVolume, nullptr, nullptr);
 
     if (op)
       pa_operation_unref(op);
   }
 
   pa_threaded_mainloop_unlock(mainLoop);
+
+  resp.success = true;
+  return resp;
 }
 
-short PulseAudioManager::toggleMute(const std::string &devName, bool isOutput) {
-  pa_threaded_mainloop_lock(mainLoop);
-  bool ret = -1;
+ResponseMessage PulseAudioManager::toggleMute(const PAToggleMuteRequest &req) {
+  ResponseMessage resp{
+      .success = false, .errMsg = "", .correlationId = req.correlationId};
 
-  if (isOutput) {
-    auto it = outDevs.find(devName);
+  pa_threaded_mainloop_lock(mainLoop);
+
+  if (req.isOutput) {
+    auto it = outDevs.find(req.devName);
     if (it == outDevs.end()) {
       pa_threaded_mainloop_unlock(mainLoop);
-      return -1;
+
+      resp.errMsg =
+          "Failed to Toggle Mute. Output Device Not Found: " + req.devName;
+      return resp;
     }
 
     auto op = pa_context_set_sink_mute_by_index(
-        pulseContext, it->second.index, !it->second.mute, nullptr, nullptr);
+        pulseCtx, it->second.index, !it->second.mute, nullptr, nullptr);
 
     if (op) {
       it->second.mute = !it->second.mute;
       pa_operation_unref(op);
-      ret = it->second.mute;
+      resp.success = it->second.mute;
     }
   } else {
-    auto it = inDevs.find(devName);
+    auto it = inDevs.find(req.devName);
     if (it == inDevs.end()) {
       pa_threaded_mainloop_unlock(mainLoop);
-      return -1;
+
+      resp.errMsg =
+          "Failed to Toggle Mute. Input Device Not Found: " + req.devName;
+      return resp;
     }
 
     auto op = pa_context_set_source_mute_by_index(
-        pulseContext, it->second.index, !it->second.mute, nullptr, nullptr);
+        pulseCtx, it->second.index, !it->second.mute, nullptr, nullptr);
 
     if (op) {
       it->second.mute = !it->second.mute;
       pa_operation_unref(op);
-      ret = it->second.mute;
+      resp.success = it->second.mute;
     }
   }
 
   pa_threaded_mainloop_unlock(mainLoop);
-  return ret;
+
+  return resp;
 }
 
-bool PulseAudioManager::updateDefDevice(const std::string &devName,
-                                        bool isOutput) {
-  pa_threaded_mainloop_lock(mainLoop);
-  bool ret = false;
+ResponseMessage
+PulseAudioManager::updateDefDevice(const PAUpdateDefDeviceRequest &req) {
+  ResponseMessage resp{.success = false,
+                       .errMsg = "Failed to update default device",
+                       .correlationId = req.correlationId};
+  
 
-  if (isOutput) {
-    auto it = outDevs.find(devName);
+  pa_threaded_mainloop_lock(mainLoop);
+
+  if (req.isOutput) {
+    auto it = outDevs.find(req.devName);
     if (it != outDevs.end()) {
 
-      auto op = pa_context_set_default_sink(pulseContext, devName.c_str(),
+      auto op = pa_context_set_default_sink(pulseCtx, req.devName.c_str(),
                                             nullptr, nullptr);
       if (op) {
         pa_operation_unref(op);
-        defOutput = devName;
-        ret = true;
+        defOutput = req.devName;
+        resp.success = true;
       }
     }
   } else {
 
-    auto it = inDevs.find(devName);
+    auto it = inDevs.find(req.devName);
     if (it != inDevs.end()) {
 
-      auto op = pa_context_set_default_source(pulseContext, devName.c_str(),
+      auto op = pa_context_set_default_source(pulseCtx, req.devName.c_str(),
                                               nullptr, nullptr);
       if (op) {
         pa_operation_unref(op);
-        defInput = devName;
-        ret = true;
+        defInput = req.devName;
+        resp.success = true;
       }
     }
   }
 
   pa_threaded_mainloop_unlock(mainLoop);
-  return ret;
+  return resp;
 }
 
 PulseAudioManager::~PulseAudioManager() {
@@ -295,12 +320,32 @@ PulseAudioManager::~PulseAudioManager() {
     pa_threaded_mainloop_stop(mainLoop);
   }
 
-  if (pulseContext) {
-    pa_context_disconnect(pulseContext);
-    pa_context_unref(pulseContext);
+  if (pulseCtx) {
+    pa_context_disconnect(pulseCtx);
+    pa_context_unref(pulseCtx);
   }
 
   if (mainLoop) {
     pa_threaded_mainloop_free(mainLoop);
   }
+}
+
+ResponseMessage PulseAudioManager::handle(const PARequest &req) {
+  ResponseMessage resp;
+
+  std::visit(
+      [&](auto &reqMsg) {
+        using T = std::decay_t<decltype(reqMsg)>;
+
+        if constexpr (std::is_same_v<T, PASetVolumeRequest>) {
+          resp = setVolume(reqMsg);
+        } else if constexpr (std::is_same_v<T, PAToggleMuteRequest>) {
+          resp = toggleMute(reqMsg);
+        } else if constexpr (std::is_same_v<T, PAUpdateDefDeviceRequest>) {
+          resp = updateDefDevice(reqMsg);
+        }
+      },
+      req);
+
+  return resp;
 }
