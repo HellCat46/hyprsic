@@ -21,7 +21,8 @@ NotificationManager::NotificationManager(AppContext *app_ctx)
         sdbus::ServiceName{"org.freedesktop.Notifications"});
 
     dbusObject = sdbus::createObject(
-        *ctx->dbus.ssnConn, sdbus::ObjectPath{"/org/freedesktop/Notifications"});
+        *ctx->dbus.ssnConn,
+        sdbus::ObjectPath{"/org/freedesktop/Notifications"});
 
   } catch (const sdbus::Error &e) {
     std::string errMsg =
@@ -110,9 +111,9 @@ void NotificationManager::handleGetCapabilitiesCallDbus(
   try {
     sdbus::MethodReply reply = msg.createReply();
 
-    reply << std::vector<std::string>{"body",        "body-hyperlinks",
-                                      "body-markup", "icon-static",
-                                      "actions",     "persistence"};
+    reply << std::vector<std::string>{"body", "body-markup",
+                                      // "body-hyperlinks",
+                                      "icon-static", "actions", "persistence"};
 
     reply.send();
   } catch (const sdbus::Error &e) {
@@ -176,8 +177,11 @@ bool NotificationManager::handleNotifyCallDbus(sdbus::MethodCall &msg,
           img.pixels.data(), Gdk::Colorspace::RGB, false, 8, img.width,
           img.height, img.rowstride);
       notif.icon = pixbuf->copy();
-    } else if (notif.hints.contains("image-path") || notif.hints.contains("image_path")) {
-      auto &imgPath = notif.hints.contains("image-path") ? notif.hints["image-path"] : notif.hints["image_path"];
+    } else if (notif.hints.contains("image-path") ||
+               notif.hints.contains("image_path")) {
+      auto &imgPath = notif.hints.contains("image-path")
+                          ? notif.hints["image-path"]
+                          : notif.hints["image_path"];
       notif.icon = Gdk::Pixbuf::create_from_file(imgPath.get<std::string>());
     } else {
       for (const auto &[key, value] : notif.hints) {

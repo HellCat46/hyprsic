@@ -6,5 +6,5 @@ namespace HelperFunc {
 bool saferStrCmp(const char *a, const char *b);
 bool saferStrNCmp(const char *a, const char *b, int len);
 std::string convertToTime(int minutes);
-std::string ValidString(std::string str);
+std::string ValidString(std::string str, bool escape = true);
 }

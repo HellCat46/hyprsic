@@ -114,6 +114,7 @@ void HyprWSModule::chgWS(unsigned int wsId) {
 
 void HyprWSModule::handleWSScroll(double dy) {
   if (dy < 0) {
+      
     commBus->SendMessage(HyprMoveWSRequest{monitorId, false, ModuleType::HYPR,
                                            commBus->GetNewCorId()},
                          Priority::IMMEDIATE);

@@ -3,6 +3,7 @@
 #include "gdkmm/pixbuf.h"
 #include "glib.h"
 #include "glibmm/main.h"
+#include "glibmm/ustring.h"
 #include "gtk/gtk.h"
 #include "gtk4-layer-shell.h"
 #include "gtkmm/cssprovider.h"
@@ -19,7 +20,7 @@
 
 #define TAG "AppContext"
 
-AppContext::AppContext() : dbus(), dbManager(&logger), logger(true) {}
+AppContext::AppContext() : dbus(),logger(true), dbManager(&logger) {}
 
 DbusSystem::DbusSystem() : sysConn(nullptr), ssnConn(nullptr) {
   try {
@@ -67,7 +68,6 @@ void AppContext::setupUpdateWindow() {
 }
 
 void AppContext::setupNotifWindow() {
-  closeNotifId = 0;
 
   auto notifWinObj = notifWin.gobj();
   gtk_layer_init_for_window(GTK_WINDOW(notifWinObj));
@@ -93,6 +93,9 @@ void AppContext::setupNotifWindow() {
   notifWin.set_child(notifBox);
 
   notifLogo.set_size_request(64, 64);
+  auto logoCSSProv = Gtk::CssProvider::create();
+  logoCSSProv->load_from_data("picture { border-radius: 20px; }");
+  notifLogo.get_style_context()->add_provider(logoCSSProv, GTK_STYLE_PROVIDER_PRIORITY_USER);
   notifBox.append(notifLogo);
 
   Gtk::Box notifTextBox{Gtk::Orientation::VERTICAL, 5};
@@ -217,15 +220,13 @@ void AppContext::showNotifWindow(Notification &notif, bool dnd) {
       .summary = notif.summary,
       .body = notif.body,
       .timestamp = dbManager.getCurrentTimestamp(),
-  };
+      .logo = notif.icon->copy()
+  };  
 
   if (dnd) {
     autoCloseNotificationCb(dnd, record);
     return;
   }
-
-  Glib::signal_timeout().connect_once(
-      [this, dnd, record]() { autoCloseNotificationCb(dnd, record); }, 5000);
 
   // Adding Data to UI Elements
   notifTitle.set_markup("<b>" + record.summary + "</b>");
@@ -233,7 +234,7 @@ void AppContext::showNotifWindow(Notification &notif, bool dnd) {
   if (record.body.size() > 500) {
     record.body = record.body.substr(0, 497) + "...";
   }
-  notifBody.set_markup(HelperFunc::ValidString(record.body));
+  notifBody.set_markup(HelperFunc::ValidString(record.body, false));
 
   if (notif.icon) {
     notifLogo.set(notif.icon->scale_simple(64, 64, Gdk::InterpType::BILINEAR));
@@ -242,6 +243,8 @@ void AppContext::showNotifWindow(Notification &notif, bool dnd) {
     notifLogo.clear();
   }
 
+  Glib::signal_timeout().connect_once(
+      [this, dnd, record]() { autoCloseNotificationCb(dnd, record); }, 10000);
   notifWin.show();
 }
 

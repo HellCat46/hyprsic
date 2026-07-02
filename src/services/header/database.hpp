@@ -1,4 +1,5 @@
 #pragma once
+#include "gdkmm/pixbuf.h"
 #include "logging.hpp"
 #include "SQLiteCpp/Database.h"
 #include "SQLiteCpp/Statement.h"
@@ -12,6 +13,7 @@ struct NotificationRecord {
   std::string summary;
   std::string body;
   std::string timestamp;
+  Glib::RefPtr<Gdk::Pixbuf> logo;
 };
 
 class DBManager {
@@ -19,6 +21,8 @@ class DBManager {
   std::unique_ptr<SQLite::Database> localDB;
   std::unique_ptr<SQLite::Statement> insertStmt;
   std::unique_ptr<SQLite::Statement> deleteStmt;
+
+  std::string logoPath;
 
 public:
   std::list<NotificationRecord> notifList;

@@ -47,7 +47,6 @@ class AppContext {
   Gtk::Image notifLogo;
   Gtk::Label notifTitle;
   Gtk::Label notifBody;
-  gulong closeNotifId;
 
   Gtk::Grid updateWinGrid;
   Gtk::Image updateIcon;
@@ -66,8 +65,8 @@ class AppContext {
 
 public:
   DbusSystem dbus;
-  DBManager dbManager;
   LoggingManager logger;
+  DBManager dbManager;
   Gtk::Stack moduleStk;
 
   AppContext();

@@ -1,6 +1,7 @@
 #include "header/database.hpp"
 #include "SQLiteCpp/Database.h"
 #include "SQLiteCpp/Statement.h"
+#include "gdkmm/pixbuf.h"
 #include "glib.h"
 #include <memory>
 #include <string>
@@ -21,8 +22,9 @@ DBManager::DBManager(LoggingManager *logMgr) : localDB(nullptr) {
     }
   }
 
+  logoPath = dbPath + "logos/";
   if (dbPath.size() != 0) {
-    g_mkdir_with_parents(dbPath.c_str(), 0755);
+    g_mkdir_with_parents(logoPath.c_str(), 0755);
   }
 
   dbPath += "hyprsic.db3";
@@ -89,9 +91,25 @@ DBManager::DBManager(LoggingManager *logMgr) : localDB(nullptr) {
 
     notifList.push_back(notif);
   }
+
+  logger->LogDebug(TAG, "Loaded " + std::to_string(notifList.size()) +
+                            " notifications from database");
+  for (auto &notif : notifList) {
+    try {
+      notif.logo = Gdk::Pixbuf::create_from_file(logoPath + notif.id + ".png");
+      logger->LogDebug(
+          TAG, "Loaded logo for notification ID: " + notif.id +
+                   " Height: " + std::to_string(notif.logo->get_height()) +
+                   " Width: " + std::to_string(notif.logo->get_width()));
+
+    } catch (const std::exception &e) {
+      logger->LogError(TAG, "Failed to load logo for notification ID: " +
+                                notif.id + " Error: " + e.what());
+    }
+  }
 }
 
-bool DBManager::insertNotification(const NotificationRecord& notif) {
+bool DBManager::insertNotification(const NotificationRecord &notif) {
   try {
     insertStmt->bind(1, notif.id);
     insertStmt->bind(2, notif.app_name);
@@ -100,10 +118,8 @@ bool DBManager::insertNotification(const NotificationRecord& notif) {
 
     insertStmt->exec();
     insertStmt->reset();
-    
 
     notifList.push_front(notif);
-    return 0;
   } catch (const std::exception &e) {
     logger->LogError(TAG, "Failed to insert notification ID: " + notif.id +
                               " Error: " + e.what());
@@ -111,17 +127,27 @@ bool DBManager::insertNotification(const NotificationRecord& notif) {
 
     return -1;
   }
+
+  try {
+    if (notif.logo) {
+      notif.logo->save(logoPath + notif.id + ".png", "png");
+    }
+  } catch (const std::exception &e) {
+    logger->LogWarning(TAG, "Failed to save logo for notification ID: " +
+                                notif.id + " Error: " + e.what());
+  }
+
+  return 0;
 }
 
-bool DBManager::removeNotification(const std::string &id,
-                                  std::list<NotificationRecord>::iterator &it) {
+bool DBManager::removeNotification(
+    const std::string &id, std::list<NotificationRecord>::iterator &it) {
   try {
     deleteStmt->bind(1, id);
     deleteStmt->exec();
     deleteStmt->reset();
 
     notifList.erase(it);
-    return 0;
   } catch (const std::exception &e) {
     logger->LogError(TAG, "Failed to delete notification ID: " + id +
                               " Error: " + e.what());
@@ -129,15 +155,29 @@ bool DBManager::removeNotification(const std::string &id,
 
     return -1;
   }
+
+  if (std::remove((logoPath + id + ".png").c_str()) != 0) {
+    logger->LogError(TAG, "Failed to remove notification ID: " + id);
+  }
+
+  return 0;
 }
 
-bool DBManager::clearAllNotifications(){
-    try {
-        localDB->exec("DELETE FROM notifications;");
-        notifList.clear();
-        return 0;
-    } catch (const std::exception &e) {
-        logger->LogError(TAG, "Failed to clear notifications: " + std::string(e.what()));
-        return -1;
+bool DBManager::clearAllNotifications() {
+  try {
+    localDB->exec("DELETE FROM notifications;");
+    notifList.clear();
+  } catch (const std::exception &e) {
+    logger->LogError(TAG,
+                     "Failed to clear notifications: " + std::string(e.what()));
+    return -1;
+  }
+
+  for (const auto &notif : notifList) {
+    logger->LogDebug(TAG, "Removing logo for notification ID: " + notif.id);
+    if (std::remove((logoPath + notif.id + ".png").c_str()) != 0) {
+      logger->LogError(TAG, "Failed to remove logo for notification ID: " + notif.id);
     }
+  }
+  return 0;
 }

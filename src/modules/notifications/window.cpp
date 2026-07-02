@@ -4,8 +4,8 @@
 #include "gtkmm/enums.h"
 #include "gtkmm/label.h"
 #include "gtkmm/object.h"
-#include "gtkmm/switch.h"
 #include "gtkmm/scrolledwindow.h"
+#include "gtkmm/switch.h"
 #include "sigc++/functors/mem_fun.h"
 #include "utils/helper_func.hpp"
 
@@ -28,6 +28,7 @@ void NotificationWindow::init() {
 
   Gtk::Label notifTitle;
   notifTitle.set_markup("<big><b>Notifications</b></big>");
+  notifTitle.set_margin_start(5);
   notifTitle.set_halign(Gtk::Align::START);
   notifTitle.set_hexpand(true);
   topBar.append(notifTitle);
@@ -40,7 +41,7 @@ void NotificationWindow::init() {
   // Do Not Disturb Toggle
   Gtk::Box dndBox{Gtk::Orientation::HORIZONTAL, 5};
   dndBox.set_margin_bottom(10);
-  dndBox.set_margin_start(10);
+  dndBox.set_margin_start(5);
   dndBox.set_margin_end(10);
 
   Gtk::Label dndLbl;
@@ -82,51 +83,57 @@ void NotificationWindow::update(bool force) {
     if (notifLookup.find(notif->id) != notifLookup.end())
       break;
 
-
     Gtk::Box contentBox{Gtk::Orientation::VERTICAL, 5};
 
     Gtk::Box topContent{Gtk::Orientation::HORIZONTAL, 5};
     contentBox.append(topContent);
 
-    // ctx->logger.LogInfo(TAG, notif->app_name + " - " + notif->summary + " - " + notif->body + " - " + notif->timestamp + " - " + notif->id);
+    // ctx->logger.LogInfo(TAG, notif->app_name + " - " + notif->summary + " - "
+    // + notif->body + " - " + notif->timestamp + " - " + notif->id);
+    Gtk::Image logo;
+    if (notif->logo) {
+      logo.set(notif->logo->scale_simple(64, 64, Gdk::InterpType::BILINEAR));
+      logo.set_pixel_size(64);
+    } else {
+      ctx->logger.LogWarning(TAG, "No logo for notification ID: " + notif->id);
+    }
+    topContent.append(logo);
 
-    Gtk::Label appName;
-    appName.set_markup("<b>" + HelperFunc::ValidString(notif->app_name) + "</b> - ");
-    appName.set_halign(Gtk::Align::START);
-    topContent.append(appName);
-
-    Gtk::Label timestampLbl;
-    timestampLbl.set_markup("<i>" + HelperFunc::ValidString(notif->timestamp) + "</i>");
-    timestampLbl.set_halign(Gtk::Align::END);
-    topContent.append(timestampLbl);
+    Gtk::Box notifInfo{Gtk::Orientation::VERTICAL, 5};
+    notifInfo.set_hexpand(true);
+    topContent.append(notifInfo);
 
     Gtk::Label titleLbl;
-    titleLbl.set_markup(
-        (std::string("<b>Summary:</b> ") +
-         (notif->summary.size() > 25
-              ? HelperFunc::ValidString(notif->summary.substr(0, 22) + "...")
-              : HelperFunc::ValidString(notif->summary))));
-
+    titleLbl.set_markup(HelperFunc::ValidString(notif->summary) + " | <b>" + HelperFunc::ValidString(notif->app_name) +
+                       "</b>");
     titleLbl.set_wrap(true);
     titleLbl.set_halign(Gtk::Align::START);
-    contentBox.append(titleLbl);
+    titleLbl.set_hexpand(true);
+    titleLbl.set_vexpand(true);
+    notifInfo.append(titleLbl);
+
+    Gtk::Label timeLbl;
+    timeLbl.set_markup("<i>" +
+                       HelperFunc::ValidString(notif->timestamp) + "</i>");
+    timeLbl.set_halign(Gtk::Align::START);
+    notifInfo.append(timeLbl);
+
+    auto removeBtn = Gtk::make_managed<Gtk::Button>();
+    removeBtn->set_icon_name("window-close-symbolic");
+    removeBtn->signal_clicked().connect(
+        [this, notifId = notif->id]() { deleteNotificationCb(notifId); });
+    topContent.append(*removeBtn);
 
     Gtk::Label bodyLbl;
-    bodyLbl.set_markup(HelperFunc::ValidString(notif->body));
+    bodyLbl.set_markup(HelperFunc::ValidString(notif->body, false));
     bodyLbl.set_wrap(true);
     bodyLbl.set_halign(Gtk::Align::START);
     contentBox.append(bodyLbl);
 
-    auto removeBtn = Gtk::make_managed<Gtk::Button>("✖");
-    removeBtn->signal_clicked().connect([this, notifId = notif->id]() {
-        deleteNotificationCb(notifId);
-        
-    });
-
-    auto& notifBox = notifLookup.emplace(notif->id, NotifListItem{notif}).first->second.widget;
+    auto &notifBox = notifLookup.emplace(notif->id, NotifListItem{notif})
+                         .first->second.widget;
     notifBox.set_margin(5);
     notifBox.append(contentBox);
-    notifBox.append(*removeBtn);
     scrollWinBox.append(notifBox);
   }
 }
@@ -135,7 +142,7 @@ void NotificationWindow::deleteNotificationCb(std::string notifId) {
 
   auto it = notifLookup.find(notifId);
   if (it != notifLookup.end()) {
-      ctx->logger.LogInfo(TAG, "Deleting notification: " + notifId);
+    ctx->logger.LogInfo(TAG, "Deleting notification: " + notifId);
 
     ctx->dbManager.removeNotification(notifId, it->second.it);
     it->second.widget.unparent();
@@ -149,7 +156,9 @@ void NotificationWindow::handleDndToggle(bool state) {
   std::string msg =
       "Do Not Disturb Mode " + std::string(state ? "Enabled" : "Disabled");
   ctx->logger.LogInfo(TAG, msg);
-  ctx->showUpdateWindow(state ? "notifications-disabled-symbolic" : "preferences-system-notifications-symbolic", msg);
+  ctx->showUpdateWindow(state ? "notifications-disabled-symbolic"
+                              : "preferences-system-notifications-symbolic",
+                        msg);
 }
 
 void NotificationWindow::handleClearAll() {

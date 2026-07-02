@@ -1,5 +1,4 @@
 #include "helper_func.hpp"
-#include "glib.h"
 #include "glibmm/markup.h"
 #include "glibmm/ustring.h"
 #include <cstring>
@@ -25,14 +24,17 @@ bool HelperFunc::saferStrNCmp(const char *a, const char *b, int len) {
   return (std::strncmp(a, b, len) == 0);
 }
 
-std::string HelperFunc::ValidString(std::string str) {
+std::string HelperFunc::ValidString(std::string str, bool escape) {
   if (str.empty())
     return "";
 
   auto uStr = Glib::ustring{str};
   uStr.make_valid();
 
-  return Glib::Markup::escape_text(uStr);
+  if(escape)
+    return Glib::Markup::escape_text(uStr);
+  else
+    return uStr;
 }
 
 std::string HelperFunc::convertToTime(int minutes) {
