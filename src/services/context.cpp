@@ -85,6 +85,13 @@ void AppContext::setupNotifWindow() {
   gtk_window_set_decorated(GTK_WINDOW(notifWinObj), false);
   notifWin.set_size_request(400, -1);
 
+  auto gestClick = Gtk::GestureClick::create();
+  notifWin.add_controller(gestClick);
+  gestClick->signal_pressed().connect([this](int, double, double) {
+    notifWin.hide();
+  });
+
+
   auto notifEvtBox = Gtk::GestureClick::create();
   Gtk::Box notifBox{Gtk::Orientation::HORIZONTAL, 5};
   notifBox.set_margin(5);
